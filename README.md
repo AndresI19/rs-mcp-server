@@ -20,9 +20,9 @@ pip install -r requirements.txt
 ## Run
 
 ```bash
-# activate the venv first
-source .venv/bin/activate
-python server.py
+make start   # opens a log window, polls health, prints the SSE endpoint
+make stop    # kill the server
+make logs    # tail /tmp/mcp-server.log
 ```
 
 Starts on `http://0.0.0.0:8000`. Endpoints:

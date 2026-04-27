@@ -40,7 +40,12 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "item_name": {"type": "string", "description": "The exact or approximate item name."}
+                    "item_name": {"type": "string", "description": "The exact or approximate item name."},
+                    "game": {
+                        "type": "string",
+                        "enum": ["rs3", "osrs"],
+                        "description": "Which game's Grand Exchange to query: 'rs3' (default) or 'osrs'.",
+                    },
                 },
                 "required": ["item_name"],
             },
@@ -75,7 +80,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     if name == "search_wiki":
         result = await search_wiki(arguments["query"], arguments.get("game", "rs3"))
     elif name == "get_item_price":
-        result = await get_item_price(arguments["item_name"])
+        result = await get_item_price(arguments["item_name"], arguments.get("game", "rs3"))
     elif name == "get_player_stats":
         result = await get_player_stats(arguments["username"])
     elif name == "get_quest_info":

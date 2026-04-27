@@ -17,11 +17,21 @@ RuneScape research tools exposed to Claude Desktop via the [Model Context Protoc
 pip install -r requirements.txt
 ```
 
-## Run (stdio mode for Claude Desktop)
+## Run
 
 ```bash
+# activate the venv first
+source .venv/bin/activate
 python server.py
 ```
+
+Starts on `http://0.0.0.0:8000`. Endpoints:
+
+| Path | Description |
+|------|-------------|
+| `GET /health` | Returns `{"status": "ok"}` — liveness check |
+| `GET /sse` | MCP SSE connection endpoint (Claude Desktop connects here) |
+| `POST /messages` | MCP message endpoint (used by SSE transport) |
 
 ## Project layout
 

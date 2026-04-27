@@ -1,7 +1,13 @@
-"""RuneScape MCP Server — entry point."""
-import mcp.server.stdio
+"""RuneScape MCP Server — HTTP/SSE entry point."""
+import uvicorn
 from mcp.server import Server
+from mcp.server.sse import SseServerTransport
 from mcp.types import Tool, TextContent
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.routing import Mount, Route
+
 from tools.wiki import search_wiki
 from tools.prices import get_item_price
 from tools.hiscores import get_player_stats, get_quest_info
@@ -74,6 +80,25 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     return [TextContent(type="text", text=result)]
 
 
+sse = SseServerTransport("/messages")
+
+
+async def handle_sse(scope, receive, send):
+    async with sse.connect_sse(scope, receive, send) as streams:
+        await app.run(streams[0], streams[1], app.create_initialization_options())
+
+
+async def health(request: Request) -> JSONResponse:
+    return JSONResponse({"status": "ok"})
+
+
+web = Starlette(
+    routes=[
+        Route("/health", health),
+        Route("/sse", endpoint=handle_sse),
+        Mount("/messages", app=sse.handle_post_message),
+    ]
+)
+
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(mcp.server.stdio.run(app))
+    uvicorn.run(web, host="0.0.0.0", port=8000)

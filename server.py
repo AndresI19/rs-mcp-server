@@ -1,4 +1,9 @@
 """RuneScape MCP Server — HTTP/SSE entry point."""
+import os
+import sys
+import threading
+import traceback
+from contextlib import asynccontextmanager
 import uvicorn
 from mcp.server import Server
 from mcp.server.sse import SseServerTransport
@@ -11,6 +16,19 @@ from starlette.routing import Mount, Route
 from tools.wiki import search_wiki
 from tools.prices import get_item_price
 from tools.hiscores import get_player_stats, get_quest_info
+
+def _excepthook(exc_type, exc_value, exc_tb):
+    frames = "".join(traceback.format_tb(exc_tb, limit=3))
+    print(f"\nServer terminated — {exc_type.__name__}: {exc_value}\n{frames}", file=sys.stderr, flush=True)
+
+
+def _thread_excepthook(args):
+    _excepthook(args.exc_type, args.exc_value, args.exc_traceback)
+    os._exit(1)
+
+
+sys.excepthook = _excepthook
+threading.excepthook = _thread_excepthook
 
 app = Server("rs-mcp-server")
 
@@ -100,10 +118,23 @@ async def handle_sse(request: Request) -> Response:
 
 
 async def health(request: Request) -> JSONResponse:
+    if "crash" in request.query_params:
+        threading.Thread(target=_do_crash, daemon=True).start()
     return JSONResponse({"status": "ok"})
 
 
+def _do_crash():
+    raise RuntimeError("deliberate crash via /health?crash")
+
+
+@asynccontextmanager
+async def lifespan(app):
+    yield
+    print("Server terminated", file=sys.stderr, flush=True)
+
+
 web = Starlette(
+    lifespan=lifespan,
     routes=[
         Route("/health", health),
         Route("/sse", endpoint=handle_sse),

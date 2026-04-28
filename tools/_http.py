@@ -24,3 +24,10 @@ async def http_get(url: str, params: dict | None = None, timeout: float = 10.0) 
         resp = await client.get(url, params=params, timeout=timeout)
         resp.raise_for_status()
         return resp.json()
+
+
+async def http_get_text(url: str, params: dict | None = None, timeout: float = 10.0) -> str:
+    async with httpx.AsyncClient(headers=HEADERS) as client:
+        resp = await client.get(url, params=params, timeout=timeout)
+        resp.raise_for_status()
+        return resp.text

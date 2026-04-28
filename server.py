@@ -74,7 +74,12 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "username": {"type": "string", "description": "The player's RuneScape username."}
+                    "username": {"type": "string", "description": "The player's RuneScape username."},
+                    "game": {
+                        "type": "string",
+                        "enum": ["rs3", "osrs"],
+                        "description": "Which hiscores to query: 'rs3' (default) or 'osrs'.",
+                    },
                 },
                 "required": ["username"],
             },
@@ -100,7 +105,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     elif name == "get_item_price":
         result = await get_item_price(arguments["item_name"], arguments.get("game", "rs3"))
     elif name == "get_player_stats":
-        result = await get_player_stats(arguments["username"])
+        result = await get_player_stats(arguments["username"], arguments.get("game", "rs3"))
     elif name == "get_quest_info":
         result = await get_quest_info(arguments["quest_name"])
     else:

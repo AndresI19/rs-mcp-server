@@ -1,4 +1,4 @@
-"""get_player_stats and get_quest_info tools — Jagex Hiscores and Wiki APIs."""
+"""get_player_stats tool — Jagex Hiscores API."""
 import httpx
 import cache
 from ._http import http_get_text
@@ -25,7 +25,6 @@ _RS3_SKILLS = (
 )
 
 _TTL_STATS = 600   # 10 minutes
-_TTL_QUESTS = 3600  # 1 hour
 
 
 async def get_player_stats(username: str, game: str = "rs3") -> str:
@@ -78,12 +77,3 @@ def _format_stats(username: str, game: str, csv: str, skills: tuple[str, ...]) -
 
 def _fmt_rank(rank: int) -> str:
     return f"{rank:,}" if rank > 0 else "—"
-
-
-async def get_quest_info(quest_name: str) -> str:
-    cache_key = f"quest:{quest_name}"
-    cached = cache.get(cache_key)
-    if cached:
-        return cached
-
-    raise NotImplementedError("get_quest_info not yet implemented")

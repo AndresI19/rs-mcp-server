@@ -1,7 +1,7 @@
 """Unit tests for cache.py (issue #18)."""
 import pytest
 
-import cache
+from rs_mcp_server import cache
 
 
 @pytest.fixture(autouse=True)

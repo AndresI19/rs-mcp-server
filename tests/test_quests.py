@@ -1,5 +1,5 @@
 """Unit tests for tools/quests.py parsing helpers (issue #18)."""
-from tools.quests import (
+from rs_mcp_server.tools.quests import (
     _clean_wikitext,
     _find_template,
     _format_from_content,

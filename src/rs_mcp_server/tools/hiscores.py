@@ -1,6 +1,6 @@
 """get_player_stats tool — Jagex Hiscores API."""
 import httpx
-import cache
+from rs_mcp_server import cache
 from ._http import http_get_text
 
 _HISCORES_APIS = {

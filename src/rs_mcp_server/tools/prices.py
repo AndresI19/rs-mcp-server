@@ -1,6 +1,6 @@
 """get_item_price tool — OSRS and RS3 Grand Exchange APIs."""
 import re
-import cache
+from rs_mcp_server import cache
 from ._http import http_get, WIKI_APIS, MW_BASE_PARAMS
 
 _OSRS_MAPPING_URL = "https://prices.runescape.wiki/api/v1/osrs/mapping"

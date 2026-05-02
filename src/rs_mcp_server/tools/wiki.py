@@ -1,5 +1,5 @@
 """search_wiki tool — RuneScape Wiki MediaWiki API."""
-import cache
+from rs_mcp_server import cache
 from ._http import http_get, WIKI_APIS, WIKI_BASE_URLS, MW_BASE_PARAMS
 
 _TTL = 3600  # 1 hour

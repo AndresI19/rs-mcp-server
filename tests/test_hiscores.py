@@ -1,5 +1,5 @@
 """Unit tests for tools/hiscores.py parsing helpers (issue #18)."""
-from tools.hiscores import _OSRS_SKILLS, _RS3_SKILLS, _fmt_rank, _format_stats
+from rs_mcp_server.tools.hiscores import _OSRS_SKILLS, _RS3_SKILLS, _fmt_rank, _format_stats
 
 
 # ── _format_stats ─────────────────────────────────────────────────────────────

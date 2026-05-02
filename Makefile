@@ -2,10 +2,10 @@
 
 install:
 	python3 -m venv .venv
-	.venv/bin/pip install -q -r requirements.txt
+	.venv/bin/pip install -q -e ".[test]"
 
 dev:
-	.venv/bin/python server.py
+	.venv/bin/python -m rs_mcp_server.server
 
 start:
 	@bash scripts/start.sh

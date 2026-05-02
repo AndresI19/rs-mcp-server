@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rs-mcp-server"
+version = "0.1.0"
+description = "RuneScape MCP Server — exposes RuneScape research tools to Claude Desktop via the Model Context Protocol"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp>=1.0.0",
+    "httpx>=0.27.0",
+    "starlette>=0.40.0",
+    "uvicorn>=0.30.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "ruff",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

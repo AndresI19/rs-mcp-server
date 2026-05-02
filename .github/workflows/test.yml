@@ -14,19 +14,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
 
-      - name: Install dependencies
+      - name: Install package + test extras
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install ruff
+          pip install -e ".[test]"
 
       - name: Lint with ruff
         run: ruff check .
 
       - name: Import smoke test
-        run: python -c "import server; import cache; from tools import wiki, prices, hiscores, quests"
+        run: python -c "from rs_mcp_server import server, cache; from rs_mcp_server.tools import wiki, prices, hiscores, quests"
 
   pytest:
     runs-on: ubuntu-latest
@@ -36,12 +34,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
 
-      - name: Install dependencies
+      - name: Install package + test extras
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -e ".[test]"
 
       - name: Run unit tests
         run: pytest tests/ -v

@@ -1,4 +1,4 @@
-.PHONY: install dev start stop logs smoke-test
+.PHONY: install dev start stop logs smoke-test test
 
 install:
 	python3 -m venv .venv
@@ -18,3 +18,6 @@ logs:
 
 smoke-test:
 	.venv/bin/python scripts/smoke_test_tools.py
+
+test:
+	.venv/bin/python -m pytest tests/ -v

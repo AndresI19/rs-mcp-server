@@ -119,7 +119,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     return [TextContent(type="text", text=result)]
 
 
-sse = SseServerTransport("/messages")
+sse = SseServerTransport("/messages/")
 
 
 async def handle_sse(request: Request) -> Response:
@@ -149,7 +149,7 @@ web = Starlette(
     routes=[
         Route("/health", health),
         Route("/sse", endpoint=handle_sse),
-        Mount("/messages", app=sse.handle_post_message),
+        Mount("/messages/", app=sse.handle_post_message),
     ]
 )
 

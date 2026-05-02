@@ -1,4 +1,4 @@
-.PHONY: install dev start stop logs
+.PHONY: install dev start stop logs smoke-test
 
 install:
 	python3 -m venv .venv
@@ -15,3 +15,6 @@ stop:
 
 logs:
 	@tail -f /tmp/mcp-server.log
+
+smoke-test:
+	.venv/bin/python scripts/smoke_test_tools.py

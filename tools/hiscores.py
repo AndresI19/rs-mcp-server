@@ -59,9 +59,15 @@ def _format_stats(username: str, game: str, csv: str, skills: tuple[str, ...]) -
         parts = lines[i].split(",")
         if len(parts) < 2:
             continue
-        rank = int(parts[0])
-        level = int(parts[1])
+        try:
+            rank = int(parts[0])
+            level = int(parts[1])
+        except ValueError:
+            continue
         rows.append((name, level, rank))
+
+    if not rows:
+        return f"No usable hiscores data for **{username}** ({game.upper()})."
 
     overall_name, overall_level, overall_rank = rows[0]
     header = f"**{username}** ({game.upper()} Hiscores)"

@@ -117,7 +117,6 @@ async def _get_rs3_price(item_name: str) -> str:
     price   = detail.get("current", {}).get("price", "N/A")
     trend   = detail.get("current", {}).get("trend", "")
     today_p = detail.get("today", {}).get("price", "")
-    today_t = detail.get("today", {}).get("trend", "")
     d30     = detail.get("day30", {}).get("change", "")
     d90     = detail.get("day90", {}).get("change", "")
 

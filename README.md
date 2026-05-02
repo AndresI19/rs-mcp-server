@@ -33,6 +33,14 @@ Starts on `http://0.0.0.0:8000`. Endpoints:
 | `GET /sse` | MCP SSE connection endpoint (Claude Desktop connects here) |
 | `POST /messages` | MCP message endpoint (used by SSE transport) |
 
+## Verification
+
+```bash
+make smoke-test   # exercise all tools over SSE end-to-end (server must be running)
+```
+
+Asserts each tool returns the expected structured output for representative inputs. Exits 0 on success, 1 on any failure.
+
 ## Project layout
 
 ```

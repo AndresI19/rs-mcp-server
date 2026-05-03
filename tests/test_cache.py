@@ -1,6 +1,4 @@
 """Unit tests for cache.py (issue #18)."""
-import pytest
-
 from rs_mcp_server import cache
 
 

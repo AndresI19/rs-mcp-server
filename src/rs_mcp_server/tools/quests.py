@@ -1,6 +1,7 @@
 """get_quest_info tool — RuneScape Wiki quest data via MediaWiki API."""
 import re
 from rs_mcp_server import cache
+from rs_mcp_server.logging import instrument
 from ._http import http_get, WIKI_APIS, WIKI_BASE_URLS, MW_BASE_PARAMS
 
 _TTL = 3600  # 1 hour — matches wiki lookup bucket
@@ -20,6 +21,7 @@ _FIELDS = (
 )
 
 
+@instrument("get_quest_info")
 async def get_quest_info(quest_name: str, game: str = "rs3") -> str:
     game = game.lower()
     if game not in WIKI_APIS:

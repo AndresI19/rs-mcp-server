@@ -25,7 +25,6 @@ async def search_wiki(query: str, game: str = "rs3") -> str:
         "gsrsearch": query,
         "gsrlimit": 1,
         "prop": "extracts|info",
-        "exintro": True,
         "explaintext": True,
         "inprop": "url",
         **MW_BASE_PARAMS,

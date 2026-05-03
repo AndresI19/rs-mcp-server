@@ -38,6 +38,12 @@ _RS3_STATS = [
     ("Accuracy", "accuracy"),
     ("Speed", "speed"),
     ("Attack range", "attack_range"),
+    ("Armour", "armour"),
+    ("Life points", "life"),
+    ("Prayer", "prayer"),
+    ("Magic damage", "magic"),
+    ("Ranged damage", "ranged"),
+    ("Strength", "strength"),
     ("Requirements", "requirements"),
 ]
 

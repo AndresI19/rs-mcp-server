@@ -123,6 +123,37 @@ class TestGetEquipmentStatsRs3:
         assert "**Style:** Slash" in result
 
 
+class TestGetEquipmentStatsRs3Armour:
+    @pytest.mark.anyio
+    async def test_armour_fields_render(self, monkeypatch):
+        wikitext = (
+            "{{Infobox Bonuses\n"
+            "|requirements = {{sc|defence|90}}\n"
+            "|class = ranged\n"
+            "|slot = head\n"
+            "|tier = 90\n"
+            "|type = power\n"
+            "|armour = 435.6\n"
+            "|prayer = 2\n"
+            "|ranged = 22.5\n"
+            "}}"
+        )
+
+        async def fake_http_get(url, params=None, timeout=10.0):
+            return _wiki_page("Sirenic mask", wikitext)
+
+        monkeypatch.setattr("rs_mcp_server.tools.equipment.http_get", fake_http_get)
+        result = await get_equipment_stats("Sirenic mask", "rs3")
+        assert "**Sirenic mask** (RS3 Wiki)" in result
+        assert "**Armour:** 435.6" in result
+        assert "**Prayer:** 2" in result
+        assert "**Ranged damage:** 22.5" in result
+        assert "**Tier:** 90" in result
+        # Weapon-shape fields shouldn't render for armour pieces
+        assert "**Damage:**" not in result
+        assert "**Accuracy:**" not in result
+
+
 class TestGetEquipmentStatsValidation:
     @pytest.mark.anyio
     async def test_unknown_game_returns_error(self):

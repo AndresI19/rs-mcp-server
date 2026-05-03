@@ -16,6 +16,7 @@ _FIELDS = (
     ("Quest series", "main_series"),
     ("Start point", "start"),
     ("Requirements", "requirements"),
+    ("Items required", "items"),
     ("Recommended", "recommended"),
     ("Rewards", "rewards"),
 )
@@ -224,7 +225,7 @@ def _format_from_content(title: str, url: str, wiki_label: str, wikitext: str) -
 
 
 def _clean_wikitext(s: str) -> str:
-    s = re.sub(r"\{\{Skillreq\|([^|}]+)\|(\d+)[^}]*\}\}", r"Level \2 \1", s, flags=re.IGNORECASE)
+    s = re.sub(r"\{\{(?:Skillreq|SCP)\|([^|}]+)\|(\d+)[^}]*\}\}", r"Level \2 \1", s, flags=re.IGNORECASE)
     s = re.sub(r"\{\{plinkp?\|([^|}]+)[^}]*\}\}", r"\1", s, flags=re.IGNORECASE)
     s = re.sub(r"\{\{[^}]*\}\}", "", s)
     s = re.sub(r"\[\[(?:[^\]|]+\|)?([^\]]+)\]\]", r"\1", s)

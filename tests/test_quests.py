@@ -138,6 +138,10 @@ class TestCleanWikitext:
     def test_skillreq_template_formatted(self):
         assert _clean_wikitext("{{Skillreq|Mining|45}}") == "Level 45 Mining"
 
+    def test_scp_template_formatted(self):
+        # OSRS uses {{SCP|Skill|Level|link=yes}} for skill requirements
+        assert _clean_wikitext("{{SCP|Strength|50|link=yes}}") == "Level 50 Strength"
+
     def test_plinkp_template_formatted(self):
         assert _clean_wikitext("{{plinkp|Bronze sword}}") == "Bronze sword"
         assert _clean_wikitext("{{plink|Bronze sword}}") == "Bronze sword"
@@ -216,6 +220,20 @@ class TestFormatFromContent:
         assert "**Members:** Yes" in result
         # Difficulty wasn't provided, so it should not appear
         assert "Difficulty:" not in result
+
+    def test_items_required_field_displayed(self):
+        wikitext = (
+            "{{Quest details\n"
+            "|items = * 4 [[steel bar]]s\n"
+            "* [[Bronze bar]]\n"
+            "* [[Iron bar]]\n"
+            "}}"
+        )
+        result = _format_from_content("Q", "u", "RS3", wikitext)
+        assert "**Items required:**" in result
+        assert "  * 4 steel bars" in result
+        assert "  * Bronze bar" in result
+        assert "  * Iron bar" in result
 
 
 # ── get_quest_info end-to-end ─────────────────────────────────────────────────

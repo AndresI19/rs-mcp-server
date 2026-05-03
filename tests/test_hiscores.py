@@ -117,7 +117,7 @@ class TestGetPlayerStats:
         assert "Total level: 3,000" in result
 
     @pytest.mark.anyio
-    async def test_404_returns_not_found_string(self, monkeypatch):
+    async def test_404_returns_privacy_aware_message(self, monkeypatch):
         async def fake_http_get_text(url, params=None, timeout=10.0):
             response = httpx.Response(404)
             raise httpx.HTTPStatusError(
@@ -128,4 +128,7 @@ class TestGetPlayerStats:
 
         monkeypatch.setattr("rs_mcp_server.tools.hiscores.http_get_text", fake_http_get_text)
         result = await get_player_stats("ghostplayer", "osrs")
-        assert result == "Player 'ghostplayer' not found on OSRS Hiscores."
+        assert "No public hiscores for 'ghostplayer'" in result
+        assert "OSRS" in result
+        assert "may not exist" in result
+        assert "hidden in privacy settings" in result

@@ -43,7 +43,10 @@ async def get_player_stats(username: str, game: str = "rs3") -> str:
         csv = await http_get_text(_HISCORES_APIS[game], params={"player": username})
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
-            return f"Player '{username}' not found on {game.upper()} Hiscores."
+            return (
+                f"No public hiscores for '{username}' on {game.upper()} — "
+                f"the account may not exist, or its hiscores are hidden in privacy settings."
+            )
         raise
 
     skills = _OSRS_SKILLS if game == "osrs" else _RS3_SKILLS

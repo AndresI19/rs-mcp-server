@@ -43,6 +43,17 @@ make smoke-test   # exercise all tools over SSE end-to-end (server must be runni
 
 Asserts each tool returns the expected structured output for representative inputs. Exits 0 on success, 1 on any failure.
 
+## Continuous integration
+
+`.github/workflows/test.yml` runs on every pull request and on every push to `main`:
+
+| Job | Command | Purpose |
+|-----|---------|---------|
+| `lint-and-import` | `ruff check .` + import-only smoke | Lint and catch import-graph breaks |
+| `pytest` | `pytest tests/ -v` | Full unit-test suite |
+
+Both jobs are required status checks on `main` — a pull request cannot be merged until both pass *and* the branch is up to date with `main`.
+
 ## Project layout
 
 ```

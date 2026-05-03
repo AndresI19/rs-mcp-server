@@ -23,3 +23,12 @@
 ## Log file
 
 Logs are written to `/tmp/mcp-server.log` while the server is running.
+
+## Pre-PR checks
+
+These commands must pass before `/pr` opens a PR — the `/pr` skill runs them as Step 0 and aborts on any non-zero exit. Run from repo root:
+
+```bash
+.venv/bin/ruff check .
+make test
+```

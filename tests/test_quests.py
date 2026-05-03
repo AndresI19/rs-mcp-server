@@ -138,6 +138,10 @@ class TestCleanWikitext:
     def test_skillreq_template_formatted(self):
         assert _clean_wikitext("{{Skillreq|Mining|45}}") == "Level 45 Mining"
 
+    def test_scp_template_formatted(self):
+        # OSRS uses {{SCP|Skill|Level|link=yes}} for skill requirements
+        assert _clean_wikitext("{{SCP|Strength|50|link=yes}}") == "Level 50 Strength"
+
     def test_plinkp_template_formatted(self):
         assert _clean_wikitext("{{plinkp|Bronze sword}}") == "Bronze sword"
         assert _clean_wikitext("{{plink|Bronze sword}}") == "Bronze sword"

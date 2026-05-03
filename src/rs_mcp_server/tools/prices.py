@@ -86,9 +86,11 @@ async def _get_osrs_price(item_name: str) -> str:
 
 async def _rs3_item_id(item_name: str) -> tuple[int, str] | None:
     """Return (item_id, canonical_name) via RS3 wiki Exchange module, or None."""
+    # Module:Exchange/<name> is case-sensitive; canonicalize first letter only (str.capitalize would clobber inner caps like "TzHaar-Ket-Om").
+    canonical_title = item_name[:1].upper() + item_name[1:]
     params = {
         "action": "query",
-        "titles": f"Module:Exchange/{item_name}",
+        "titles": f"Module:Exchange/{canonical_title}",
         "prop": "revisions",
         "rvprop": "content",
         **MW_BASE_PARAMS,

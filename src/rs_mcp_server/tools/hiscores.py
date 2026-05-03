@@ -1,6 +1,7 @@
 """get_player_stats tool — Jagex Hiscores API."""
 import httpx
 from rs_mcp_server import cache
+from rs_mcp_server.logging import instrument
 from ._http import http_get_text
 
 _HISCORES_APIS = {
@@ -27,6 +28,7 @@ _RS3_SKILLS = (
 _TTL_STATS = 600   # 10 minutes
 
 
+@instrument("get_player_stats")
 async def get_player_stats(username: str, game: str = "rs3") -> str:
     game = game.lower()
     if game not in _HISCORES_APIS:

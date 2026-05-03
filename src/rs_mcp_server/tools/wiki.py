@@ -1,11 +1,13 @@
 """search_wiki tool — RuneScape Wiki MediaWiki API."""
 from rs_mcp_server import cache
+from rs_mcp_server.logging import instrument
 from ._http import http_get, WIKI_APIS, WIKI_BASE_URLS, MW_BASE_PARAMS
 
 _TTL = 3600  # 1 hour
 _MAX_EXTRACT_CHARS = 1500
 
 
+@instrument("search_wiki")
 async def search_wiki(query: str, game: str = "rs3") -> str:
     game = game.lower()
     if game not in WIKI_APIS:

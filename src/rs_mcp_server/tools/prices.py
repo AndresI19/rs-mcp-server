@@ -1,6 +1,7 @@
 """get_item_price tool — OSRS and RS3 Grand Exchange APIs."""
 import re
 from rs_mcp_server import cache
+from rs_mcp_server.logging import instrument
 from ._http import http_get, WIKI_APIS, MW_BASE_PARAMS
 
 _OSRS_MAPPING_URL = "https://prices.runescape.wiki/api/v1/osrs/mapping"
@@ -11,6 +12,7 @@ _TTL_PRICE   = 300    # 5 minutes
 _TTL_MAPPING = 86400  # 24 hours — only changes on game updates
 
 
+@instrument("get_item_price")
 async def get_item_price(item_name: str, game: str = "rs3") -> str:
     game = game.lower()
     if game not in ("rs3", "osrs"):

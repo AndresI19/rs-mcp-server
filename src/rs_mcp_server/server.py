@@ -13,10 +13,14 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Mount, Route
 
+from rs_mcp_server.logging import setup_logging
 from rs_mcp_server.tools.wiki import search_wiki
 from rs_mcp_server.tools.prices import get_item_price
 from rs_mcp_server.tools.hiscores import get_player_stats
 from rs_mcp_server.tools.quests import get_quest_info
+
+setup_logging()
+
 
 def _excepthook(exc_type, exc_value, exc_tb):
     frames = "".join(traceback.format_tb(exc_tb, limit=3))

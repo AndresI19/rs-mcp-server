@@ -11,7 +11,7 @@ import httpx
 from mcp.client.session import ClientSession
 from mcp.client.sse import sse_client
 
-EXPECTED_TOOLS = {"search_wiki", "get_item_price", "get_player_stats", "get_quest_info", "get_item_recipe", "get_equipment_stats", "get_money_makers", "get_money_maker_method"}
+EXPECTED_TOOLS = {"search_wiki", "get_item_price", "get_player_stats", "get_quest_info", "get_item_recipe", "get_equipment_stats", "get_money_makers", "get_money_maker_method", "get_game_setting"}
 
 CASES = [
     ("search_wiki",      {"query": "fishing", "game": "rs3"},                ["**Fishing**", "Wiki)"]),
@@ -32,6 +32,9 @@ CASES = [
     ("get_money_makers",       {"game": "rs3", "limit": 5, "category": "combat"},             ["money-making methods (RS3)", "Category", "Combat"]),
     ("get_money_maker_method", {"method_name": "Bird house trapping", "game": "osrs"},        ["**Bird house trapping**", "Category", "Inputs"]),
     ("get_money_maker_method", {"method_name": "zzznotamethodzzz", "game": "rs3"},            ["No money-making method found"]),
+    ("get_game_setting",       {"setting_name": "Hide roofs", "game": "osrs"},                ["**Hide roofs**", "OSRS Wiki", "Settings#"]),
+    ("get_game_setting",       {"setting_name": "Move Camera Up (Primary)", "game": "rs3"},   ["**Move Camera Up (Primary)**", "RS3 Wiki", "Controls"]),
+    ("get_game_setting",       {"setting_name": "zzznotasettingzzz", "game": "osrs"},         ["No matching setting"]),
 ]
 
 

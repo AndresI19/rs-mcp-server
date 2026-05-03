@@ -20,6 +20,7 @@ from rs_mcp_server.tools.hiscores import get_player_stats
 from rs_mcp_server.tools.quests import get_quest_info
 from rs_mcp_server.tools.recipes import get_item_recipe
 from rs_mcp_server.tools.equipment import get_equipment_stats
+from rs_mcp_server.tools.moneymakers import get_money_makers, get_money_maker_method
 
 setup_logging()
 
@@ -139,6 +140,50 @@ async def list_tools() -> list[Tool]:
                 "required": ["item_name"],
             },
         ),
+        Tool(
+            name="get_money_makers",
+            description="Rank RuneScape money-making methods by hourly profit, optionally filtered by category (combat/skilling) and members status. Returns a markdown table from the wiki's Money Making Guide. Use get_money_maker_method to drill into a specific method.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "game": {
+                        "type": "string",
+                        "enum": ["rs3", "osrs"],
+                        "description": "Which game wiki to query: 'rs3' (default) or 'osrs'.",
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": ["combat", "skilling"],
+                        "description": "Optional category filter. OSRS-only; on RS3 the filter is a no-op with a note.",
+                    },
+                    "members_only": {
+                        "type": "boolean",
+                        "description": "If true, restrict to members-only methods.",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "How many top methods to return (default 10, max 50).",
+                    },
+                },
+                "required": [],
+            },
+        ),
+        Tool(
+            name="get_money_maker_method",
+            description="Get full details about a single money-making method from the wiki — category, intensity, skills, items, quests required, inputs/outputs per hour, and a snippet of the guide details.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "method_name": {"type": "string", "description": "The method name as it appears on the wiki (e.g. 'Bird house trapping')."},
+                    "game": {
+                        "type": "string",
+                        "enum": ["rs3", "osrs"],
+                        "description": "Which game wiki to query: 'rs3' (default) or 'osrs'.",
+                    },
+                },
+                "required": ["method_name"],
+            },
+        ),
     ]
 
 
@@ -156,6 +201,15 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         result = await get_item_recipe(arguments["item_name"], arguments.get("game", "rs3"))
     elif name == "get_equipment_stats":
         result = await get_equipment_stats(arguments["item_name"], arguments.get("game", "rs3"))
+    elif name == "get_money_makers":
+        result = await get_money_makers(
+            arguments.get("game", "rs3"),
+            arguments.get("category"),
+            arguments.get("members_only", False),
+            arguments.get("limit", 10),
+        )
+    elif name == "get_money_maker_method":
+        result = await get_money_maker_method(arguments["method_name"], arguments.get("game", "rs3"))
     else:
         raise ValueError(f"Unknown tool: {name}")
     return [TextContent(type="text", text=result)]

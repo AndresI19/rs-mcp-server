@@ -20,6 +20,7 @@ from rs_mcp_server.tools.hiscores import get_player_stats
 from rs_mcp_server.tools.quests import get_quest_info
 from rs_mcp_server.tools.recipes import get_item_recipe
 from rs_mcp_server.tools.equipment import get_equipment_stats
+from rs_mcp_server.tools.monsters import get_monster_info
 from rs_mcp_server.tools.moneymakers import get_money_makers, get_money_maker_method
 from rs_mcp_server.tools.settings import get_game_setting
 from rs_mcp_server.tools.clues import solve_clue
@@ -143,6 +144,22 @@ async def list_tools() -> list[Tool]:
             },
         ),
         Tool(
+            name="get_monster_info",
+            description="Get details about a RuneScape monster — combat level, hitpoints, slayer requirement, slayer XP, attack style, weakness (RS3), and more. Drops are not returned by this tool.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "monster_name": {"type": "string", "description": "The exact or approximate monster name."},
+                    "game": {
+                        "type": "string",
+                        "enum": ["rs3", "osrs"],
+                        "description": "Which game wiki to query: 'rs3' (default) or 'osrs'.",
+                    },
+                },
+                "required": ["monster_name"],
+            },
+        ),
+        Tool(
             name="get_money_makers",
             description="Rank RuneScape money-making methods by hourly profit, optionally filtered by category (combat/skilling) and members status. Returns a markdown table from the wiki's Money Making Guide. Use get_money_maker_method to drill into a specific method.",
             inputSchema={
@@ -245,6 +262,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         result = await get_item_recipe(arguments["item_name"], arguments.get("game", "rs3"))
     elif name == "get_equipment_stats":
         result = await get_equipment_stats(arguments["item_name"], arguments.get("game", "rs3"))
+    elif name == "get_monster_info":
+        result = await get_monster_info(arguments["monster_name"], arguments.get("game", "rs3"))
     elif name == "get_money_makers":
         result = await get_money_makers(
             arguments.get("game", "rs3"),

@@ -4,14 +4,6 @@ import pytest
 from rs_mcp_server import cache
 
 
-@pytest.fixture(autouse=True)
-def reset_cache():
-    """Each test gets a fresh in-memory store."""
-    cache._store.clear()
-    yield
-    cache._store.clear()
-
-
 # ── get / set round-trips ─────────────────────────────────────────────────────
 
 class TestGet:

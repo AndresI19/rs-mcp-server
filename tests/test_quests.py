@@ -1,4 +1,6 @@
-"""Unit tests for tools/quests.py parsing helpers (issue #18)."""
+"""Unit tests for tools/quests.py parsing helpers (issue #18) and the get_quest_info tool (issue #28)."""
+import pytest
+
 from rs_mcp_server.tools.quests import (
     _clean_wikitext,
     _find_template,
@@ -7,6 +9,7 @@ from rs_mcp_server.tools.quests import (
     _merged_fields,
     _parse_fields,
     _titles_match,
+    get_quest_info,
 )
 
 
@@ -213,3 +216,59 @@ class TestFormatFromContent:
         assert "**Members:** Yes" in result
         # Difficulty wasn't provided, so it should not appear
         assert "Difficulty:" not in result
+
+
+# ── get_quest_info end-to-end ─────────────────────────────────────────────────
+
+def _quest_page(title: str, content: str) -> dict:
+    return {
+        "query": {
+            "pages": [
+                {
+                    "title": title,
+                    "revisions": [{"slots": {"main": {"content": content}}}],
+                }
+            ]
+        }
+    }
+
+
+class TestGetQuestInfo:
+    @pytest.mark.anyio
+    async def test_direct_hit_returns_formatted_quest(self, monkeypatch):
+        wikitext = (
+            "{{Infobox Quest\n|difficulty = Novice\n|length = Short\n|members = No\n}}"
+        )
+
+        async def fake_http_get(url, params=None, timeout=10.0):
+            return _quest_page("Cook's Assistant", wikitext)
+
+        monkeypatch.setattr("rs_mcp_server.tools.quests.http_get", fake_http_get)
+        result = await get_quest_info("Cook's Assistant", "osrs")
+        assert "**Cook's Assistant**" in result
+        assert "OSRS Wiki" in result
+        assert "**Difficulty:** Novice" in result
+
+    @pytest.mark.anyio
+    async def test_disambiguation_when_titles_dont_match(self, monkeypatch):
+        wikitext = "{{Infobox Quest\n|difficulty = Easy\n}}"
+
+        async def fake_http_get(url, params=None, timeout=10.0):
+            # Returned page title differs from the queried name
+            return _quest_page("Cook's Assistant", wikitext)
+
+        monkeypatch.setattr("rs_mcp_server.tools.quests.http_get", fake_http_get)
+        result = await get_quest_info("Cook's Helper", "osrs")
+        assert result.startswith("Did you mean")
+        assert "Cook's Assistant" in result
+
+    @pytest.mark.anyio
+    async def test_no_quest_found(self, monkeypatch):
+        async def fake_http_get(url, params=None, timeout=10.0):
+            # Empty pages on every call → direct fetch returns None, search returns None
+            return {"query": {"pages": []}}
+
+        monkeypatch.setattr("rs_mcp_server.tools.quests.http_get", fake_http_get)
+        result = await get_quest_info("zzznotaquestzzz", "rs3")
+        assert result.startswith("No quest found")
+        assert "RS3" in result

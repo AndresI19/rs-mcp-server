@@ -1,5 +1,8 @@
-"""Unit tests for tools/hiscores.py parsing helpers (issue #18)."""
-from rs_mcp_server.tools.hiscores import _OSRS_SKILLS, _RS3_SKILLS, _fmt_rank, _format_stats
+"""Unit tests for tools/hiscores.py parsing helpers (issue #18) and the get_player_stats tool (issue #28)."""
+import httpx
+import pytest
+
+from rs_mcp_server.tools.hiscores import _OSRS_SKILLS, _RS3_SKILLS, _fmt_rank, _format_stats, get_player_stats
 
 
 # ── _format_stats ─────────────────────────────────────────────────────────────
@@ -80,3 +83,49 @@ class TestFmtRank:
 
     def test_large_rank(self):
         assert _fmt_rank(9999999) == "9,999,999"
+
+
+# ── get_player_stats end-to-end ───────────────────────────────────────────────
+
+class TestGetPlayerStats:
+    @pytest.mark.anyio
+    async def test_osrs_happy(self, monkeypatch):
+        csv = "\n".join([
+            "100,2277,200000000",
+            "10,99,13034431",
+            "20,99,13034431",
+        ])
+
+        async def fake_http_get_text(url, params=None, timeout=10.0):
+            return csv
+
+        monkeypatch.setattr("rs_mcp_server.tools.hiscores.http_get_text", fake_http_get_text)
+        result = await get_player_stats("Lynx Titan", "osrs")
+        assert "**Lynx Titan** (OSRS Hiscores)" in result
+        assert "Total level: 2,277" in result
+
+    @pytest.mark.anyio
+    async def test_rs3_happy(self, monkeypatch):
+        csv = "\n".join(["1,3000,2000000000"] + ["10,99,13000000"] * 29)
+
+        async def fake_http_get_text(url, params=None, timeout=10.0):
+            return csv
+
+        monkeypatch.setattr("rs_mcp_server.tools.hiscores.http_get_text", fake_http_get_text)
+        result = await get_player_stats("Zezima", "rs3")
+        assert "**Zezima** (RS3 Hiscores)" in result
+        assert "Total level: 3,000" in result
+
+    @pytest.mark.anyio
+    async def test_404_returns_not_found_string(self, monkeypatch):
+        async def fake_http_get_text(url, params=None, timeout=10.0):
+            response = httpx.Response(404)
+            raise httpx.HTTPStatusError(
+                "404 Not Found",
+                request=httpx.Request("GET", url),
+                response=response,
+            )
+
+        monkeypatch.setattr("rs_mcp_server.tools.hiscores.http_get_text", fake_http_get_text)
+        result = await get_player_stats("ghostplayer", "osrs")
+        assert result == "Player 'ghostplayer' not found on OSRS Hiscores."

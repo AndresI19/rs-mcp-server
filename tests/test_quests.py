@@ -217,6 +217,20 @@ class TestFormatFromContent:
         # Difficulty wasn't provided, so it should not appear
         assert "Difficulty:" not in result
 
+    def test_items_required_field_displayed(self):
+        wikitext = (
+            "{{Quest details\n"
+            "|items = * 4 [[steel bar]]s\n"
+            "* [[Bronze bar]]\n"
+            "* [[Iron bar]]\n"
+            "}}"
+        )
+        result = _format_from_content("Q", "u", "RS3", wikitext)
+        assert "**Items required:**" in result
+        assert "  * 4 steel bars" in result
+        assert "  * Bronze bar" in result
+        assert "  * Iron bar" in result
+
 
 # ── get_quest_info end-to-end ─────────────────────────────────────────────────
 

@@ -11,7 +11,7 @@ import httpx
 from mcp.client.session import ClientSession
 from mcp.client.sse import sse_client
 
-EXPECTED_TOOLS = {"search_wiki", "get_item_price", "get_player_stats", "get_quest_info", "get_item_recipe", "get_equipment_stats", "get_money_makers", "get_money_maker_method", "get_game_setting"}
+EXPECTED_TOOLS = {"search_wiki", "get_item_price", "get_player_stats", "get_quest_info", "get_item_recipe", "get_equipment_stats", "get_money_makers", "get_money_maker_method", "get_game_setting", "solve_clue"}
 
 CASES = [
     ("search_wiki",      {"query": "fishing", "game": "rs3"},                ["**Fishing**", "Wiki)"]),
@@ -35,6 +35,11 @@ CASES = [
     ("get_game_setting",       {"setting_name": "Hide roofs", "game": "osrs"},                ["**Hide roofs**", "OSRS Wiki", "Settings#"]),
     ("get_game_setting",       {"setting_name": "Move Camera Up (Primary)", "game": "rs3"},   ["**Move Camera Up (Primary)**", "RS3 Wiki", "Controls"]),
     ("get_game_setting",       {"setting_name": "zzznotasettingzzz", "game": "osrs"},         ["No matching setting"]),
+    ("solve_clue",             {"clue_text": "AN EARL", "game": "osrs", "clue_format": "anagram"},                  ["**AN EARL**", "Ranael", "Beginner anagram"]),
+    ("solve_clue",             {"clue_text": "lumbridge", "game": "osrs", "clue_format": "cryptic"},                ["Did you mean", "Lumbridge"]),
+    ("solve_clue",             {"clue_text": "aris", "game": "osrs", "clue_format": "emote"},                       ["Did you mean", "Aris"]),
+    ("solve_clue",             {"clue_text": "BMJ UIF LFCBC TFMMFS", "game": "osrs", "clue_format": "cipher"},      ["**BMJ UIF LFCBC TFMMFS**", "Ali the Kebab", "Pollnivneach"]),
+    ("solve_clue",             {"clue_text": "zzznotaclue", "game": "osrs"},                                        ["No matching clue"]),
 ]
 
 

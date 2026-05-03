@@ -22,6 +22,7 @@ from rs_mcp_server.tools.recipes import get_item_recipe
 from rs_mcp_server.tools.equipment import get_equipment_stats
 from rs_mcp_server.tools.moneymakers import get_money_makers, get_money_maker_method
 from rs_mcp_server.tools.settings import get_game_setting
+from rs_mcp_server.tools.clues import solve_clue
 
 setup_logging()
 
@@ -201,6 +202,32 @@ async def list_tools() -> list[Tool]:
                 "required": ["setting_name"],
             },
         ),
+        Tool(
+            name="solve_clue",
+            description="Look up a RuneScape clue scroll step by its clue text and return the solution (NPC, location, items required, decoded text). Supports four text-based clue formats — anagrams, cryptics, emotes, and ciphers — across both games. Provide clue_format and tier as optional hints to narrow the search and reduce cold-cache fetches; without them, the tool searches all loaded formats. Ciphers are OSRS-only. If the user has not specified which game (RS3 or OSRS), ask them before calling this tool.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "clue_text": {"type": "string", "description": "The clue text the player is stuck on (anagram letters, cryptic riddle, emote instructions, or cipher text)."},
+                    "game": {
+                        "type": "string",
+                        "enum": ["rs3", "osrs"],
+                        "description": "Which game wiki to query: 'rs3' (default) or 'osrs'.",
+                    },
+                    "clue_format": {
+                        "type": "string",
+                        "enum": ["anagram", "cryptic", "emote", "cipher"],
+                        "description": "Optional format hint to narrow the lookup. Ciphers are OSRS-only.",
+                    },
+                    "tier": {
+                        "type": "string",
+                        "enum": ["beginner", "easy", "medium", "hard", "elite", "master"],
+                        "description": "Optional tier hint to filter results.",
+                    },
+                },
+                "required": ["clue_text"],
+            },
+        ),
     ]
 
 
@@ -229,6 +256,13 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         result = await get_money_maker_method(arguments["method_name"], arguments.get("game", "rs3"))
     elif name == "get_game_setting":
         result = await get_game_setting(arguments["setting_name"], arguments.get("game", "rs3"))
+    elif name == "solve_clue":
+        result = await solve_clue(
+            arguments["clue_text"],
+            arguments.get("game", "rs3"),
+            arguments.get("clue_format"),
+            arguments.get("tier"),
+        )
     else:
         raise ValueError(f"Unknown tool: {name}")
     return [TextContent(type="text", text=result)]

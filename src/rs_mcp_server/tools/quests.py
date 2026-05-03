@@ -16,6 +16,7 @@ _FIELDS = (
     ("Quest series", "main_series"),
     ("Start point", "start"),
     ("Requirements", "requirements"),
+    ("Items required", "items"),
     ("Recommended", "recommended"),
     ("Rewards", "rewards"),
 )

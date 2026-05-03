@@ -21,6 +21,7 @@ from rs_mcp_server.tools.quests import get_quest_info
 from rs_mcp_server.tools.recipes import get_item_recipe
 from rs_mcp_server.tools.equipment import get_equipment_stats
 from rs_mcp_server.tools.moneymakers import get_money_makers, get_money_maker_method
+from rs_mcp_server.tools.settings import get_game_setting
 
 setup_logging()
 
@@ -184,6 +185,22 @@ async def list_tools() -> list[Tool]:
                 "required": ["method_name"],
             },
         ),
+        Tool(
+            name="get_game_setting",
+            description="Look up an in-game RuneScape setting by name and return its description, category, and wiki anchor URL. Falls back to fuzzy 'did you mean…' suggestions when the name doesn't match exactly, and to a description-text scan when the query appears in a setting's description rather than its name. If the user has not specified which game (RS3 or OSRS), ask them before calling this tool.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "setting_name": {"type": "string", "description": "The setting name as it appears in the in-game menu (e.g. 'Roof removal', 'Master volume')."},
+                    "game": {
+                        "type": "string",
+                        "enum": ["rs3", "osrs"],
+                        "description": "Which game wiki to query: 'rs3' (default) or 'osrs'.",
+                    },
+                },
+                "required": ["setting_name"],
+            },
+        ),
     ]
 
 
@@ -210,6 +227,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         )
     elif name == "get_money_maker_method":
         result = await get_money_maker_method(arguments["method_name"], arguments.get("game", "rs3"))
+    elif name == "get_game_setting":
+        result = await get_game_setting(arguments["setting_name"], arguments.get("game", "rs3"))
     else:
         raise ValueError(f"Unknown tool: {name}")
     return [TextContent(type="text", text=result)]

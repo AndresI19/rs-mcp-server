@@ -13,7 +13,7 @@ fi
 ptyxis -T "RS MCP Server" -- bash -c "
 cd '$REPO_ROOT'
 printf '\033[1;32m=== RS MCP Server ===\033[0m\n'
-.venv/bin/python -m uvicorn rs_mcp_server.server:web --host 0.0.0.0 --port 8000 2>&1 | tee '$LOG_FILE'
+.venv/bin/python -m uvicorn rs_mcp_server.server:web --host \"\${MCP_HOST:-127.0.0.1}\" --port 8000 2>&1 | tee '$LOG_FILE'
 printf '\nServer stopped — press Enter to close\n'
 read
 " &

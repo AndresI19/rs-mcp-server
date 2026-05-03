@@ -158,4 +158,4 @@ web = Starlette(
 )
 
 if __name__ == "__main__":
-    uvicorn.run(web, host="0.0.0.0", port=8000)
+    uvicorn.run(web, host=os.environ.get("MCP_HOST", "127.0.0.1"), port=8000)

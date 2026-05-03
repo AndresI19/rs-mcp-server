@@ -11,7 +11,7 @@ import httpx
 from mcp.client.session import ClientSession
 from mcp.client.sse import sse_client
 
-EXPECTED_TOOLS = {"search_wiki", "get_item_price", "get_player_stats", "get_quest_info", "get_item_recipe"}
+EXPECTED_TOOLS = {"search_wiki", "get_item_price", "get_player_stats", "get_quest_info", "get_item_recipe", "get_equipment_stats"}
 
 CASES = [
     ("search_wiki",      {"query": "fishing", "game": "rs3"},                ["**Fishing**", "Wiki)"]),
@@ -26,6 +26,8 @@ CASES = [
     ("get_quest_info",   {"quest_name": "zzznotaquestzzz", "game": "rs3"},   ["No quest found"]),
     ("get_item_recipe",  {"item_name": "Masterwork bow", "game": "rs3"},     ["**Masterwork bow**", "Fletching", "Output:"]),
     ("get_item_recipe",  {"item_name": "Mithril platebody", "game": "osrs"}, ["**Mithril platebody**", "Smithing", "Output:"]),
+    ("get_equipment_stats", {"item_name": "Abyssal whip", "game": "osrs"},   ["**Abyssal whip**", "OSRS Wiki", "Slot:", "Attack slash:", "Strength:"]),
+    ("get_equipment_stats", {"item_name": "Abyssal whip", "game": "rs3"},    ["**Abyssal whip**", "RS3 Wiki", "Tier:", "Damage:", "Accuracy:"]),
 ]
 
 

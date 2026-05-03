@@ -19,6 +19,7 @@ from rs_mcp_server.tools.prices import get_item_price
 from rs_mcp_server.tools.hiscores import get_player_stats
 from rs_mcp_server.tools.quests import get_quest_info
 from rs_mcp_server.tools.recipes import get_item_recipe
+from rs_mcp_server.tools.equipment import get_equipment_stats
 
 setup_logging()
 
@@ -122,6 +123,22 @@ async def list_tools() -> list[Tool]:
                 "required": ["item_name"],
             },
         ),
+        Tool(
+            name="get_equipment_stats",
+            description="Get combat-equipment stats for a single item — attack/defence bonuses on OSRS, tier/damage/accuracy on RS3. To compare multiple items, call this tool once per item and tabulate the results.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "item_name": {"type": "string", "description": "The exact or approximate item name."},
+                    "game": {
+                        "type": "string",
+                        "enum": ["rs3", "osrs"],
+                        "description": "Which game wiki to query: 'rs3' (default) or 'osrs'.",
+                    },
+                },
+                "required": ["item_name"],
+            },
+        ),
     ]
 
 
@@ -137,6 +154,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         result = await get_quest_info(arguments["quest_name"], arguments.get("game", "rs3"))
     elif name == "get_item_recipe":
         result = await get_item_recipe(arguments["item_name"], arguments.get("game", "rs3"))
+    elif name == "get_equipment_stats":
+        result = await get_equipment_stats(arguments["item_name"], arguments.get("game", "rs3"))
     else:
         raise ValueError(f"Unknown tool: {name}")
     return [TextContent(type="text", text=result)]

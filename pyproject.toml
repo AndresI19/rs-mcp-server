@@ -18,6 +18,7 @@ dependencies = [
 test = [
     "pytest>=8.0",
     "ruff",
+    "pip-tools",
 ]
 
 [tool.setuptools.packages.find]

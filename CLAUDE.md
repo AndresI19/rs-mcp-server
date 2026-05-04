@@ -35,3 +35,20 @@ These commands must pass before `/pr` opens a PR — the `/pr` skill runs them a
 .venv/bin/ruff check .
 make test
 ```
+
+## Dependency locking
+
+`requirements.txt` (committed) is the locked, hash-verified runtime dep list, generated from `pyproject.toml` via `pip-tools`. The container build (Epic #62 / C2) consumes it with `pip install -r requirements.txt --require-hashes` so image layer hashes are stable across builds.
+
+Regenerate after editing the `[project] dependencies` block in `pyproject.toml`:
+
+```bash
+make lock
+```
+
+The dev `.venv` itself uses `pip install -e .[test]` (loose constraints, editable install) — `requirements.txt` is for reproducibility downstream, not for daily dev iteration. To verify the lockfile installs cleanly in a fresh environment:
+
+```bash
+python3 -m venv /tmp/lock-verify
+/tmp/lock-verify/bin/pip install -r requirements.txt --require-hashes
+```

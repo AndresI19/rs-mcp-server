@@ -11,7 +11,7 @@ import httpx
 from mcp.client.session import ClientSession
 from mcp.client.sse import sse_client
 
-EXPECTED_TOOLS = {"search_wiki", "get_item_price", "get_player_stats", "get_quest_info", "get_item_recipe", "get_equipment_stats", "get_monster_info", "get_money_makers", "get_money_maker_method", "get_game_setting", "solve_clue"}
+EXPECTED_TOOLS = {"search_wiki", "get_item_price", "get_player_stats", "get_quest_info", "get_item_recipe", "get_equipment_stats", "get_monster_info", "get_achievement", "get_money_makers", "get_money_maker_method", "get_game_setting", "solve_clue"}
 
 CASES = [
     ("search_wiki",      {"query": "fishing", "game": "rs3"},                ["**Fishing**", "Wiki)"]),
@@ -31,6 +31,9 @@ CASES = [
     ("get_equipment_stats", {"item_name": "Abyssal whip", "game": "rs3"},    ["**Abyssal whip**", "RS3 Wiki", "Tier:", "Damage:", "Accuracy:"]),
     ("get_monster_info",    {"monster_name": "Abyssal demon",   "game": "osrs"}, ["**Abyssal demon**",   "OSRS Wiki", "Combat level:", "Hitpoints:", "Slayer level:"]),
     ("get_monster_info",    {"monster_name": "Tormented demon", "game": "rs3"},  ["**Tormented demon**", "RS3 Wiki",  "Combat level:", "Life points:", "Weakness:"]),
+    ("get_achievement",     {"name": "Noxious Foe",          "game": "osrs"}, ["**Noxious Foe**",          "Combat Achievement", "OSRS Wiki", "Tier:"]),
+    ("get_achievement",     {"name": "Falador Diary",        "game": "osrs"}, ["**Falador Diary**",        "Achievement Diary",  "OSRS Wiki", "Areas:"]),
+    ("get_achievement",     {"name": "The Essence of Magic", "game": "rs3"},  ["**The Essence of Magic**", "Achievement",        "RS3 Wiki",  "Score:"]),
     ("get_money_makers",       {"game": "osrs", "limit": 5},                                   ["money-making methods (OSRS)", "GP/hr", "Category"]),
     ("get_money_makers",       {"game": "rs3", "limit": 5, "category": "combat"},             ["money-making methods (RS3)", "Category", "Combat"]),
     ("get_money_maker_method", {"method_name": "Bird house trapping", "game": "osrs"},        ["**Bird house trapping**", "Category", "Inputs"]),

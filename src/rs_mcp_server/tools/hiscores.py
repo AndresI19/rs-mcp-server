@@ -13,7 +13,7 @@ _OSRS_SKILLS = (
     "Overall", "Attack", "Defence", "Strength", "Hitpoints", "Ranged", "Prayer",
     "Magic", "Cooking", "Woodcutting", "Fletching", "Fishing", "Firemaking",
     "Crafting", "Smithing", "Mining", "Herblore", "Agility", "Thieving",
-    "Slayer", "Farming", "Runecraft", "Hunter", "Construction",
+    "Slayer", "Farming", "Runecraft", "Hunter", "Construction", "Sailing",
 )
 
 _RS3_SKILLS = (

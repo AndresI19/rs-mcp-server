@@ -69,6 +69,22 @@ class TestFormatStats:
         result = _format_stats("Test", "osrs", csv, _OSRS_SKILLS)
         assert "Total level: 2,277" in result
 
+    def test_osrs_includes_sailing_at_index_24(self):
+        # Regression: the OSRS hiscores CSV grew to 24 skill rows (incl. Overall)
+        # when Sailing shipped. _OSRS_SKILLS must mirror that or the 24th row
+        # is silently dropped from rendering. Build a 25-row CSV (Overall + 24
+        # skills) where the last row matches Lynx Titan's untrained Sailing.
+        csv = "\n".join(
+            ["104460,2278,4600000000"]                # Overall
+            + ["10,99,13034431"] * 23                  # Attack…Construction
+            + ["-1,1,0"]                               # Sailing — untrained
+        )
+        result = _format_stats("Lynx Titan", "osrs", csv, _OSRS_SKILLS)
+        assert "Sailing" in result
+        # _OSRS_SKILLS itself must carry Sailing — the test above passes only
+        # if the tuple contains it at the right position.
+        assert _OSRS_SKILLS[24] == "Sailing"
+
 
 # ── _fmt_rank ─────────────────────────────────────────────────────────────────
 

@@ -23,6 +23,7 @@ from rs_mcp_server.tools.equipment import get_equipment_stats
 from rs_mcp_server.tools.monsters import get_monster_info
 from rs_mcp_server.tools.achievements import get_achievement
 from rs_mcp_server.tools.moneymakers import get_money_makers, get_money_maker_method
+from rs_mcp_server.tools.alchables import get_best_alchables
 from rs_mcp_server.tools.settings import get_game_setting
 from rs_mcp_server.tools.clues import solve_clue
 
@@ -221,6 +222,30 @@ async def list_tools() -> list[Tool]:
             },
         ),
         Tool(
+            name="get_best_alchables",
+            description="Rank RuneScape items by High Alchemy profit. OSRS uses live GE prices and the prices.runescape.wiki mapping; RS3 reads the wiki's Alchemiser mk. II Money Making Guide table. Returns the top 3 'easy buys' (high trade volume) and top 2 'slow buys' (low buy limit, high ROI). Passive mode (RS3 default) shows two tables; manual mode mixes them sorted by profit per cast.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "game": {
+                        "type": "string",
+                        "enum": ["osrs", "rs3"],
+                        "description": "Which game to query: 'osrs' (default — uses live prices and mapping) or 'rs3' (uses the Alchemiser mk. II wiki table).",
+                    },
+                    "members_only": {
+                        "type": "boolean",
+                        "description": "If true (OSRS only), restrict to members-only items. Ignored on RS3.",
+                    },
+                    "mode": {
+                        "type": "string",
+                        "enum": ["manual", "passive"],
+                        "description": "Output shape. 'passive' (RS3 default) = two separate tables, Easy buys above Slow buys. 'manual' (OSRS default) = one mixed table sorted by profit per cast with a category tag column. 'passive' on OSRS falls back to manual since OSRS has no Alchemiser equivalent.",
+                    },
+                },
+                "required": [],
+            },
+        ),
+        Tool(
             name="get_game_setting",
             description="Look up an in-game RuneScape setting by name and return its description, category, and wiki anchor URL. Falls back to fuzzy 'did you mean…' suggestions when the name doesn't match exactly, and to a description-text scan when the query appears in a setting's description rather than its name. If the user has not specified which game (RS3 or OSRS), ask them before calling this tool.",
             inputSchema={
@@ -292,6 +317,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         )
     elif name == "get_money_maker_method":
         result = await get_money_maker_method(arguments["method_name"], arguments.get("game", "rs3"))
+    elif name == "get_best_alchables":
+        result = await get_best_alchables(
+            arguments.get("game", "osrs"),
+            arguments.get("members_only", False),
+            arguments.get("mode"),
+        )
     elif name == "get_game_setting":
         result = await get_game_setting(arguments["setting_name"], arguments.get("game", "rs3"))
     elif name == "solve_clue":

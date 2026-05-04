@@ -36,7 +36,7 @@ async def get_item_price(item_name: str, game: str = "rs3") -> str:
 # OSRS — prices.runescape.wiki
 # ---------------------------------------------------------------------------
 
-async def _osrs_mapping() -> list[dict]:
+async def osrs_mapping() -> list[dict]:
     cached = cache.get("osrs:mapping")
     if cached is not None:
         return cached
@@ -46,7 +46,7 @@ async def _osrs_mapping() -> list[dict]:
 
 
 async def _get_osrs_price(item_name: str) -> str:
-    mapping = await _osrs_mapping()
+    mapping = await osrs_mapping()
     query = item_name.lower()
 
     item = None

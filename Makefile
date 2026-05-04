@@ -1,4 +1,4 @@
-.PHONY: install dev start stop logs smoke-test test
+.PHONY: install dev start stop logs smoke-test test lock
 
 install:
 	python3 -m venv .venv
@@ -21,3 +21,7 @@ smoke-test:
 
 test:
 	.venv/bin/python -m pytest tests/ -v
+
+# Regenerate requirements.txt from pyproject.toml (run after editing the [project] dependencies block).
+lock:
+	.venv/bin/pip-compile --generate-hashes pyproject.toml -o requirements.txt

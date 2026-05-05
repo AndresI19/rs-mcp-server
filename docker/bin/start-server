@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Container-internal lifecycle for the MCP server uvicorn process.
+# All commands operate on a single uvicorn child tracked by a PID file.
+
+PIDFILE="${PIDFILE:-/tmp/uvicorn.pid}"
+LOGFILE="${LOGFILE:-/tmp/uvicorn.log}"
+MCP_HOST="${MCP_HOST:-0.0.0.0}"
+MCP_PORT="${MCP_PORT:-8000}"
+GRACE_SECONDS="${GRACE_SECONDS:-10}"
+
+cmd_status() {
+    if [[ -f "${PIDFILE}" ]]; then
+        local pid
+        pid="$(cat "${PIDFILE}")"
+        if kill -0 "${pid}" 2>/dev/null; then
+            echo "running (PID ${pid})"
+            return 0
+        fi
+        rm -f "${PIDFILE}"
+    fi
+    echo "stopped"
+    return 1
+}
+
+cmd_start() {
+    if cmd_status >/dev/null 2>&1; then
+        echo "start: already running"
+    else
+        : >"${LOGFILE}"
+        /opt/venv/bin/python -m uvicorn rs_mcp_server.server:web \
+            --host "${MCP_HOST}" \
+            --port "${MCP_PORT}" \
+            >>"${LOGFILE}" 2>&1 &
+        echo "$!" >"${PIDFILE}"
+        echo "start: PID $(cat "${PIDFILE}") on ${MCP_HOST}:${MCP_PORT} (logs: ${LOGFILE})"
+    fi
+
+    # When invoked as PID 1 (container ENTRYPOINT), keep this script alive so the
+    # container doesn't exit after backgrounding uvicorn. From `docker exec` sessions
+    # PID is not 1 and we return normally.
+    if [[ $$ -eq 1 ]]; then
+        exec tail -f /dev/null
+    fi
+}
+
+cmd_stop() {
+    if ! cmd_status >/dev/null 2>&1; then
+        echo "stop: already stopped"
+        return 0
+    fi
+
+    local pid
+    pid="$(cat "${PIDFILE}")"
+    kill -TERM "${pid}" 2>/dev/null || true
+
+    local i
+    for ((i = 0; i < GRACE_SECONDS * 2; i++)); do
+        kill -0 "${pid}" 2>/dev/null || break
+        sleep 0.5
+    done
+
+    if kill -0 "${pid}" 2>/dev/null; then
+        kill -KILL "${pid}" 2>/dev/null || true
+    fi
+
+    rm -f "${PIDFILE}"
+    echo "stop: PID ${pid} terminated"
+}
+
+cmd_restart() {
+    cmd_stop
+    cmd_start
+}
+
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") --start | --stop | --restart | --status
+
+  --start    Start uvicorn as a background process (no-op if running).
+  --stop     SIGTERM the uvicorn PID with ${GRACE_SECONDS}s grace, then SIGKILL.
+  --restart  Equivalent to --stop followed by --start.
+  --status   Print run state and exit 0 (running) or 1 (stopped).
+
+Env: PIDFILE=${PIDFILE} LOGFILE=${LOGFILE} MCP_HOST=${MCP_HOST} MCP_PORT=${MCP_PORT}
+EOF
+}
+
+case "${1:-}" in
+    --start)   cmd_start ;;
+    --stop)    cmd_stop ;;
+    --restart) cmd_restart ;;
+    --status)  cmd_status ;;
+    -h|--help|"") usage ;;
+    *)
+        usage
+        echo
+        echo "error: unknown command: $1" >&2
+        exit 2
+        ;;
+esac

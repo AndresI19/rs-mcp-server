@@ -33,7 +33,7 @@ These commands must pass before `/pr` opens a PR — the `/pr` skill runs them a
 
 ```bash
 .venv/bin/ruff check .
-make test
+make unit
 ```
 
 ## Dependency locking

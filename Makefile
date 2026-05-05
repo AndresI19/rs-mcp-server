@@ -1,4 +1,6 @@
-.PHONY: install dev start stop logs smoke-test test lock
+.PHONY: install dev start stop logs unit fvt lock
+
+.DEFAULT_GOAL := unit
 
 install:
 	python3 -m venv .venv
@@ -16,11 +18,11 @@ stop:
 logs:
 	@tail -f /tmp/mcp-server.log
 
-smoke-test:
-	.venv/bin/python scripts/smoke_test_tools.py
+unit:
+	.venv/bin/python -m pytest tests/unit -v
 
-test:
-	.venv/bin/python -m pytest tests/ -v
+fvt:
+	.venv/bin/python -m pytest tests/fvt -v -m fvt
 
 # Regenerate requirements.txt from pyproject.toml (run after editing the [project] dependencies block).
 lock:

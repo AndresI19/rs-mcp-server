@@ -17,9 +17,17 @@ dependencies = [
 [project.optional-dependencies]
 test = [
     "pytest>=8.0",
+    "anyio[trio]>=4.0",
     "ruff",
     "pip-tools",
 ]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "anyio: async test handled by the anyio pytest plugin",
+    "fvt: function-verification test that requires a running rs-mcp-server on localhost:8000",
+]

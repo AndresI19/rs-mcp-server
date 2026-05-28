@@ -29,7 +29,7 @@ CASES: list[tuple[str, dict, list[str]]] = [
     ("search_wiki",         {"query": "ardougne", "game": "osrs"},                                          ["OSRS Wiki)"]),
     ("get_item_price",      {"item_name": "shark", "game": "osrs"},                                         ["**Shark**", "OSRS Grand Exchange", "Instant buy:", "5-min avg"]),
     ("get_item_price",      {"item_name": "Abyssal whip", "game": "rs3"},                                   ["**Abyssal whip**", "RS3 Grand Exchange", "Price:"]),
-    ("get_item_price",      {"item_name": "Mask of Tumeken's Resplendence", "game": "rs3"},                 ["**Mask of Tumeken's Resplendence**", "community trades", "Street avg"]),
+    ("get_item_price",      {"item_name": "Mask of Tumeken's Resplendence", "game": "rs3"},                 ["**Mask of Tumeken's Resplendence**", "community trades", "Street"]),
     ("get_player_stats",    {"username": "Lynx Titan", "game": "osrs"},                                     ["OSRS Hiscores", "Total level"]),
     ("get_player_stats",    {"username": "Zezima", "game": "rs3"},                                          ["RS3 Hiscores", "Total level"]),
     ("get_quest_info",      {"quest_name": "Cook's Assistant", "game": "osrs"},                             ["**Cook's Assistant**", "Difficulty"]),

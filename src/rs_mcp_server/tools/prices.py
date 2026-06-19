@@ -132,8 +132,10 @@ async def _get_rs3_price(item_name: str) -> str:
         # No GE module page — fall back to the geprice community catalog for
         # off-GE items (Tumeken's Resplendence pieces, Devourer's Nexus, etc.).
         street = await _geprice_lookup(item_name)
-        if street is not None and street.get("currentWeekAverage", 0) > 0:
-            return _format_geprice_only(street)
+        if street is not None:
+            formatted = _format_geprice_only(street)
+            if formatted is not None:
+                return formatted
         return f"Item '{item_name}' not found on the RS3 Grand Exchange."
 
     item_id, canonical = match
@@ -155,21 +157,35 @@ async def _get_rs3_price(item_name: str) -> str:
         lines.append(f"90-day:  {d90}")
 
     street = await _geprice_lookup(canonical)
-    if street is not None and street.get("currentWeekAverage", 0) > 0:
-        change = street.get("weeklyChangePercent") or ""
-        suffix = f"  ({change})" if change and change != "-" else ""
-        lines.append(f"Street avg (this week): {street['currentWeekAverage']:,} gp{suffix}")
+    if street is not None:
+        street_line = _format_street_line(street)
+        if street_line:
+            lines.append(street_line)
 
     return "\n".join(lines)
 
 
-def _format_geprice_only(entry: dict) -> str:
-    change = entry.get("weeklyChangePercent") or ""
-    suffix = f"  ({change})" if change and change != "-" else ""
-    return (
-        f"**{entry['name']}** (RS3 community trades)\n"
-        f"Street avg (this week): {entry['currentWeekAverage']:,} gp{suffix}"
-    )
+def _format_street_line(entry: dict) -> str | None:
+    """Render one line of geprice info, preferring this-week activity over the fallback."""
+    week_avg = entry.get("currentWeekAverage", 0)
+    if week_avg > 0:
+        change = entry.get("weeklyChangePercent") or ""
+        suffix = f"  ({change})" if change and change != "-" else ""
+        return f"Street avg (this week): {week_avg:,} gp{suffix}"
+
+    fb_price = entry.get("fallbackPrice")
+    fb_date  = entry.get("fallbackDate")
+    if fb_price and fb_date:
+        return f"Street: {fb_price:,} gp  (last traded {fb_date})"
+
+    return None
+
+
+def _format_geprice_only(entry: dict) -> str | None:
+    line = _format_street_line(entry)
+    if line is None:
+        return None
+    return f"**{entry['name']}** (RS3 community trades)\n{line}"
 
 
 # ---------------------------------------------------------------------------

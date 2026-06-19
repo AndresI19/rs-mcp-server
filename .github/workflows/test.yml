@@ -42,3 +42,19 @@ jobs:
 
       - name: Run unit tests
         run: pytest tests/ -v
+
+  image-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build --pull -t rs-mcp-server:scan .
+
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8  # v0.36.0
+        with:
+          image-ref: rs-mcp-server:scan
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true

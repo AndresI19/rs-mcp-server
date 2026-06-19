@@ -29,19 +29,21 @@ cmd_start() {
     docker volume create "$VOLUME_NAME" >/dev/null
 
     echo "Building image $IMAGE_NAME..."
-    docker build -t "$IMAGE_NAME" "$REPO_ROOT"
+    docker build --pull -t "$IMAGE_NAME" "$REPO_ROOT"
     docker image prune -f >/dev/null
 
     echo "Starting container $CONTAINER_NAME..."
-    # --user 0:0 keeps local-dev simple: container can write to the volume
-    # without host/container UID negotiation. The Dockerfile's non-root design
-    # still applies to production deploys that don't pass --user.
     docker run --rm -d \
         --name "$CONTAINER_NAME" \
-        --user 0:0 \
         -p 8000:8000 \
         -v "${VOLUME_NAME}:/logs" \
         -e "LOGFILE=${CONTAINER_LOG}" \
+        --read-only \
+        --tmpfs /tmp:rw,size=16m,mode=1777 \
+        --cap-drop=ALL \
+        --security-opt no-new-privileges:true \
+        --memory 512m \
+        --pids-limit 100 \
         "$IMAGE_NAME" >/dev/null
 
     printf 'Waiting for server'
@@ -86,7 +88,7 @@ cmd_logs() {
         echo "Run 'bash $0 start' to rebuild and start the container." >&2
         exit 1
     fi
-    exec docker run --rm --user 0:0 \
+    exec docker run --rm \
         -v "${VOLUME_NAME}:/logs" \
         --entrypoint tail \
         "$IMAGE_NAME" -f "$CONTAINER_LOG"

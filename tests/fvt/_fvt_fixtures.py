@@ -62,6 +62,7 @@ CASES: list[tuple[str, dict, list[str]]] = [
     ("get_game_setting",       {"setting_name": "Hide roofs", "game": "osrs"},                              ["**Hide roofs**", "OSRS Wiki", "Settings#"]),
     ("get_game_setting",       {"setting_name": "Move Camera Up (Primary)", "game": "rs3"},                 ["**Move Camera Up (Primary)**", "RS3 Wiki", "Controls"]),
     ("get_game_setting",       {"setting_name": "zzznotasettingzzz", "game": "osrs"},                       ["No matching setting"]),
+    ("get_game_setting",       {"setting_name": "follower", "game": "rs3"},                                 ["Couldn't find an exact setting", "Familiar"]),
     ("solve_clue",             {"clue_text": "AN EARL", "game": "osrs", "clue_format": "anagram"},          ["**AN EARL**", "Ranael", "Beginner anagram"]),
     ("solve_clue",             {"clue_text": "lumbridge", "game": "osrs", "clue_format": "cryptic"},        ["Did you mean", "Lumbridge"]),
     ("solve_clue",             {"clue_text": "aris", "game": "osrs", "clue_format": "emote"},               ["Did you mean", "Aris"]),

@@ -117,6 +117,21 @@ class TestMatchSetting:
         assert kind == "none"
         assert payload is None
 
+    def test_fuzzy_match_recovers_typo(self):
+        # "Mster volume" should fuzzy-match to "Master volume" (≥0.7 similarity).
+        rows = _parse_settings_html(_FIXTURE_HTML)
+        kind, payload = _match_setting("Mster volume", rows)
+        assert kind == "did_you_mean"
+        names = [r["name"] for r in payload]
+        assert "Master volume" in names
+
+    def test_fuzzy_match_below_cutoff_returns_none(self):
+        # Random unrelated short string shouldn't fuzzy-match anything.
+        rows = _parse_settings_html(_FIXTURE_HTML)
+        kind, payload = _match_setting("zzz123abc", rows)
+        assert kind == "none"
+        assert payload is None
+
 
 # ---------------------------------------------------------------------------
 # End-to-end tests
@@ -160,13 +175,45 @@ class TestGetGameSetting:
 
     @pytest.mark.anyio
     async def test_no_match_returns_browse_message(self, monkeypatch):
+        # No local match + wiki-search returns no pages → flat browse message.
         async def fake_http_get(url, params=None, timeout=10.0):
-            return _parse_response(_FIXTURE_HTML)
+            if (params or {}).get("action") == "parse":
+                return _parse_response(_FIXTURE_HTML)
+            # action=query (generator=search) → no pages
+            return {"query": {"pages": []}}
 
         monkeypatch.setattr("rs_mcp_server.tools.settings.http_get", fake_http_get)
         result = await get_game_setting("zzznotasettingzzz", "osrs")
         assert "No matching setting" in result
         assert "Browse the full list" in result
+
+    @pytest.mark.anyio
+    async def test_wiki_search_fallback_returns_suggestions(self, monkeypatch):
+        # No local match + wiki search returns the Familiar page → fallback render.
+        async def fake_http_get(url, params=None, timeout=10.0):
+            if (params or {}).get("action") == "parse":
+                return _parse_response(_FIXTURE_HTML)
+            return {"query": {"pages": [
+                {"title": "Familiar", "extract": "Familiars are summoned creatures."},
+            ]}}
+
+        monkeypatch.setattr("rs_mcp_server.tools.settings.http_get", fake_http_get)
+        result = await get_game_setting("follower", "rs3")
+        assert "Couldn't find an exact setting" in result
+        assert "**Familiar**" in result
+        assert "Familiars are summoned creatures" in result
+
+    @pytest.mark.anyio
+    async def test_wiki_search_fallback_swallows_http_error(self, monkeypatch):
+        # Wiki-search raises → returns flat no-match, no exception bubbles.
+        async def fake_http_get(url, params=None, timeout=10.0):
+            if (params or {}).get("action") == "parse":
+                return _parse_response(_FIXTURE_HTML)
+            raise RuntimeError("transient wiki search outage")
+
+        monkeypatch.setattr("rs_mcp_server.tools.settings.http_get", fake_http_get)
+        result = await get_game_setting("zzznotasettingzzz", "osrs")
+        assert "No matching setting" in result
 
 
 class TestGetGameSettingValidation:

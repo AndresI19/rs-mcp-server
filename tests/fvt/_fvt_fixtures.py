@@ -41,6 +41,7 @@ CASES: list[tuple[str, dict, list[str]]] = [
     ("get_item_recipe",     {"item_name": "Mithril platebody", "game": "osrs"},                             ["**Mithril platebody**", "Smithing", "Output:"]),
     ("get_equipment_stats", {"item_name": "Abyssal whip", "game": "osrs"},                                  ["**Abyssal whip**", "OSRS Wiki", "Slot:", "Attack slash:", "Strength:"]),
     ("get_equipment_stats", {"item_name": "Abyssal whip", "game": "rs3"},                                   ["**Abyssal whip**", "RS3 Wiki", "Tier:", "Damage:", "Accuracy:"]),
+    ("get_equipment_stats", {"item_name": "Trimmed masterwork melee helm", "game": "rs3"},                  ["**Trimmed masterwork melee helm**", "Tier:", "Set bonus"]),
     ("get_monster_info",    {"monster_name": "Abyssal demon", "game": "osrs"},                              ["**Abyssal demon**", "OSRS Wiki", "Combat level:", "Hitpoints:", "Slayer level:"]),
     ("get_monster_info",    {"monster_name": "Tormented demon", "game": "rs3"},                             ["**Tormented demon**", "RS3 Wiki", "Combat level:", "Life points:", "Weakness:"]),
     ("get_item_drop_sources", {"item_name": "Abyssal whip", "game": "osrs"},                                ["**Drop sources for Abyssal whip**", "OSRS Wiki", "Abyssal demon", "1/512"]),

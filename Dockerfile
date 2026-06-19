@@ -37,11 +37,6 @@ LABEL org.opencontainers.image.title="rs-mcp-server" \
       org.opencontainers.image.source="https://github.com/AndresI19/rs-mcp-server" \
       org.opencontainers.image.licenses="MIT"
 
-# Surface git SHA and build date to the running server (read by /version endpoint).
-# VERSION itself is read from package metadata via importlib.metadata, so no MCP_VERSION env needed.
-ENV MCP_GIT_SHA="${GIT_SHA}" \
-    MCP_BUILD_DATE="${BUILD_DATE}"
-
 USER 0
 RUN useradd --uid 10001 --shell /sbin/nologin --no-create-home --user-group mcp-server
 

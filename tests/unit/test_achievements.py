@@ -203,6 +203,47 @@ class TestSearchTypeFilter:
         assert "category" not in result.lower() or "category:" not in result.lower()
 
 
+class TestRomanVariantEnumeration:
+    """Issue #78 — when bare name 404s but '<name> I/II/III' achievements exist, enumerate them."""
+
+    @pytest.mark.anyio
+    async def test_enumerates_variants_when_bare_404s(self, monkeypatch):
+        # "Are You Winning, Zam?" bare page is missing; I/II/III all exist with achievement infoboxes.
+        def page(title, content):
+            return {"title": title, "revisions": [{"slots": {"main": {"content": content}}}]}
+
+        ach_template = "{{Infobox Achievement\n|description = Defeat Zamorak.\n|score = 50\n}}"
+
+        async def fake_http_get(url, params=None, timeout=10.0):
+            titles = (params or {}).get("titles", "")
+            # Bare-name direct fetch
+            if titles == "Are You Winning, Zam?":
+                return {"query": {"pages": [{"missing": True}]}}
+            # Disambig-suffix retry — also missing
+            if titles == "Are You Winning, Zam? (achievement)":
+                return {"query": {"pages": [{"missing": True}]}}
+            # Batch variant query (pipe-separated)
+            if "|" in titles:
+                return {"query": {"pages": [
+                    page("Are You Winning, Zam? I",   ach_template),
+                    page("Are You Winning, Zam? II",  ach_template),
+                    page("Are You Winning, Zam? III", ach_template),
+                    {"title": "Are You Winning, Zam? IV",  "missing": True},
+                    {"title": "Are You Winning, Zam? V",   "missing": True},
+                ]}}
+            raise AssertionError(f"unexpected titles param: {titles!r}")
+
+        monkeypatch.setattr("rs_mcp_server.tools.achievements.http_get", fake_http_get)
+        result = await get_achievement("Are You Winning, Zam?", "rs3")
+        assert "Multiple tiered variants" in result
+        assert "Are You Winning, Zam? I" in result
+        assert "Are You Winning, Zam? II" in result
+        assert "Are You Winning, Zam? III" in result
+        # IV/V were missing, must not appear
+        assert "Are You Winning, Zam? IV" not in result
+        assert "Are You Winning, Zam? V" not in result
+
+
 class TestDisambigSuffixFallback:
     """Issue #75 — bare name returns wrong-type page; retry with (achievement) suffix."""
 

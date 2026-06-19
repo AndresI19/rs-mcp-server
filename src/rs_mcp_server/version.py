@@ -1,7 +1,11 @@
 """Version metadata for the running server — exposed via the /version endpoint."""
 import os
 import subprocess
-from importlib.metadata import PackageNotFoundError, version as _pkg_version
+from pathlib import Path
+
+# Sibling file written by the Dockerfile (or any deploy step) using the latest
+# git tag from #81's auto-tag action. Absent in dev checkouts → "snapshot".
+_VERSION_FILE = Path(__file__).parent / "VERSION"
 
 
 def _read_git_sha() -> str | None:
@@ -20,9 +24,10 @@ def _read_git_sha() -> str | None:
 
 def _read_version() -> str:
     try:
-        return _pkg_version("rs-mcp-server")
-    except PackageNotFoundError:
-        return "unknown"
+        value = _VERSION_FILE.read_text().strip()
+    except (FileNotFoundError, OSError):
+        return "snapshot"
+    return value or "snapshot"
 
 
 def _build_info() -> dict:

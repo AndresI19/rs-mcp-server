@@ -1,6 +1,4 @@
 """Tests for the version helper module and /version endpoint (issue #80)."""
-from importlib.metadata import PackageNotFoundError
-
 import pytest
 
 from rs_mcp_server import version as version_mod
@@ -13,15 +11,26 @@ def _clean_env(monkeypatch):
 
 
 class TestReadVersion:
-    def test_returns_pkg_version_when_installed(self, monkeypatch):
-        monkeypatch.setattr(version_mod, "_pkg_version", lambda _: "9.9.9")
-        assert version_mod._read_version() == "9.9.9"
+    def test_reads_version_from_file(self, tmp_path, monkeypatch):
+        version_file = tmp_path / "VERSION"
+        version_file.write_text("v0.1.7\n")
+        monkeypatch.setattr(version_mod, "_VERSION_FILE", version_file)
+        assert version_mod._read_version() == "v0.1.7"
 
-    def test_falls_back_to_unknown_when_package_missing(self, monkeypatch):
-        def raise_missing(_):
-            raise PackageNotFoundError("rs-mcp-server")
-        monkeypatch.setattr(version_mod, "_pkg_version", raise_missing)
-        assert version_mod._read_version() == "unknown"
+    def test_returns_snapshot_when_file_missing(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(version_mod, "_VERSION_FILE", tmp_path / "no-such-file")
+        assert version_mod._read_version() == "snapshot"
+
+    def test_returns_snapshot_when_file_empty(self, tmp_path, monkeypatch):
+        version_file = tmp_path / "VERSION"
+        version_file.write_text("   \n")
+        monkeypatch.setattr(version_mod, "_VERSION_FILE", version_file)
+        assert version_mod._read_version() == "snapshot"
+
+    def test_returns_snapshot_when_file_unreadable(self, tmp_path, monkeypatch):
+        # Point at a directory instead of a file → OSError on read_text()
+        monkeypatch.setattr(version_mod, "_VERSION_FILE", tmp_path)
+        assert version_mod._read_version() == "snapshot"
 
 
 class TestReadGitSha:

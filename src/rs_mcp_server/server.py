@@ -21,6 +21,7 @@ from rs_mcp_server.tools.quests import get_quest_info
 from rs_mcp_server.tools.recipes import get_item_recipe
 from rs_mcp_server.tools.equipment import get_equipment_stats
 from rs_mcp_server.tools.monsters import get_monster_info
+from rs_mcp_server.tools.drops import get_item_drop_sources
 from rs_mcp_server.tools.achievements import get_achievement
 from rs_mcp_server.tools.moneymakers import get_money_makers, get_money_maker_method
 from rs_mcp_server.tools.alchables import get_best_alchables
@@ -147,7 +148,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="get_monster_info",
-            description="Get details about a RuneScape monster — combat level, hitpoints, slayer requirement, slayer XP, attack style, weakness (RS3), and more. Drops are not returned by this tool.",
+            description="Get details about a RuneScape monster — combat level, hitpoints, slayer requirement, slayer XP, attack style, weakness (RS3), and more. Drops are not returned by this tool; use get_item_drop_sources to look up where a specific item comes from.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -159,6 +160,22 @@ async def list_tools() -> list[Tool]:
                     },
                 },
                 "required": ["monster_name"],
+            },
+        ),
+        Tool(
+            name="get_item_drop_sources",
+            description="Look up the monsters, NPCs, and rewards that drop a given item, with drop rates and source levels. Returns the top three sources; items with many sources are flagged as common loot.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "item_name": {"type": "string", "description": "The exact or approximate item name."},
+                    "game": {
+                        "type": "string",
+                        "enum": ["rs3", "osrs"],
+                        "description": "Which game wiki to query: 'rs3' (default) or 'osrs'.",
+                    },
+                },
+                "required": ["item_name"],
             },
         ),
         Tool(
@@ -306,6 +323,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         result = await get_equipment_stats(arguments["item_name"], arguments.get("game", "rs3"))
     elif name == "get_monster_info":
         result = await get_monster_info(arguments["monster_name"], arguments.get("game", "rs3"))
+    elif name == "get_item_drop_sources":
+        result = await get_item_drop_sources(arguments["item_name"], arguments.get("game", "rs3"))
     elif name == "get_achievement":
         result = await get_achievement(arguments["name"], arguments.get("game", "rs3"))
     elif name == "get_money_makers":

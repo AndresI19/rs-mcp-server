@@ -6,7 +6,19 @@ IMAGE_NAME="rs-mcp-server:dev"
 CONTAINER_NAME="rs-mcp-server"
 VOLUME_NAME="rs-mcp-server-logs"
 CONTAINER_LOG="/logs/uvicorn.log"
-HEALTH_URL="http://localhost:8000/health"
+
+# TLS is opt-in via a host cert directory mounted onto /etc/tls_certs. When TLS_CERTS_DIR
+# is set the server terminates HTTPS on the same port (real certs if present, else a
+# self-signed fallback), so the health poll must speak https and tolerate self-signed
+# certs (-k). When unset, no mount → the server serves plain HTTP.
+if [[ -n "${TLS_CERTS_DIR:-}" ]]; then
+    SCHEME="https"
+    HEALTH_CURL_OPTS=(-sfk)
+else
+    SCHEME="http"
+    HEALTH_CURL_OPTS=(-sf)
+fi
+HEALTH_URL="${SCHEME}://localhost:8000/health"
 
 check_docker() {
     if ! docker info >/dev/null 2>&1; then
@@ -21,8 +33,8 @@ EOF
 
 cmd_start() {
     check_docker
-    if curl -sf "$HEALTH_URL" >/dev/null 2>&1; then
-        echo "Server already running — http://localhost:8000/sse"
+    if curl "${HEALTH_CURL_OPTS[@]}" "$HEALTH_URL" >/dev/null 2>&1; then
+        echo "Server already running — ${SCHEME}://localhost:8000/sse"
         exit 0
     fi
 
@@ -32,11 +44,19 @@ cmd_start() {
     docker build --pull -t "$IMAGE_NAME" "$REPO_ROOT"
     docker image prune -f >/dev/null
 
+    # Optional read-only cert mount. Its presence is what flips the server to HTTPS.
+    local tls_mount=()
+    if [[ -n "${TLS_CERTS_DIR:-}" ]]; then
+        tls_mount=(-v "${TLS_CERTS_DIR}:/etc/tls_certs:ro")
+        echo "TLS enabled — mounting ${TLS_CERTS_DIR} → /etc/tls_certs (ro)"
+    fi
+
     echo "Starting container $CONTAINER_NAME..."
     docker run --rm -d \
         --name "$CONTAINER_NAME" \
         -p 8000:8000 \
         -v "${VOLUME_NAME}:/logs" \
+        "${tls_mount[@]}" \
         -e "LOGFILE=${CONTAINER_LOG}" \
         --read-only \
         --tmpfs /tmp:rw,size=16m,mode=1777 \
@@ -49,9 +69,9 @@ cmd_start() {
     printf 'Waiting for server'
     for _ in $(seq 1 30); do
         sleep 1
-        if curl -sf "$HEALTH_URL" >/dev/null 2>&1; then
+        if curl "${HEALTH_CURL_OPTS[@]}" "$HEALTH_URL" >/dev/null 2>&1; then
             printf ' ready.\n'
-            printf '  MCP endpoint: http://localhost:8000/sse\n'
+            printf '  MCP endpoint: %s://localhost:8000/sse\n' "$SCHEME"
             printf '  Logs:         bash %s logs\n' "$0"
             printf '  To stop:      bash %s stop\n' "$0"
             exit 0
@@ -121,6 +141,12 @@ Usage: $(basename "$0") {start|stop|logs|clean}
   logs   Tail -f the log file from inside the container (or from the
          persistent volume if the container is not currently running).
   clean  Stop container, remove image, remove log volume, prune layers.
+
+Env:
+  TLS_CERTS_DIR  Host directory mounted read-only onto /etc/tls_certs. When set,
+                 the server serves HTTPS on port 8000 (real certs if the dir holds
+                 a tls.crt/tls.key, fullchain.pem/privkey.pem, or cert.pem/key.pem
+                 pair; otherwise a self-signed fallback). When unset, plain HTTP.
 
 Container: ${CONTAINER_NAME}
 Image:     ${IMAGE_NAME}

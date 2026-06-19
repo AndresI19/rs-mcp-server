@@ -53,7 +53,9 @@ COPY --chmod=755 docker/bin/start-server /usr/local/bin/start-server
 USER mcp-server
 EXPOSE 8000
 
+# Protocol-tolerant: the same port serves HTTP or (when /etc/tls_certs is mounted) HTTPS.
+# Try https first (-k tolerates the self-signed fallback cert), then fall back to http.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -fsS http://localhost:8000/health || exit 1
+    CMD curl -fsSk https://localhost:8000/health || curl -fsS http://localhost:8000/health || exit 1
 
 ENTRYPOINT ["start-server", "--start"]

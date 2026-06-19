@@ -29,9 +29,11 @@ cmd_start() {
         echo "start: already running"
     else
         : >"${LOGFILE}"
-        /opt/venv/bin/python -m uvicorn rs_mcp_server.server:web \
-            --host "${MCP_HOST}" \
-            --port "${MCP_PORT}" \
+        # Launch via the module entrypoint (not the uvicorn CLI) so the server's own
+        # TLS resolver (rs_mcp_server.tls) governs the HTTP/HTTPS decision. Host/port
+        # are read from MCP_HOST/MCP_PORT in server.py's __main__ block.
+        export MCP_HOST MCP_PORT
+        /opt/venv/bin/python -m rs_mcp_server.server \
             >>"${LOGFILE}" 2>&1 &
         echo "$!" >"${PIDFILE}"
         echo "start: PID $(cat "${PIDFILE}") on ${MCP_HOST}:${MCP_PORT} (logs: ${LOGFILE})"

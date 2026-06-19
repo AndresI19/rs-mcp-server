@@ -419,4 +419,11 @@ web = Starlette(
 )
 
 if __name__ == "__main__":
-    uvicorn.run(web, host=os.environ.get("MCP_HOST", "127.0.0.1"), port=8000)
+    from rs_mcp_server.tls import resolve_uvicorn_tls
+
+    uvicorn.run(
+        web,
+        host=os.environ.get("MCP_HOST", "127.0.0.1"),
+        port=int(os.environ.get("MCP_PORT", "8000")),
+        **resolve_uvicorn_tls(),
+    )

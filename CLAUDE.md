@@ -17,7 +17,7 @@ The container binds to `0.0.0.0:8000` internally; the host sees it on `localhost
 
 ### TLS
 
-TLS is opt-in via a mounted cert directory — the server resolves its listener mode at startup from `/etc/tls_certs` (see `src/rs_mcp_server/tls.py`):
+TLS is opt-in via a mounted cert directory — a preflight step in the container entrypoint (`docker/bin/start-server`) resolves the listener mode from `/etc/tls_certs` before the server process starts, then launches uvicorn with the matching `--ssl-*` flags:
 
 | Cert dir | Listener |
 |----------|----------|
@@ -25,7 +25,7 @@ TLS is opt-in via a mounted cert directory — the server resolves its listener 
 | Mounted, empty / no usable pair | HTTPS with a self-signed fallback cert |
 | Mounted with `tls.crt`+`tls.key` (or `fullchain.pem`+`privkey.pem`, or `cert.pem`+`key.pem`) | HTTPS with those certs |
 
-Run with TLS locally: `TLS_CERTS_DIR=/path/to/certs make start` (mounts the dir read-only at `/etc/tls_certs` and polls health over https). The same port `8000` carries HTTP or HTTPS — there is no second port. Full rationale in [docs/security.md](docs/security.md#transport-security-tls).
+Run with TLS locally: `TLS_CERTS_DIR=/path/to/certs make start` (mounts the dir read-only at `/etc/tls_certs` and polls health over https). The same port `8000` carries HTTP or HTTPS — there is no second port. `make dev` (local venv, no container) is always plain HTTP, since the TLS preflight lives in the container entrypoint. Full rationale in [docs/security.md](docs/security.md#transport-security-tls).
 
 ## Endpoints
 

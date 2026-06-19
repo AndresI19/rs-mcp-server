@@ -20,17 +20,17 @@ All flags live in `scripts/docker.sh`; the K8s analogs are documented at the bot
 
 ## Transport security (TLS)
 
-TLS is **opt-in and deploy-time configured** — the image is identical with or without it. The server resolves its listener mode at startup (`src/rs_mcp_server/tls.py`) from the cert directory `/etc/tls_certs` (override with `MCP_TLS_DIR`):
+TLS is **opt-in and deploy-time configured** — the image is identical with or without it. A preflight step in the container entrypoint (`docker/bin/start-server`) resolves the listener mode from the cert directory `/etc/tls_certs` (override with `MCP_TLS_DIR`) *before* the server process starts, then hands uvicorn the matching `--ssl-certfile`/`--ssl-keyfile` flags:
 
 | Cert dir state | Listener |
 |----------------|----------|
 | Absent (no mount) | Plain HTTP |
-| Present, no usable cert/key pair | HTTPS with a generated **self-signed** cert (written to `/tmp`, the only writable path) |
-| Present, holds a `tls.crt`/`tls.key`, `fullchain.pem`/`privkey.pem`, or `cert.pem`/`key.pem` pair | HTTPS with **those** certs |
+| Present, no readable cert/key pair | HTTPS with an `openssl`-generated **self-signed** cert (written to `/tmp`, the only writable path) |
+| Present, holds a readable `tls.crt`/`tls.key`, `fullchain.pem`/`privkey.pem`, or `cert.pem`/`key.pem` pair | HTTPS with **those** certs |
 
 Operationally, you mount real certs read-only: `TLS_CERTS_DIR=/path/to/certs make start` adds `-v /path/to/certs:/etc/tls_certs:ro`. The self-signed fallback exists so a misconfigured or empty mount still fails *closed* to encrypted transport rather than silently serving plaintext. The mount is `:ro`, so a process compromise cannot tamper with the private key on disk.
 
-**The cert dir and its files must be readable by the server user (uid 10001).** A dir or key the container user can't traverse/read is indistinguishable from "no certs" — the resolver falls back to self-signed and logs a warning naming the readability requirement. World-readable cert + key (`0644`) on a traversable dir (`0755`) is the simplest correct posture; in K8s a `Secret` volume satisfies this by default.
+**The cert dir and its files must be readable by the server user (uid 10001).** A dir or key the container user can't traverse/read is indistinguishable from "no certs" — the preflight falls back to self-signed and logs a warning naming the readability requirement. World-readable cert + key (`0644`) on a traversable dir (`0755`) is the simplest correct posture; in K8s a `Secret` volume satisfies this by default.
 
 This is intentionally **not** a CA-issued / ACME setup — automatic renewal and public-trust certs (the original [#21](https://github.com/AndresI19/RS-Agent-Planning/issues/21) Let's Encrypt framing) are a future deploy concern; this design already serves whatever cert pair is mounted, so an external cert-manager that drops renewed certs into the mounted dir slots in without code changes.
 

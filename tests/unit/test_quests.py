@@ -290,3 +290,39 @@ class TestGetQuestInfo:
         result = await get_quest_info("zzznotaquestzzz", "rs3")
         assert result.startswith("No quest found")
         assert "RS3" in result
+
+
+class TestDisambigSuffixFallback:
+    """Issue #75 — bare name returns wrong-type page; retry with (quest) suffix."""
+
+    @pytest.mark.anyio
+    async def test_resolves_via_quest_suffix(self, monkeypatch):
+        # Bare "Dragon Slayer" → music-track page (no Infobox Quest).
+        # "Dragon Slayer (quest)" → the right quest page.
+        def wiki_page(title, content):
+            return {"query": {"pages": [{"title": title, "revisions": [{"slots": {"main": {"content": content}}}]}]}}
+
+        music_wikitext = "{{Infobox Music|name = Dragon Slayer|composer = Ian Taylor}}"
+        quest_wikitext = (
+            "{{Infobox Quest\n"
+            "|name = Dragon Slayer\n"
+            "|difficulty = Experienced\n"
+            "|length = Long\n"
+            "|members = No\n"
+            "|requirements = 32 Quest points\n"
+            "}}"
+        )
+
+        async def fake_http_get(url, params=None, timeout=10.0):
+            title = (params or {}).get("titles", "")
+            if title == "Dragon Slayer":
+                return wiki_page("Dragon Slayer", music_wikitext)
+            if title == "Dragon Slayer (quest)":
+                return wiki_page("Dragon Slayer (quest)", quest_wikitext)
+            raise AssertionError(f"unexpected titles param: {title}")
+
+        monkeypatch.setattr("rs_mcp_server.tools.quests.http_get", fake_http_get)
+        result = await get_quest_info("Dragon Slayer", "osrs")
+        assert "**Dragon Slayer (quest)**" in result
+        assert "**Difficulty:** Experienced" in result
+        assert "Did you mean" not in result

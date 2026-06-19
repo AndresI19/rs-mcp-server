@@ -47,6 +47,16 @@ async def get_quest_info(quest_name: str, game: str = "rs3") -> str:
             cache_key,
         )
 
+    # Page exists but is the wrong type — try disambig suffix(es).
+    if direct is not None:
+        for suffix in ("quest",):
+            suffixed = await _fetch_page(f"{quest_name} ({suffix})", game, follow_redirects=True)
+            if suffixed and _has_quest_template(suffixed["content"]):
+                return _cache_and_return(
+                    _format_from_content(suffixed["title"], suffixed["url"], wiki_label, suffixed["content"]),
+                    cache_key,
+                )
+
     candidate = await _search_quest(quest_name, game)
     if candidate is None:
         return f"No quest found for '{quest_name}' on the {wiki_label} wiki."

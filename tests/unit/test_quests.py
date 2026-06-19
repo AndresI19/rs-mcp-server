@@ -323,6 +323,40 @@ class TestSearchTypeFilter:
         assert "Music" not in result
 
 
+class TestRomanVariantEnumeration:
+    """Issue #78 — when bare name 404s but '<name> I/II' quest pages exist, enumerate them."""
+
+    @pytest.mark.anyio
+    async def test_enumerates_variants_when_bare_404s(self, monkeypatch):
+        def page(title, content):
+            return {"title": title, "revisions": [{"slots": {"main": {"content": content}}}]}
+
+        quest_template = "{{Infobox Quest\n|difficulty = Master\n|length = Long\n}}"
+
+        async def fake_http_get(url, params=None, timeout=10.0):
+            titles = (params or {}).get("titles", "")
+            if titles == "Dragon Slayer":
+                return {"query": {"pages": [{"missing": True}]}}
+            if titles == "Dragon Slayer (quest)":
+                return {"query": {"pages": [{"missing": True}]}}
+            if "|" in titles:
+                return {"query": {"pages": [
+                    page("Dragon Slayer I",  quest_template),
+                    page("Dragon Slayer II", quest_template),
+                    {"title": "Dragon Slayer III", "missing": True},
+                    {"title": "Dragon Slayer IV",  "missing": True},
+                    {"title": "Dragon Slayer V",   "missing": True},
+                ]}}
+            raise AssertionError(f"unexpected titles param: {titles!r}")
+
+        monkeypatch.setattr("rs_mcp_server.tools.quests.http_get", fake_http_get)
+        result = await get_quest_info("Dragon Slayer", "osrs")
+        assert "Multiple tiered variants" in result
+        assert "Dragon Slayer I" in result
+        assert "Dragon Slayer II" in result
+        assert "Dragon Slayer III" not in result
+
+
 class TestDisambigSuffixFallback:
     """Issue #75 — bare name returns wrong-type page; retry with (quest) suffix."""
 

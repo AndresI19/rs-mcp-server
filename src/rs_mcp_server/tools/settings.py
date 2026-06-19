@@ -2,10 +2,11 @@
 
 Parses the rendered Settings page HTML on each game's wiki, walks <h2>/<h3>
 headings and <table class="wikitable"> rows to build a name → description index,
-then supports exact / fuzzy / description-fallback lookup.
+then supports exact / substring / fuzzy / description / wiki-search-fallback lookup.
 """
 import html
 import re
+from difflib import get_close_matches
 
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
@@ -48,6 +49,12 @@ async def get_game_setting(setting_name: str, game: str = "rs3") -> str:
         return _render_did_you_mean(payload, wiki_label, header="Did you mean one of these settings?")
     if kind == "description_hits":
         return _render_did_you_mean(payload, wiki_label, header=f"No setting named '{setting_name}', but it appears in these descriptions:")
+
+    # All local-index tiers failed — try a wiki-wide search before giving up.
+    suggestions = await _wiki_search_fallback(setting_name, game)
+    if suggestions:
+        return _render_wiki_suggestions(suggestions, wiki_label, setting_name)
+
     return f"No matching setting for '{setting_name}' on the {wiki_label} wiki. Browse the full list at {page_url}."
 
 
@@ -149,6 +156,13 @@ def _match_setting(query: str, rows: list[dict]) -> tuple[str, object]:
         contains.sort(key=lambda r: abs(len(r["name_lower"]) - len(q)))
         return ("did_you_mean", contains[:5])
 
+    # Fuzzy match — typo recovery before falling back to description text.
+    names = [r["name"] for r in rows]
+    close = get_close_matches(query, names, n=5, cutoff=0.7)
+    if close:
+        by_name = {r["name"]: r for r in rows}
+        return ("did_you_mean", [by_name[name] for name in close])
+
     desc_hits = [r for r in rows if q in r["description"].lower()]
     if desc_hits:
         return ("description_hits", desc_hits[:5])
@@ -186,4 +200,53 @@ def _render_did_you_mean(candidates: list[dict], wiki_label: str, header: str) -
         lines.append(f"- **{r['name']}** ({_section_path(r)}) — {desc}")
     lines.append("")
     lines.append("Re-invoke `get_game_setting` with the exact name to fetch full details.")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Wiki-search fallback (issue #74) — invoked when the local index has no hits
+# ---------------------------------------------------------------------------
+
+async def _wiki_search_fallback(query: str, game: str) -> list[dict]:
+    """Generic wiki search for queries that don't match any settings-page row."""
+    params = {
+        "action": "query",
+        "generator": "search",
+        "gsrsearch": query,
+        "gsrlimit": 3,
+        "prop": "extracts",
+        "explaintext": True,
+        "exsentences": 1,
+        "exintro": True,
+        **MW_BASE_PARAMS,
+    }
+    try:
+        data = await http_get(WIKI_APIS[game], params=params)
+    except Exception:
+        return []
+    pages = (data.get("query") or {}).get("pages") or []
+    out: list[dict] = []
+    for p in pages:
+        title = p.get("title")
+        if not title:
+            continue
+        snippet = (p.get("extract") or "").strip()
+        out.append({
+            "title": title,
+            "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
+            "snippet": snippet[:160] + ("…" if len(snippet) > 160 else ""),
+        })
+    return out
+
+
+def _render_wiki_suggestions(suggestions: list[dict], wiki_label: str, query: str) -> str:
+    lines = [
+        f"Couldn't find an exact setting for '{query}' on the {wiki_label} Wiki — these pages may help:",
+        "",
+    ]
+    for s in suggestions:
+        line = f"- **{s['title']}** — {s['url']}"
+        if s["snippet"]:
+            line += f"\n    {s['snippet']}"
+        lines.append(line)
     return "\n".join(lines)

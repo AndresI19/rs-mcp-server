@@ -14,7 +14,7 @@ The container is designed to make a compromise of the MCP server itself non-fata
 | Privilege escalation | `--security-opt no-new-privileges:true` |
 | Memory limit | 512 MB |
 | PID limit | 100 |
-| Healthcheck | `curl /health` every 30s (https-first, http fallback) |
+| Healthcheck | `curl /health` every 5m (https-first, http fallback) |
 
 All flags live in `scripts/docker.sh`; the K8s analogs are documented at the bottom of this doc.
 

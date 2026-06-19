@@ -73,3 +73,7 @@ The dev `.venv` itself uses `pip install -e .[test]` (loose constraints, editabl
 python3 -m venv /tmp/lock-verify
 /tmp/lock-verify/bin/pip install -r requirements.txt --require-hashes
 ```
+
+## Security
+
+See [docs/security.md](docs/security.md) for the hardened runtime contract (read-only rootfs, dropped Linux capabilities, Trivy gate in CI) and the residual risks the container does not cover. The `image-scan` job in `.github/workflows/test.yml` enforces the vulnerability gate on every PR.

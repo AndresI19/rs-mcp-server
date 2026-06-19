@@ -38,7 +38,9 @@ LABEL org.opencontainers.image.title="rs-mcp-server" \
       org.opencontainers.image.licenses="MIT"
 
 USER 0
-RUN useradd --uid 10001 --shell /sbin/nologin --no-create-home --user-group mcp-server
+RUN useradd --uid 10001 --shell /sbin/nologin --no-create-home --user-group mcp-server \
+ && mkdir -p /logs \
+ && chown mcp-server:mcp-server /logs
 
 ENV VIRTUAL_ENV=/opt/venv \
     PATH="/opt/venv/bin:${PATH}" \
@@ -50,5 +52,8 @@ COPY --chmod=755 docker/bin/start-server /usr/local/bin/start-server
 
 USER mcp-server
 EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -fsS http://localhost:8000/health || exit 1
 
 ENTRYPOINT ["start-server", "--start"]

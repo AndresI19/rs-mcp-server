@@ -22,12 +22,31 @@ The `[test]` extra adds `pytest` and `ruff` for local development. Drop it for r
 ## Run
 
 ```bash
-make start   # opens a log window, polls health, prints the SSE endpoint
-make stop    # kill the server
-make logs    # tail /tmp/mcp-server.log
+make start   # checks Docker, builds image, runs container, polls /health
+make stop    # removes the container
+make logs    # tails the container log (via scripts/docker.sh)
 ```
 
-Starts on `http://0.0.0.0:8000`. Endpoints:
+`make dev` is preserved for in-venv iteration without Docker. On Linux, Colima must be running:
+
+```bash
+colima start
+```
+
+### Container build
+
+`scripts/docker.sh` is the lifecycle wrapper that `make start` delegates to. You can also call its subcommands directly:
+
+```bash
+bash scripts/docker.sh start   # build image + run container detached on port 8000
+bash scripts/docker.sh logs    # tail the container's uvicorn log
+bash scripts/docker.sh stop    # docker rm -f
+bash scripts/docker.sh clean   # remove container + volume + image + dangling layers
+```
+
+Image: `rs-mcp-server:dev`, built from the multi-stage `Dockerfile` in the repo root.
+
+Starts on `http://localhost:8000`. Endpoints:
 
 | Path | Description |
 |------|-------------|
@@ -38,7 +57,7 @@ Starts on `http://0.0.0.0:8000`. Endpoints:
 ## Verification
 
 ```bash
-make smoke-test   # exercise all tools over SSE end-to-end (server must be running)
+make fvt   # exercise every MCP tool over SSE end-to-end (server must be running)
 ```
 
 Asserts each tool returns the expected structured output for representative inputs. Exits 0 on success, 1 on any failure.
@@ -72,6 +91,5 @@ src/rs_mcp_server/
 tests/                  — pytest unit tests for parsing helpers
 build/                  — reserved for future build artifacts
 scripts/
-  start.sh / stop.sh    — server lifecycle (called by make start / make stop)
-  smoke_test_tools.py   — end-to-end SSE smoke test (called by make smoke-test)
+  docker.sh             — container lifecycle (called by make start / stop / logs)
 ```

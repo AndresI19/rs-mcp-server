@@ -1,7 +1,14 @@
-"""End-to-end tests for the get_equipment_stats MCP tool (issue #44)."""
+"""End-to-end tests for the get_equipment_stats MCP tool (issues #44, #77)."""
 import pytest
 
+from rs_mcp_server import cache as _cache_mod
 from rs_mcp_server.tools.equipment import get_equipment_stats
+
+
+@pytest.fixture(autouse=True)
+def _reset_cache():
+    _cache_mod._store.clear()
+    yield
 
 
 def _wiki_page(title: str, content: str) -> dict:
@@ -19,6 +26,10 @@ def _wiki_page(title: str, content: str) -> dict:
 
 def _missing() -> dict:
     return {"query": {"pages": [{"missing": True}]}}
+
+
+def _parse_html(text: str) -> dict:
+    return {"parse": {"text": text}}
 
 
 _OSRS_WHIP_BONUSES = (
@@ -152,6 +163,92 @@ class TestGetEquipmentStatsRs3Armour:
         # Weapon-shape fields shouldn't render for armour pieces
         assert "**Damage:**" not in result
         assert "**Accuracy:**" not in result
+
+
+class TestGetEquipmentStatsNamedSections:
+    """Issue #77 — surface Set bonus / Passive / Special properties prose alongside infobox."""
+
+    _BONUSES = (
+        "{{Infobox Bonuses\n"
+        "|class = melee\n"
+        "|slot = head\n"
+        "|tier = 92\n"
+        "|armour = 700\n"
+        "}}"
+    )
+
+    @pytest.mark.anyio
+    async def test_set_bonus_section_appended_when_present(self, monkeypatch):
+        parse_html = (
+            '<div class="mw-parser-output">'
+            '<p>Lead paragraph about the helm.</p>'
+            '<h2 id="Set_bonus">Set bonus</h2>'
+            '<p>Wearing the full set grants 50% incoming damage delayed as bleed.</p>'
+            '</div>'
+        )
+
+        async def fake_http_get(url, params=None, timeout=10.0):
+            if (params or {}).get("action") == "parse":
+                return _parse_html(parse_html)
+            return _wiki_page("Trimmed masterwork melee helm", self._BONUSES)
+
+        monkeypatch.setattr("rs_mcp_server.tools.equipment.http_get", fake_http_get)
+        result = await get_equipment_stats("Trimmed masterwork melee helm", "rs3")
+        assert "**Tier:** 92" in result
+        assert "## Set bonus" in result
+        assert "50% incoming damage delayed as bleed" in result
+
+    @pytest.mark.anyio
+    async def test_passive_alias_renders_as_canonical_label(self, monkeypatch):
+        # Wiki uses "Passive effect" as the heading; output should use canonical "Passive".
+        parse_html = (
+            '<div>'
+            '<h2 id="Passive_effect">Passive effect</h2>'
+            '<p>Herald of Chaos: adrenaline regen, Berserk extension, +20% adren cap.</p>'
+            '</div>'
+        )
+
+        async def fake_http_get(url, params=None, timeout=10.0):
+            if (params or {}).get("action") == "parse":
+                return _parse_html(parse_html)
+            return _wiki_page("Vestments of Havoc helm", self._BONUSES)
+
+        monkeypatch.setattr("rs_mcp_server.tools.equipment.http_get", fake_http_get)
+        result = await get_equipment_stats("Vestments of Havoc helm", "rs3")
+        assert "## Passive" in result
+        # Canonical label, NOT the heading variant
+        assert "## Passive effect" not in result
+        assert "Herald of Chaos" in result
+
+    @pytest.mark.anyio
+    async def test_missing_sections_render_nothing(self, monkeypatch):
+        # Page has prose but no Set bonus / Passive / Special properties headings.
+        parse_html = '<div><h2 id="History">History</h2><p>Some lore text.</p></div>'
+
+        async def fake_http_get(url, params=None, timeout=10.0):
+            if (params or {}).get("action") == "parse":
+                return _parse_html(parse_html)
+            return _wiki_page("Abyssal whip", self._BONUSES)
+
+        monkeypatch.setattr("rs_mcp_server.tools.equipment.http_get", fake_http_get)
+        result = await get_equipment_stats("Abyssal whip", "rs3")
+        assert "**Tier:** 92" in result
+        assert "## Set bonus" not in result
+        assert "## Passive" not in result
+        assert "## Special properties" not in result
+
+    @pytest.mark.anyio
+    async def test_parse_failure_swallowed_infobox_still_returns(self, monkeypatch):
+        async def fake_http_get(url, params=None, timeout=10.0):
+            if (params or {}).get("action") == "parse":
+                raise RuntimeError("transient parse-api outage")
+            return _wiki_page("Trimmed masterwork melee helm", self._BONUSES)
+
+        monkeypatch.setattr("rs_mcp_server.tools.equipment.http_get", fake_http_get)
+        result = await get_equipment_stats("Trimmed masterwork melee helm", "rs3")
+        # Infobox stats still render; no enrichment, no exception.
+        assert "**Tier:** 92" in result
+        assert "## Set bonus" not in result
 
 
 class TestGetEquipmentStatsValidation:

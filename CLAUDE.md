@@ -4,16 +4,16 @@
 
 | Action | Command |
 |--------|---------|
-| Start (opens log window for user) | `make start` |
-| Stop | `make stop` |
+| Start (build image + run container) | `make start` |
+| Stop (remove container) | `make stop` |
 | Tail logs live | `make logs` |
 | Check if running | `curl -sf http://localhost:8000/health` |
-| Smoke test all tools over SSE | `make smoke-test` |
-| Bind to all interfaces (production) | `MCP_HOST=0.0.0.0 make start` |
+| Run FVT against the live server | `make fvt` |
+| Clean (image + volume + dangling layers) | `bash scripts/docker.sh clean` |
 
-`make start` opens a Ptyxis terminal window so the user can see live logs, polls the health endpoint, then prints the MCP endpoint URL and the exact stop command. Always use `make start` rather than invoking uvicorn directly.
+`make start` checks the Docker daemon (instructs `colima start` on Linux if down), builds the `rs-mcp-server:dev` image, starts a detached container on port 8000, and polls `/health` until ready. `make dev` is preserved for in-venv iteration without Docker.
 
-The dev server binds to `127.0.0.1` by default — local dev is fine because Claude Desktop and `make smoke-test` connect via `localhost`. Production deployments must set `MCP_HOST=0.0.0.0` (or a specific public-interface address) so external clients can reach the server.
+The container binds to `0.0.0.0:8000` internally; the host sees it on `localhost:8000` via `-p 8000:8000`. Production deploys swap the run flags but keep the image identical.
 
 ## Endpoints
 
@@ -23,9 +23,9 @@ The dev server binds to `127.0.0.1` by default — local dev is fine because Cla
 | `GET /sse` | MCP SSE connection (Claude Desktop connects here) |
 | `POST /messages` | MCP message transport |
 
-## Log file
+## Logs
 
-Logs are written to `/tmp/mcp-server.log` while the server is running.
+While the container runs, tail with `make logs` (delegates to `scripts/docker.sh logs`). Logs are persisted in the `rs-mcp-server-logs` docker volume, so they survive container removal and can still be tailed after `make stop`.
 
 ## Pre-PR checks
 
@@ -35,6 +35,27 @@ These commands must pass before `/pr` opens a PR — the `/pr` skill runs them a
 .venv/bin/ruff check .
 make unit
 ```
+
+Note: pre-PR checks are unit-only on purpose — fast, no container, no live wiki/hiscores calls. `make fvt` is the slower function-verification suite (see Local development below).
+
+## Local development
+
+On Linux, Docker requires Colima as the container runtime:
+
+```bash
+colima start    # required before make start / make fvt
+```
+
+`make start` and `bash scripts/docker.sh start` both check the daemon and print the `colima start` hint if it's down.
+
+The test suite is split into two tiers:
+
+| Tier | Command | Speed | Requires container |
+|------|---------|-------|--------------------|
+| Unit | `make unit` | ~1s | No (runs in .venv) |
+| Function-verification | `make fvt` | ~30s | Yes (must `make start` first) |
+
+`make unit` is the fast inner-loop check and the only thing the pre-PR gate runs. `make fvt` exercises every MCP tool end-to-end over SSE against a live server — slower, useful before opening a PR that touches tool behavior.
 
 ## Dependency locking
 

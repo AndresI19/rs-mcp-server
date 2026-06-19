@@ -9,6 +9,16 @@ LOGFILE="${LOGFILE:-/tmp/uvicorn.log}"
 MCP_HOST="${MCP_HOST:-0.0.0.0}"
 MCP_PORT="${MCP_PORT:-8000}"
 GRACE_SECONDS="${GRACE_SECONDS:-10}"
+MCP_TLS_DIR="${MCP_TLS_DIR:-/etc/tls_certs}"
+SELF_SIGNED_DIR="/tmp/tls_selfsigned"
+
+# Cert/key filename pairs recognised in MCP_TLS_DIR, in priority order: k8s TLS secret,
+# Let's Encrypt, then generic PEM. First pair where both files exist wins.
+TLS_CERT_PAIRS=(
+    "tls.crt:tls.key"
+    "fullchain.pem:privkey.pem"
+    "cert.pem:key.pem"
+)
 
 cmd_status() {
     if [[ -f "${PIDFILE}" ]]; then
@@ -24,17 +34,65 @@ cmd_status() {
     return 1
 }
 
+# Preflight: decide the listener's transport from MCP_TLS_DIR before the server starts.
+# Populates the global SSL_ARGS array (uvicorn flags) and TLS_SCHEME (http|https):
+#   dir absent              -> HTTP, no flags
+#   dir holds readable pair -> HTTPS with those certs
+#   dir but no readable pair-> HTTPS with a self-signed cert generated into /tmp
+# Readability is checked from this (the server) user, so a present-but-unreadable cert
+# falls through to self-signed rather than crashing uvicorn at bind time.
+resolve_tls() {
+    SSL_ARGS=()
+    TLS_SCHEME="http"
+
+    if [[ ! -d "${MCP_TLS_DIR}" ]]; then
+        echo "tls: no cert dir at ${MCP_TLS_DIR} — serving HTTP"
+        return
+    fi
+
+    local pair cert key
+    for pair in "${TLS_CERT_PAIRS[@]}"; do
+        cert="${MCP_TLS_DIR}/${pair%%:*}"
+        key="${MCP_TLS_DIR}/${pair##*:}"
+        if [[ -r "${cert}" && -r "${key}" ]]; then
+            SSL_ARGS=(--ssl-certfile "${cert}" --ssl-keyfile "${key}")
+            TLS_SCHEME="https"
+            echo "tls: using cert ${cert} — serving HTTPS"
+            return
+        fi
+    done
+
+    echo "tls: ${MCP_TLS_DIR} exists but holds no readable cert/key pair " \
+         "(tls.crt/tls.key, fullchain.pem/privkey.pem, or cert.pem/key.pem readable by uid $(id -u));" \
+         "generating a self-signed certificate"
+    mkdir -p "${SELF_SIGNED_DIR}"
+    openssl req -x509 -newkey rsa:2048 -nodes -days 365 \
+        -keyout "${SELF_SIGNED_DIR}/key.pem" \
+        -out "${SELF_SIGNED_DIR}/cert.pem" \
+        -subj "/CN=localhost" \
+        -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" >/dev/null 2>&1
+    chmod 600 "${SELF_SIGNED_DIR}/key.pem"
+    SSL_ARGS=(--ssl-certfile "${SELF_SIGNED_DIR}/cert.pem" --ssl-keyfile "${SELF_SIGNED_DIR}/key.pem")
+    TLS_SCHEME="https"
+    echo "tls: using self-signed cert ${SELF_SIGNED_DIR}/cert.pem — serving HTTPS"
+}
+
 cmd_start() {
     if cmd_status >/dev/null 2>&1; then
         echo "start: already running"
     else
         : >"${LOGFILE}"
+        # TLS preflight runs as part of container bootstrap, before the server process
+        # starts; its decision is baked into the uvicorn flags below. Output is appended
+        # to the log without spawning a subshell, so SSL_ARGS/TLS_SCHEME persist.
+        resolve_tls >>"${LOGFILE}" 2>&1
         /opt/venv/bin/python -m uvicorn rs_mcp_server.server:web \
             --host "${MCP_HOST}" \
             --port "${MCP_PORT}" \
+            "${SSL_ARGS[@]}" \
             >>"${LOGFILE}" 2>&1 &
         echo "$!" >"${PIDFILE}"
-        echo "start: PID $(cat "${PIDFILE}") on ${MCP_HOST}:${MCP_PORT} (logs: ${LOGFILE})"
+        echo "start: PID $(cat "${PIDFILE}") on ${TLS_SCHEME}://${MCP_HOST}:${MCP_PORT} (logs: ${LOGFILE})"
     fi
 
     # When invoked as PID 1 (container ENTRYPOINT), keep this script alive so the
@@ -83,7 +141,7 @@ Usage: $(basename "$0") --start | --stop | --restart | --status
   --restart  Equivalent to --stop followed by --start.
   --status   Print run state and exit 0 (running) or 1 (stopped).
 
-Env: PIDFILE=${PIDFILE} LOGFILE=${LOGFILE} MCP_HOST=${MCP_HOST} MCP_PORT=${MCP_PORT}
+Env: PIDFILE=${PIDFILE} LOGFILE=${LOGFILE} MCP_HOST=${MCP_HOST} MCP_PORT=${MCP_PORT} MCP_TLS_DIR=${MCP_TLS_DIR}
 EOF
 }
 

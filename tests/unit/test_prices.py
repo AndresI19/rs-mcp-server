@@ -40,9 +40,11 @@ class TestGetItemPriceRs3:
 
         monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)
         result = await get_item_price("Abyssal whip", "rs3")
-        assert "**Abyssal whip**" in result
-        assert "RS3 Grand Exchange" in result
-        assert "Price:" in result
+        assert "**Abyssal whip** (RS3 prices)" in result
+        assert "Grand Exchange:" in result
+        assert "Price:   1m gp" in result
+        assert "Street (community trades):" in result
+        assert "No street trades on record." in result
 
     @pytest.mark.anyio
     async def test_item_not_found(self, monkeypatch):
@@ -152,8 +154,10 @@ class TestGetItemPriceRs3StreetPrices:
 
         monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)
         result = await get_item_price("Abyssal whip", "rs3")
-        assert "**Abyssal whip** (RS3 Grand Exchange)" in result
+        assert "**Abyssal whip** (RS3 prices)" in result
+        assert "Grand Exchange:" in result
         assert "Price:   1m gp" in result
+        assert "Street (community trades):" in result
         assert "Street avg (this week): 950,000 gp  (-3.20%)" in result
 
     @pytest.mark.anyio
@@ -169,9 +173,11 @@ class TestGetItemPriceRs3StreetPrices:
 
         monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)
         result = await get_item_price("Tumeken's Light", "rs3")
-        assert "RS3 Grand Exchange" in result
+        assert "**Tumeken's Light** (RS3 prices)" in result
+        assert "Price:   2.2b gp" in result
+        assert "Street (community trades):" in result
+        assert "No street trades on record." in result
         assert "Street avg" not in result
-        assert "Street:" not in result
 
     @pytest.mark.anyio
     async def test_off_ge_only_falls_back_to_geprice(self, monkeypatch):
@@ -185,7 +191,8 @@ class TestGetItemPriceRs3StreetPrices:
 
         monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)
         result = await get_item_price("Mask of Tumeken's Resplendence", "rs3")
-        assert "**Mask of Tumeken's Resplendence** (RS3 community trades)" in result
+        assert "**Mask of Tumeken's Resplendence** (RS3 prices)" in result
+        assert "Not on the Grand Exchange." in result
         assert "Street avg (this week): 349,000,000 gp  (-5.48%)" in result
 
     @pytest.mark.anyio
@@ -214,8 +221,9 @@ class TestGetItemPriceRs3StreetPrices:
 
         monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)
         result = await get_item_price("Abyssal whip", "rs3")
-        assert "**Abyssal whip** (RS3 Grand Exchange)" in result
+        assert "**Abyssal whip** (RS3 prices)" in result
         assert "Price:   1m gp" in result
+        assert "No street trades on record." in result
         assert "Street avg" not in result
 
     @pytest.mark.anyio
@@ -235,7 +243,8 @@ class TestGetItemPriceRs3StreetPrices:
 
         monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)
         result = await get_item_price("Tumeken's Light", "rs3")
-        assert "RS3 Grand Exchange" in result
+        assert "**Tumeken's Light** (RS3 prices)" in result
+        assert "Price:   2.2b gp" in result
         assert "Street: 2,200,000,000 gp  (last traded 2026-04-08)" in result
         assert "Street avg" not in result
 
@@ -254,7 +263,8 @@ class TestGetItemPriceRs3StreetPrices:
 
         monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)
         result = await get_item_price("Mask of Tumeken's Resplendence", "rs3")
-        assert "**Mask of Tumeken's Resplendence** (RS3 community trades)" in result
+        assert "**Mask of Tumeken's Resplendence** (RS3 prices)" in result
+        assert "Not on the Grand Exchange." in result
         assert "Street: 224,256,000 gp  (last traded 2026-04-08)" in result
 
     @pytest.mark.anyio

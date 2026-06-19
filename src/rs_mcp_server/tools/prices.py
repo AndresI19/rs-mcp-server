@@ -128,41 +128,23 @@ async def _rs3_item_id(item_name: str) -> tuple[int, str] | None:
 
 async def _get_rs3_price(item_name: str) -> str:
     match = await _rs3_item_id(item_name)
-    if match is None:
-        # No GE module page — fall back to the geprice community catalog for
-        # off-GE items (Tumeken's Resplendence pieces, Devourer's Nexus, etc.).
+
+    if match is not None:
+        item_id, canonical = match
+        ge_detail = (await http_get(_RS3_GE_DETAIL, params={"item": item_id})).get("item")
+        street = await _geprice_lookup(canonical)
+    else:
+        ge_detail = None
         street = await _geprice_lookup(item_name)
-        if street is not None:
-            formatted = _format_geprice_only(street)
-            if formatted is not None:
-                return formatted
-        return f"Item '{item_name}' not found on the RS3 Grand Exchange."
+        # Promote geprice's canonical name when available (preserves casing)
+        canonical = street.get("name", item_name) if street else item_name
 
-    item_id, canonical = match
-    detail = (await http_get(_RS3_GE_DETAIL, params={"item": item_id})).get("item", {})
+    street_line = _format_street_line(street) if street is not None else None
 
-    price   = detail.get("current", {}).get("price", "N/A")
-    trend   = detail.get("current", {}).get("trend", "")
-    today_p = detail.get("today", {}).get("price", "")
-    d30     = detail.get("day30", {}).get("change", "")
-    d90     = detail.get("day90", {}).get("change", "")
+    if ge_detail is None and street_line is None:
+        return f"Item '{item_name}' not found on the RS3 Grand Exchange or community trades."
 
-    lines = [f"**{canonical}** (RS3 Grand Exchange)"]
-    lines.append(f"Price:   {price} gp  ({trend})")
-    if today_p:
-        lines.append(f"Today:   {today_p} gp")
-    if d30:
-        lines.append(f"30-day:  {d30}")
-    if d90:
-        lines.append(f"90-day:  {d90}")
-
-    street = await _geprice_lookup(canonical)
-    if street is not None:
-        street_line = _format_street_line(street)
-        if street_line:
-            lines.append(street_line)
-
-    return "\n".join(lines)
+    return _format_rs3_prices(canonical, ge_detail, street_line)
 
 
 def _format_street_line(entry: dict) -> str | None:
@@ -181,11 +163,30 @@ def _format_street_line(entry: dict) -> str | None:
     return None
 
 
-def _format_geprice_only(entry: dict) -> str | None:
-    line = _format_street_line(entry)
-    if line is None:
-        return None
-    return f"**{entry['name']}** (RS3 community trades)\n{line}"
+def _format_rs3_prices(canonical: str, ge_detail: dict | None, street_line: str | None) -> str:
+    """Render the unified RS3 pricing block — both channels always present (issue #72)."""
+    sections = [f"**{canonical}** (RS3 prices)", "", "Grand Exchange:"]
+
+    if ge_detail:
+        price   = ge_detail.get("current", {}).get("price", "N/A")
+        trend   = ge_detail.get("current", {}).get("trend", "")
+        today_p = ge_detail.get("today", {}).get("price", "")
+        d30     = ge_detail.get("day30", {}).get("change", "")
+        d90     = ge_detail.get("day90", {}).get("change", "")
+        sections.append(f"  Price:   {price} gp  ({trend})")
+        if today_p:
+            sections.append(f"  Today:   {today_p} gp")
+        if d30:
+            sections.append(f"  30-day:  {d30}")
+        if d90:
+            sections.append(f"  90-day:  {d90}")
+    else:
+        sections.append("  Not on the Grand Exchange.")
+
+    sections += ["", "Street (community trades):"]
+    sections.append(f"  {street_line}" if street_line else "  No street trades on record.")
+
+    return "\n".join(sections)
 
 
 # ---------------------------------------------------------------------------

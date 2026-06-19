@@ -28,6 +28,7 @@ EXPECTED_TOOLS = {
 CASES: list[tuple[str, dict, list[str]]] = [
     ("search_wiki",         {"query": "fishing", "game": "rs3"},                                            ["**Fishing**", "Wiki)"]),
     ("search_wiki",         {"query": "ardougne", "game": "osrs"},                                          ["OSRS Wiki)"]),
+    ("search_wiki",         {"query": "Trimmed masterwork", "game": "rs3"},                                 ["**Trimmed masterwork", "RS3 Wiki", "Set bonus"]),
     ("get_item_price",      {"item_name": "shark", "game": "osrs"},                                         ["**Shark**", "OSRS Grand Exchange", "Instant buy:", "5-min avg"]),
     ("get_item_price",      {"item_name": "Abyssal whip", "game": "rs3"},                                   ["**Abyssal whip**", "RS3 Grand Exchange", "Price:"]),
     ("get_item_price",      {"item_name": "Mask of Tumeken's Resplendence", "game": "rs3"},                 ["**Mask of Tumeken's Resplendence**", "community trades", "Street"]),

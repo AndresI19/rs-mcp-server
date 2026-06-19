@@ -292,6 +292,37 @@ class TestGetQuestInfo:
         assert "RS3" in result
 
 
+class TestSearchTypeFilter:
+    """Issue #76 — search must skip pages whose content doesn't carry a quest template."""
+
+    @pytest.mark.anyio
+    async def test_search_skips_wrong_type_candidates(self, monkeypatch):
+        def wiki_page(title, content):
+            return {"title": title, "revisions": [{"slots": {"main": {"content": content}}}]}
+
+        async def fake_http_get(url, params=None, timeout=10.0):
+            if (params or {}).get("generator") != "search":
+                return {"query": {"pages": [{"missing": True}]}}
+            # Search returns 2 wrong-type then the right one
+            return {
+                "query": {
+                    "pages": [
+                        wiki_page("Some music", "{{Infobox Music|composer=Ian Taylor}}"),
+                        wiki_page("Some NPC",   "{{Infobox NPC|name=Random}}"),
+                        wiki_page("Cook's Helper",
+                                  "{{Infobox Quest\n|difficulty = Novice\n|length = Short\n}}"),
+                    ]
+                }
+            }
+
+        monkeypatch.setattr("rs_mcp_server.tools.quests.http_get", fake_http_get)
+        result = await get_quest_info("Cook's Helper", "osrs")
+        # Resolved to the quest, not the music track or NPC
+        assert "**Cook's Helper**" in result
+        assert "**Difficulty:** Novice" in result
+        assert "Music" not in result
+
+
 class TestDisambigSuffixFallback:
     """Issue #75 — bare name returns wrong-type page; retry with (quest) suffix."""
 

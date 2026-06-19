@@ -67,12 +67,9 @@ async def get_quest_info(quest_name: str, game: str = "rs3") -> str:
             cache_key,
         )
 
-    page = await _fetch_page(candidate["title"], game, follow_redirects=False)
-    if page is None or not _has_quest_template(page["content"]):
-        return f"**{candidate['title']}** ({wiki_label} Wiki)\n{candidate['url']}\n\nNo quest infobox found on this page — it may not be a quest."
-
+    # _search_quest guarantees candidate["content"] contains a quest template.
     return _cache_and_return(
-        _format_from_content(page["title"], page["url"], wiki_label, page["content"]),
+        _format_from_content(candidate["title"], candidate["url"], wiki_label, candidate["content"]),
         cache_key,
     )
 
@@ -132,25 +129,37 @@ async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | N
 
 
 async def _search_quest(query: str, game: str) -> dict | None:
-    """Search restricted to quest pages via `incategory:Quests`. Falls back to plain search."""
+    """Search restricted to quest pages via `incategory:Quests`. Falls back to plain search.
+
+    Both tiers fetch top candidates with content and filter to pages whose wikitext
+    contains a quest template — generic-named search hits (music tracks, NPCs sharing
+    a quest's name) get skipped instead of confidently returned.
+    """
     for search_term in (f'{query} incategory:"Quests"', query):
         params = {
             "action": "query",
             "generator": "search",
             "gsrsearch": search_term,
-            "gsrlimit": 1,
-            "prop": "info",
+            "gsrlimit": 5,
+            "prop": "revisions|info",
+            "rvprop": "content",
+            "rvslots": "main",
             "inprop": "url",
             **MW_BASE_PARAMS,
         }
         data = await http_get(WIKI_APIS[game], params=params)
-        pages = data.get("query", {}).get("pages", [])
-        if pages:
-            page = pages[0]
+        for page in data.get("query", {}).get("pages", []):
+            revisions = page.get("revisions") or []
+            if not revisions:
+                continue
+            content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
+            if not _has_quest_template(content):
+                continue
             title = page.get("title", "")
             return {
                 "title": title,
                 "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
+                "content": content,
             }
     return None
 
@@ -165,7 +174,7 @@ def _has_quest_template(wikitext: str) -> bool:
 
 def _find_template(wikitext: str, name: str) -> str | None:
     """Walk balanced braces from `{{<name>` to its matching `}}`."""
-    pattern = r"\{\{" + name.replace(" ", "[ _]") + r"\b"
+    pattern = r"\{\{" + name.replace(" ", "[ _]") + r"(?=\s*[|}])"
     match = re.search(pattern, wikitext, re.IGNORECASE)
     if not match:
         return None

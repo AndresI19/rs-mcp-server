@@ -100,18 +100,10 @@ async def get_monster_info(monster_name: str, game: str = "rs3") -> str:
             cache_key,
         )
 
-    page = await _fetch_page(candidate["title"], game, follow_redirects=False)
-    if page is None:
-        return f"No monster found for '{monster_name}' on the {wiki_label} wiki."
-    body = _find_template(page["content"], "Infobox Monster")
-    if body is None:
-        return (
-            f"**{page['title']}** ({wiki_label} Wiki)\n"
-            f"{page['url']}\n\n"
-            f"No monster info found — this page may not be a monster article."
-        )
+    # _search_monster guarantees candidate["content"] contains an Infobox Monster template.
+    body = _find_template(candidate["content"], "Infobox Monster")
     return _cache_and_return(
-        _format_monster(page["title"], page["url"], wiki_label, _parse_fields(body), fields_def),
+        _format_monster(candidate["title"], candidate["url"], wiki_label, _parse_fields(body), fields_def),
         cache_key,
     )
 
@@ -174,21 +166,28 @@ async def _search_monster(query: str, game: str) -> dict | None:
         "action": "query",
         "generator": "search",
         "gsrsearch": query,
-        "gsrlimit": 1,
-        "prop": "info",
+        "gsrlimit": 5,
+        "prop": "revisions|info",
+        "rvprop": "content",
+        "rvslots": "main",
         "inprop": "url",
         **MW_BASE_PARAMS,
     }
     data = await http_get(WIKI_APIS[game], params=params)
-    pages = data.get("query", {}).get("pages", [])
-    if not pages:
-        return None
-    page = pages[0]
-    title = page.get("title", "")
-    return {
-        "title": title,
-        "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
-    }
+    for page in data.get("query", {}).get("pages", []):
+        revisions = page.get("revisions") or []
+        if not revisions:
+            continue
+        content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
+        if _find_template(content, "Infobox Monster") is None:
+            continue
+        title = page.get("title", "")
+        return {
+            "title": title,
+            "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
+            "content": content,
+        }
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -196,7 +195,7 @@ async def _search_monster(query: str, game: str) -> dict | None:
 # ---------------------------------------------------------------------------
 
 def _find_template(wikitext: str, name: str) -> str | None:
-    pattern = r"\{\{" + re.escape(name) + r"\b"
+    pattern = r"\{\{" + re.escape(name) + r"(?=\s*[|}])"
     match = re.search(pattern, wikitext, re.IGNORECASE)
     if not match:
         return None

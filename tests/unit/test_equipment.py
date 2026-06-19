@@ -83,6 +83,8 @@ class TestGetEquipmentStatsOsrs:
 
     @pytest.mark.anyio
     async def test_no_combat_stats_when_template_missing(self, monkeypatch):
+        # Page exists but has no Infobox Bonuses. Search filter rejects it →
+        # tool returns the cleaner "No equipment found" message (#76).
         page_without_bonuses = _wiki_page("Bones", "Just an article body, no infobox bonuses here.")
 
         async def fake_http_get(url, params=None, timeout=10.0):
@@ -90,8 +92,7 @@ class TestGetEquipmentStatsOsrs:
 
         monkeypatch.setattr("rs_mcp_server.tools.equipment.http_get", fake_http_get)
         result = await get_equipment_stats("Bones", "osrs")
-        assert "**Bones**" in result
-        assert "No combat stats found" in result
+        assert "No equipment found for 'Bones'" in result
 
     @pytest.mark.anyio
     async def test_no_equipment_found(self, monkeypatch):
@@ -249,6 +250,40 @@ class TestGetEquipmentStatsNamedSections:
         # Infobox stats still render; no enrichment, no exception.
         assert "**Tier:** 92" in result
         assert "## Set bonus" not in result
+
+
+class TestSearchTypeFilter:
+    """Issue #76 — search must skip pages whose content doesn't carry an Infobox Bonuses."""
+
+    @pytest.mark.anyio
+    async def test_search_skips_wrong_type_candidates(self, monkeypatch):
+        def page_revision(title, content):
+            return {"title": title, "revisions": [{"slots": {"main": {"content": content}}}]}
+
+        async def fake_http_get(url, params=None, timeout=10.0):
+            # Direct fetch returns missing; search returns 3 candidates
+            if (params or {}).get("generator") != "search":
+                return {"query": {"pages": [{"missing": True}]}}
+            if (params or {}).get("action") == "parse":
+                # _fetch_named_sections may be called by the success path — return empty
+                return {"parse": {"text": "<div></div>"}}
+            return {
+                "query": {
+                    "pages": [
+                        page_revision("Damage bonus", "{{Infobox Skill|name=Damage bonus}}"),  # game-mechanic page, not equipment
+                        page_revision("Life points",  "{{Infobox Skill|name=Life points}}"),
+                        page_revision("Some helm", "{{Infobox Bonuses\n|slot = head\n|tier = 92\n|armour = 457\n|prayer = 2\n}}"),
+                    ]
+                }
+            }
+
+        monkeypatch.setattr("rs_mcp_server.tools.equipment.http_get", fake_http_get)
+        result = await get_equipment_stats("Some helm", "rs3")
+        assert "**Some helm**" in result
+        assert "**Tier:** 92" in result
+        # Wrong-type candidates must not appear
+        assert "Damage bonus" not in result
+        assert "Life points" not in result
 
 
 class TestGetEquipmentStatsValidation:

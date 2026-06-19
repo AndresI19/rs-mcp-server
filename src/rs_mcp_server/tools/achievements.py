@@ -87,6 +87,23 @@ async def get_achievement(name: str, game: str = "rs3") -> str:
                         cache_key,
                     )
 
+    # Roman-numeral variant enumeration (#78): handles names like "Are You
+    # Winning, Zam?" where the bare page isn't an achievement but I/II/III/IV
+    # variants are. One batch query covers all five suffixes.
+    variants = await _enumerate_roman_variants(name, game)
+    if len(variants) == 1:
+        v = variants[0]
+        body, fields_def, kind = _dispatch(v["content"])
+        return _cache_and_return(
+            _format_achievement(v["title"], v["url"], wiki_label, kind, _parse_fields(body), fields_def),
+            cache_key,
+        )
+    if len(variants) >= 2:
+        return _cache_and_return(
+            _render_variants(variants, wiki_label, name),
+            cache_key,
+        )
+
     candidate = await _search_achievement(name, game)
     if candidate is None:
         return f"No achievement found for '{name}' on the {wiki_label} wiki."
@@ -243,6 +260,49 @@ def _clean(s: str) -> str:
     s = re.sub(r"\{\{[^}]*\}\}", "", s)
     s = re.sub(r"<[^>]+>", "", s)
     return s.strip()
+
+
+async def _enumerate_roman_variants(name: str, game: str) -> list[dict]:
+    """Try '<name> I' through '<name> V' in one batch query; return variants
+    that exist and carry an achievement template."""
+    titles = "|".join(f"{name} {n}" for n in ("I", "II", "III", "IV", "V"))
+    params = {
+        "action": "query",
+        "titles": titles,
+        "prop": "revisions|info",
+        "rvprop": "content",
+        "rvslots": "main",
+        "inprop": "url",
+        "redirects": 1,
+        **MW_BASE_PARAMS,
+    }
+    data = await http_get(WIKI_APIS[game], params=params)
+    found: list[dict] = []
+    for page in data.get("query", {}).get("pages", []):
+        if page.get("missing"):
+            continue
+        revisions = page.get("revisions") or []
+        if not revisions:
+            continue
+        content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
+        if _dispatch(content) is None:
+            continue
+        title = page.get("title", "")
+        found.append({
+            "title": title,
+            "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
+            "content": content,
+        })
+    return found
+
+
+def _render_variants(variants: list[dict], wiki_label: str, base_name: str) -> str:
+    lines = [f'Multiple tiered variants of **"{base_name}"** found ({wiki_label} Wiki):', ""]
+    for v in variants:
+        lines.append(f"- **{v['title']}** — {v['url']}")
+    lines.append("")
+    lines.append("Re-invoke `get_achievement` with the exact tier name to fetch full details.")
+    return "\n".join(lines)
 
 
 def _format_achievement(title: str, url: str, wiki_label: str, kind: str, fields: dict, fields_def: list) -> str:

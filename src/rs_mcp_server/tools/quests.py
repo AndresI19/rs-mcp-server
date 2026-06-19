@@ -57,6 +57,20 @@ async def get_quest_info(quest_name: str, game: str = "rs3") -> str:
                     cache_key,
                 )
 
+    # Roman-numeral variant enumeration (#78).
+    variants = await _enumerate_roman_variants(quest_name, game)
+    if len(variants) == 1:
+        v = variants[0]
+        return _cache_and_return(
+            _format_from_content(v["title"], v["url"], wiki_label, v["content"]),
+            cache_key,
+        )
+    if len(variants) >= 2:
+        return _cache_and_return(
+            _render_variants(variants, wiki_label, quest_name),
+            cache_key,
+        )
+
     candidate = await _search_quest(quest_name, game)
     if candidate is None:
         return f"No quest found for '{quest_name}' on the {wiki_label} wiki."
@@ -167,6 +181,49 @@ async def _search_quest(query: str, game: str) -> dict | None:
 # ---------------------------------------------------------------------------
 # Wikitext parsing
 # ---------------------------------------------------------------------------
+
+async def _enumerate_roman_variants(quest_name: str, game: str) -> list[dict]:
+    """Try '<name> I' through '<name> V' in one batch query; return variants
+    that exist and carry a quest template."""
+    titles = "|".join(f"{quest_name} {n}" for n in ("I", "II", "III", "IV", "V"))
+    params = {
+        "action": "query",
+        "titles": titles,
+        "prop": "revisions|info",
+        "rvprop": "content",
+        "rvslots": "main",
+        "inprop": "url",
+        "redirects": 1,
+        **MW_BASE_PARAMS,
+    }
+    data = await http_get(WIKI_APIS[game], params=params)
+    found: list[dict] = []
+    for page in data.get("query", {}).get("pages", []):
+        if page.get("missing"):
+            continue
+        revisions = page.get("revisions") or []
+        if not revisions:
+            continue
+        content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
+        if not _has_quest_template(content):
+            continue
+        title = page.get("title", "")
+        found.append({
+            "title": title,
+            "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
+            "content": content,
+        })
+    return found
+
+
+def _render_variants(variants: list[dict], wiki_label: str, base_name: str) -> str:
+    lines = [f'Multiple tiered variants of **"{base_name}"** found ({wiki_label} Wiki):', ""]
+    for v in variants:
+        lines.append(f"- **{v['title']}** — {v['url']}")
+    lines.append("")
+    lines.append("Re-invoke `get_quest_info` with the exact tier name to fetch full details.")
+    return "\n".join(lines)
+
 
 def _has_quest_template(wikitext: str) -> bool:
     return any(_find_template(wikitext, name) is not None for name in _TEMPLATES)

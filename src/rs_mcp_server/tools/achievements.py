@@ -74,6 +74,19 @@ async def get_achievement(name: str, game: str = "rs3") -> str:
                 cache_key,
             )
 
+        # Page exists but is the wrong type (e.g. Flow_State is a relic page,
+        # but Flow_State_(achievement) exists). Retry with disambig suffix.
+        for suffix in ("achievement",):
+            suffixed = await _fetch_page(f"{name} ({suffix})", game, follow_redirects=True)
+            if suffixed is not None:
+                match = _dispatch(suffixed["content"])
+                if match is not None:
+                    body, fields_def, kind = match
+                    return _cache_and_return(
+                        _format_achievement(suffixed["title"], suffixed["url"], wiki_label, kind, _parse_fields(body), fields_def),
+                        cache_key,
+                    )
+
     candidate = await _search_achievement(name, game)
     if candidate is None:
         return f"No achievement found for '{name}' on the {wiki_label} wiki."

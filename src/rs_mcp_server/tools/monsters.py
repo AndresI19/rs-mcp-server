@@ -79,6 +79,17 @@ async def get_monster_info(monster_name: str, game: str = "rs3") -> str:
                 cache_key,
             )
 
+        # Page exists but is the wrong type — try disambig suffix(es).
+        for suffix in ("monster", "NPC"):
+            suffixed = await _fetch_page(f"{monster_name} ({suffix})", game, follow_redirects=True)
+            if suffixed is not None:
+                body = _find_template(suffixed["content"], "Infobox Monster")
+                if body is not None:
+                    return _cache_and_return(
+                        _format_monster(suffixed["title"], suffixed["url"], wiki_label, _parse_fields(body), fields_def),
+                        cache_key,
+                    )
+
     candidate = await _search_monster(monster_name, game)
     if candidate is None:
         return f"No monster found for '{monster_name}' on the {wiki_label} wiki."

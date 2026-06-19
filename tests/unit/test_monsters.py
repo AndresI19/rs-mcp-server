@@ -153,3 +153,57 @@ class TestGetMonsterInfoValidation:
     async def test_whitespace_name_returns_error(self):
         result = await get_monster_info("   ", "osrs")
         assert "No monster name provided" in result
+
+
+class TestDisambigSuffixFallback:
+    """Issue #75 — bare name returns wrong-type page; retry with (monster) then (NPC) suffix."""
+
+    @pytest.mark.anyio
+    async def test_resolves_via_monster_suffix(self, monkeypatch):
+        # Bare "Tarn Razorlor" → NPC profile (no Infobox Monster).
+        # "Tarn Razorlor (monster)" → the right monster page.
+        npc_wikitext = "{{Infobox NPC|name = Tarn Razorlor|race = Human}}"
+        monster_wikitext = (
+            "{{Infobox Monster\n"
+            "|name = Tarn Razorlor\n"
+            "|combat = 69\n"
+            "|hitpoints = 60\n"
+            "|members = Yes\n"
+            "}}"
+        )
+
+        async def fake_http_get(url, params=None, timeout=10.0):
+            title = (params or {}).get("titles", "")
+            if title == "Tarn Razorlor":
+                return _wiki_page("Tarn Razorlor", npc_wikitext)
+            if title == "Tarn Razorlor (monster)":
+                return _wiki_page("Tarn Razorlor (monster)", monster_wikitext)
+            raise AssertionError(f"unexpected titles param: {title}")
+
+        monkeypatch.setattr("rs_mcp_server.tools.monsters.http_get", fake_http_get)
+        result = await get_monster_info("Tarn Razorlor", "osrs")
+        assert "**Tarn Razorlor (monster)**" in result
+        assert "Combat level" in result
+        assert "Did you mean" not in result
+
+    @pytest.mark.anyio
+    async def test_falls_through_to_npc_suffix_when_monster_misses(self, monkeypatch):
+        # Bare "Some Guy" → wrong type. (monster) → also wrong type. (NPC) → right type.
+        # Tests the suffix-loop ordering.
+        wrong_wikitext = "{{Infobox Character|name = Some Guy}}"
+        monster_wikitext = "{{Infobox Monster\n|name = Some Guy\n|combat = 5\n|hitpoints = 10\n}}"
+
+        async def fake_http_get(url, params=None, timeout=10.0):
+            title = (params or {}).get("titles", "")
+            if title == "Some Guy":
+                return _wiki_page("Some Guy", wrong_wikitext)
+            if title == "Some Guy (monster)":
+                return _wiki_page("Some Guy (monster)", wrong_wikitext)
+            if title == "Some Guy (NPC)":
+                return _wiki_page("Some Guy (NPC)", monster_wikitext)
+            raise AssertionError(f"unexpected titles param: {title}")
+
+        monkeypatch.setattr("rs_mcp_server.tools.monsters.http_get", fake_http_get)
+        result = await get_monster_info("Some Guy", "osrs")
+        assert "**Some Guy (NPC)**" in result
+        assert "Combat level" in result

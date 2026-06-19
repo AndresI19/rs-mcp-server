@@ -174,6 +174,44 @@ class TestGetAchievementDispatchPriority:
         assert "**Tier:** Easy" in result
 
 
+class TestDisambigSuffixFallback:
+    """Issue #75 — bare name returns wrong-type page; retry with (achievement) suffix."""
+
+    @pytest.mark.anyio
+    async def test_flow_state_resolves_via_achievement_suffix(self, monkeypatch):
+        # Bare "Flow State" returns a relic page (no Infobox Achievement).
+        # "Flow State (achievement)" returns the right achievement page.
+        relic_wikitext = "{{Infobox Relic\n|name = Flow State\n|tier = Lesser\n}}"
+        achievement_wikitext = (
+            "{{Infobox Achievement\n"
+            "|name = Flow State\n"
+            "|description = Open the Necromancy spellbook.\n"
+            "|score = 10\n"
+            "|maincategory = Skills\n"
+            "|subcategory = Necromancy\n"
+            "|members = Yes\n"
+            "|release = 7 August 2023\n"
+            "}}"
+        )
+
+        async def fake_http_get(url, params=None, timeout=10.0):
+            title = (params or {}).get("titles", "")
+            if title == "Flow State":
+                return _wiki_page("Flow State", relic_wikitext)
+            if title == "Flow State (achievement)":
+                return _wiki_page("Flow State (achievement)", achievement_wikitext)
+            raise AssertionError(f"unexpected titles param: {title}")
+
+        monkeypatch.setattr("rs_mcp_server.tools.achievements.http_get", fake_http_get)
+        result = await get_achievement("Flow State", "rs3")
+        # Resolved via suffix retry → returns the achievement page, not the relic
+        assert "**Flow State (achievement)**" in result
+        assert "Achievement" in result
+        assert "Open the Necromancy spellbook" in result
+        # Should NOT show disambiguation message — suffix retry is treated as success
+        assert "Did you mean" not in result
+
+
 class TestGetAchievementValidation:
     @pytest.mark.anyio
     async def test_unknown_game_returns_error(self):

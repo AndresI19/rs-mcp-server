@@ -24,6 +24,7 @@ from rs_mcp_server.tools.equipment import get_equipment_stats
 from rs_mcp_server.tools.monsters import get_monster_info
 from rs_mcp_server.tools.drops import get_item_drop_sources
 from rs_mcp_server.tools.achievements import get_achievement
+from rs_mcp_server.tools.player_progress import get_player_achievement_progress
 from rs_mcp_server.tools.moneymakers import get_money_makers, get_money_maker_method
 from rs_mcp_server.tools.alchables import get_best_alchables
 from rs_mcp_server.tools.settings import get_game_setting
@@ -181,7 +182,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="get_achievement",
-            description="Look up a RuneScape achievement on the wiki — works for OSRS Combat Achievements (per-task), OSRS Achievement Diaries (summary only), and RS3 achievements (per-task). Returns description, tier or category, requirements, and rewards. Player-progress (whether a specific player has completed an achievement) is not in scope for this tool.",
+            description="Look up a RuneScape achievement on the wiki — works for OSRS Combat Achievements (per-task), OSRS Achievement Diaries (summary only), and RS3 achievements (per-task). Returns description, tier or category, requirements, and rewards. For per-player completion progress, use get_player_achievement_progress.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -193,6 +194,23 @@ async def list_tools() -> list[Tool]:
                     },
                 },
                 "required": ["name"],
+            },
+        ),
+        Tool(
+            name="get_player_achievement_progress",
+            description="Pair wiki achievement info with a specific player's hiscores. For OSRS Combat Achievements that target a boss listed in public hiscores, surfaces that boss's kill count for the player. For Achievement Diaries (OSRS) and per-task achievements (RS3), the tool is honest that completion isn't in public hiscores and points to the in-game adventurer's log.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "The achievement name."},
+                    "username": {"type": "string", "description": "The player's RuneScape username."},
+                    "game": {
+                        "type": "string",
+                        "enum": ["rs3", "osrs"],
+                        "description": "Which game to query: 'rs3' (default) or 'osrs'.",
+                    },
+                },
+                "required": ["name", "username"],
             },
         ),
         Tool(
@@ -328,6 +346,10 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         result = await get_item_drop_sources(arguments["item_name"], arguments.get("game", "rs3"))
     elif name == "get_achievement":
         result = await get_achievement(arguments["name"], arguments.get("game", "rs3"))
+    elif name == "get_player_achievement_progress":
+        result = await get_player_achievement_progress(
+            arguments["name"], arguments["username"], arguments.get("game", "rs3")
+        )
     elif name == "get_money_makers":
         result = await get_money_makers(
             arguments.get("game", "rs3"),

@@ -171,6 +171,7 @@ class TestGetItemPriceRs3StreetPrices:
         result = await get_item_price("Tumeken's Light", "rs3")
         assert "RS3 Grand Exchange" in result
         assert "Street avg" not in result
+        assert "Street:" not in result
 
     @pytest.mark.anyio
     async def test_off_ge_only_falls_back_to_geprice(self, monkeypatch):
@@ -216,3 +217,58 @@ class TestGetItemPriceRs3StreetPrices:
         assert "**Abyssal whip** (RS3 Grand Exchange)" in result
         assert "Price:   1m gp" in result
         assert "Street avg" not in result
+
+    @pytest.mark.anyio
+    async def test_ge_item_renders_last_traded_when_week_avg_zero(self, monkeypatch):
+        async def fake_http_get(url, params=None, timeout=10.0):
+            if "runescape.wiki" in url:
+                return {"query": {"pages": [{"revisions": [{"content": "itemId = 59350\nitem = \"Tumeken's Light\""}]}]}}
+            if "itemdb_rs" in url:
+                return {"item": {"current": {"price": "2.2b", "trend": "neutral"}}}
+            if "geprice.com" in url:
+                return [{
+                    "id": 59350, "name": "Tumeken's Light",
+                    "currentWeekAverage": 0, "weeklyChangePercent": "-",
+                    "fallbackPrice": 2_200_000_000, "fallbackDate": "2026-04-08",
+                }]
+            raise AssertionError(f"unexpected URL: {url}")
+
+        monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)
+        result = await get_item_price("Tumeken's Light", "rs3")
+        assert "RS3 Grand Exchange" in result
+        assert "Street: 2,200,000,000 gp  (last traded 2026-04-08)" in result
+        assert "Street avg" not in result
+
+    @pytest.mark.anyio
+    async def test_off_ge_item_renders_last_traded_when_week_avg_zero(self, monkeypatch):
+        async def fake_http_get(url, params=None, timeout=10.0):
+            if "runescape.wiki" in url:
+                return {"query": {"pages": [{"missing": True}]}}
+            if "geprice.com" in url:
+                return [{
+                    "id": 59344, "name": "Mask of Tumeken's Resplendence",
+                    "currentWeekAverage": 0, "weeklyChangePercent": "-",
+                    "fallbackPrice": 224_256_000, "fallbackDate": "2026-04-08",
+                }]
+            raise AssertionError(f"unexpected URL: {url}")
+
+        monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)
+        result = await get_item_price("Mask of Tumeken's Resplendence", "rs3")
+        assert "**Mask of Tumeken's Resplendence** (RS3 community trades)" in result
+        assert "Street: 224,256,000 gp  (last traded 2026-04-08)" in result
+
+    @pytest.mark.anyio
+    async def test_off_ge_item_with_no_price_data_still_returns_not_found(self, monkeypatch):
+        async def fake_http_get(url, params=None, timeout=10.0):
+            if "runescape.wiki" in url:
+                return {"query": {"pages": [{"missing": True}]}}
+            if "geprice.com" in url:
+                return [{
+                    "id": 59344, "name": "Mask of Tumeken's Resplendence",
+                    "currentWeekAverage": 0, "weeklyChangePercent": "-",
+                }]
+            raise AssertionError(f"unexpected URL: {url}")
+
+        monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)
+        result = await get_item_price("Mask of Tumeken's Resplendence", "rs3")
+        assert result.startswith("Item 'Mask of Tumeken's Resplendence' not found")

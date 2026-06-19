@@ -10,13 +10,13 @@ dev:
 	.venv/bin/python -m rs_mcp_server.server
 
 start:
-	@bash scripts/start.sh
+	@bash scripts/docker.sh start
 
 stop:
-	@bash scripts/stop.sh
+	@bash scripts/docker.sh stop
 
 logs:
-	@tail -f /tmp/mcp-server.log
+	@bash scripts/docker.sh logs
 
 unit:
 	.venv/bin/python -m pytest tests/unit -v

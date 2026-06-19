@@ -423,7 +423,7 @@ async def _search_method(query: str, game: str) -> dict | None:
 
 
 def _find_template(wikitext: str, name: str) -> str | None:
-    pattern = r"\{\{" + re.escape(name) + r"\b"
+    pattern = r"\{\{" + re.escape(name) + r"(?=\s*[|}])"
     match = re.search(pattern, wikitext, re.IGNORECASE)
     if not match:
         return None

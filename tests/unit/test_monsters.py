@@ -96,6 +96,8 @@ class TestGetMonsterInfoOsrs:
 
     @pytest.mark.anyio
     async def test_no_info_when_template_missing(self, monkeypatch):
+        # Page exists but has no monster infobox. Search filter rejects it →
+        # tool returns the cleaner "No monster found" message (#76).
         page_without_infobox = _wiki_page("Cabbage", "Just an article body, no infobox monster here.")
 
         async def fake_http_get(url, params=None, timeout=10.0):
@@ -103,8 +105,7 @@ class TestGetMonsterInfoOsrs:
 
         monkeypatch.setattr("rs_mcp_server.tools.monsters.http_get", fake_http_get)
         result = await get_monster_info("Cabbage", "osrs")
-        assert "**Cabbage**" in result
-        assert "No monster info found" in result
+        assert "No monster found for 'Cabbage'" in result
 
     @pytest.mark.anyio
     async def test_no_monster_found(self, monkeypatch):
@@ -153,6 +154,36 @@ class TestGetMonsterInfoValidation:
     async def test_whitespace_name_returns_error(self):
         result = await get_monster_info("   ", "osrs")
         assert "No monster name provided" in result
+
+
+class TestSearchTypeFilter:
+    """Issue #76 — search must skip pages whose content doesn't carry an Infobox Monster."""
+
+    @pytest.mark.anyio
+    async def test_search_skips_wrong_type_candidates(self, monkeypatch):
+        def page_revision(title, content):
+            return {"title": title, "revisions": [{"slots": {"main": {"content": content}}}]}
+
+        async def fake_http_get(url, params=None, timeout=10.0):
+            if (params or {}).get("generator") != "search":
+                return {"query": {"pages": [{"missing": True}]}}
+            return {
+                "query": {
+                    "pages": [
+                        page_revision("Random NPC", "{{Infobox NPC|name=Random}}"),
+                        page_revision("Quest about demons", "{{Infobox Quest|difficulty=Hard}}"),
+                        page_revision("Demonic creature", "{{Infobox Monster\n|combat = 100\n|hitpoints = 1000\n|members = Yes\n}}"),
+                    ]
+                }
+            }
+
+        monkeypatch.setattr("rs_mcp_server.tools.monsters.http_get", fake_http_get)
+        result = await get_monster_info("Demonic creature", "osrs")
+        assert "**Demonic creature**" in result
+        assert "Combat level" in result
+        # Wrong-type candidates must not appear
+        assert "Random NPC" not in result
+        assert "Quest" not in result
 
 
 class TestDisambigSuffixFallback:

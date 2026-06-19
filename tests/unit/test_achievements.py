@@ -133,6 +133,8 @@ class TestGetAchievementRs3:
 class TestGetAchievementFallback:
     @pytest.mark.anyio
     async def test_no_info_when_no_achievement_template(self, monkeypatch):
+        # Page exists but has no achievement infobox. Search filter rejects it →
+        # tool returns the cleaner "No achievement found" message (#76).
         page_without_infobox = _wiki_page("Cabbage", "Just an article body, no achievement infobox here.")
 
         async def fake_http_get(url, params=None, timeout=10.0):
@@ -140,8 +142,7 @@ class TestGetAchievementFallback:
 
         monkeypatch.setattr("rs_mcp_server.tools.achievements.http_get", fake_http_get)
         result = await get_achievement("Cabbage", "osrs")
-        assert "**Cabbage**" in result
-        assert "No achievement info found" in result
+        assert "No achievement found for 'Cabbage'" in result
 
     @pytest.mark.anyio
     async def test_no_achievement_found(self, monkeypatch):
@@ -172,6 +173,34 @@ class TestGetAchievementDispatchPriority:
         result = await get_achievement("Noxious Foe", "osrs")
         assert "Combat Achievement" in result
         assert "**Tier:** Easy" in result
+
+
+class TestSearchTypeFilter:
+    """Issue #76 — search must skip pages whose content doesn't carry an achievement template."""
+
+    @pytest.mark.anyio
+    async def test_search_skips_wrong_type_candidates(self, monkeypatch):
+        async def fake_http_get(url, params=None, timeout=10.0):
+            # Direct fetch by exact title → missing, forces fall-through to search
+            if (params or {}).get("generator") != "search":
+                return {"query": {"pages": [{"missing": True}]}}
+            # Search returns 3 candidates: minigame + category + achievement
+            return {
+                "query": {
+                    "pages": [
+                        {"title": "Pest Control", "revisions": [{"slots": {"main": {"content": "{{Infobox Minigame|name=Pest Control}}"}}}]},
+                        {"title": "Some category", "revisions": [{"slots": {"main": {"content": "[[Category:Achievements]]"}}}]},
+                        {"title": "Are you winning yet", "revisions": [{"slots": {"main": {"content": "{{Infobox Combat Achievement|tier=Easy|description=Win.|monster=Test}}"}}}]},
+                    ]
+                }
+            }
+
+        monkeypatch.setattr("rs_mcp_server.tools.achievements.http_get", fake_http_get)
+        result = await get_achievement("Are you winning yet", "osrs")
+        # Resolved to the achievement page (passed type filter), not Pest Control or category
+        assert "**Are you winning yet**" in result
+        assert "Pest Control" not in result
+        assert "category" not in result.lower() or "category:" not in result.lower()
 
 
 class TestDisambigSuffixFallback:

@@ -54,6 +54,34 @@ Starts on `http://localhost:8000`. Endpoints:
 | `GET /sse` | MCP SSE connection endpoint (Claude Desktop connects here) |
 | `POST /messages` | MCP message endpoint (used by SSE transport) |
 
+## Connect an MCP client
+
+With the server running (`make start`), point a client at `http://localhost:8000/sse`.
+
+**Claude Code** — this repo ships a project-scoped [`.mcp.json`](.mcp.json) that registers the server automatically when the repo is your Claude Code project:
+
+```json
+{
+  "mcpServers": {
+    "rs-mcp": { "type": "sse", "url": "http://localhost:8000/sse" }
+  }
+}
+```
+
+The same file is produced by `claude mcp add --transport sse rs-mcp http://localhost:8000/sse`. Add `--scope user` (instead of the default `--scope project`) to register it for every Claude Code project rather than just this repo.
+
+**Claude Desktop** — its `claude_desktop_config.json` has no native SSE entry, so bridge through `mcp-remote`:
+
+```json
+{
+  "mcpServers": {
+    "rs-mcp": { "command": "npx", "args": ["mcp-remote@^0.1.38", "http://localhost:8000/sse"] }
+  }
+}
+```
+
+Claude Desktop is macOS/Windows only; on Linux use Claude Code or the claude.ai web **Connectors** UI, which accepts the SSE URL directly. When the server is serving TLS (see [docs/security.md](docs/security.md)) use `https://`, and for a deployed server swap `localhost:8000` for the public host.
+
 ## Verification
 
 ```bash

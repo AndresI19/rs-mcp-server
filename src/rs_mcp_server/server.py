@@ -14,6 +14,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import Mount, Route
 
 from rs_mcp_server.logging import setup_logging
+from rs_mcp_server.version import VERSION_INFO
 from rs_mcp_server.tools.wiki import search_wiki
 from rs_mcp_server.tools.prices import get_item_price
 from rs_mcp_server.tools.hiscores import get_player_stats
@@ -371,6 +372,10 @@ async def health(request: Request) -> JSONResponse:
     return JSONResponse({"status": "ok"})
 
 
+async def version(request: Request) -> JSONResponse:
+    return JSONResponse(VERSION_INFO)
+
+
 def _do_crash():
     raise RuntimeError("deliberate crash via /health?crash")
 
@@ -385,6 +390,7 @@ web = Starlette(
     lifespan=lifespan,
     routes=[
         Route("/health", health),
+        Route("/version", version),
         Route("/sse", endpoint=handle_sse),
         Mount("/messages/", app=sse.handle_post_message),
     ]

@@ -11,6 +11,10 @@ MCP_PORT="${MCP_PORT:-8000}"
 GRACE_SECONDS="${GRACE_SECONDS:-10}"
 MCP_TLS_DIR="${MCP_TLS_DIR:-/etc/tls_certs}"
 SELF_SIGNED_DIR="/tmp/tls_selfsigned"
+# Log rotation for the file sink (rotatelogs): rotate at LOG_MAX_SIZE, keep LOG_BACKUPS
+# generations. The current log is always ${LOGFILE}; older ones are ${LOGFILE}.1 ...
+LOG_MAX_SIZE="${LOG_MAX_SIZE:-10M}"
+LOG_BACKUPS="${LOG_BACKUPS:-5}"
 
 # Cert/key filename pairs recognised in MCP_TLS_DIR, in priority order: k8s TLS secret,
 # Let's Encrypt, then generic PEM. First pair where both files exist wins.
@@ -81,18 +85,23 @@ cmd_start() {
     if cmd_status >/dev/null 2>&1; then
         echo "start: already running"
     else
-        : >"${LOGFILE}"
-        # TLS preflight runs as part of container bootstrap, before the server process
-        # starts; its decision is baked into the uvicorn flags below. Output is appended
-        # to the log without spawning a subshell, so SSL_ARGS/TLS_SCHEME persist.
-        resolve_tls >>"${LOGFILE}" 2>&1
+        # TLS preflight runs as part of container bootstrap, before the server starts.
+        # It runs in this shell so SSL_ARGS/TLS_SCHEME persist; its output goes to the
+        # container console (so the decision is visible via `docker logs`).
+        resolve_tls
+        # uvicorn's stdout+stderr are piped through rotatelogs, which both (a) echoes
+        # every line to the console (-e) so `docker logs` works, and (b) writes a
+        # size-rotated file at ${LOGFILE} on the persistent volume (-n keeps the current
+        # log at that stable path plus ${LOG_BACKUPS} older generations). uvicorn is
+        # backgrounded directly so $! is its PID for the stop/restart logic; rotatelogs
+        # inherits the console fd and keeps feeding it after PID 1 execs tail below.
         /opt/venv/bin/python -m uvicorn rs_mcp_server.server:web \
             --host "${MCP_HOST}" \
             --port "${MCP_PORT}" \
             "${SSL_ARGS[@]}" \
-            >>"${LOGFILE}" 2>&1 &
+            > >(exec /usr/sbin/rotatelogs -e -n "${LOG_BACKUPS}" "${LOGFILE}" "${LOG_MAX_SIZE}") 2>&1 &
         echo "$!" >"${PIDFILE}"
-        echo "start: PID $(cat "${PIDFILE}") on ${TLS_SCHEME}://${MCP_HOST}:${MCP_PORT} (logs: ${LOGFILE})"
+        echo "start: PID $(cat "${PIDFILE}") on ${TLS_SCHEME}://${MCP_HOST}:${MCP_PORT} (logs: docker logs + ${LOGFILE})"
     fi
 
     # When invoked as PID 1 (container ENTRYPOINT), keep this script alive so the

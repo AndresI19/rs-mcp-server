@@ -37,7 +37,9 @@ Run with TLS locally: `TLS_CERTS_DIR=/path/to/certs make start` (mounts the dir 
 
 ## Logs
 
-While the container runs, tail with `make logs` (delegates to `scripts/docker.sh logs`). Logs are persisted in the `rs-mcp-server-logs` docker volume, so they survive container removal and can still be tailed after `make stop`.
+Server output goes to two sinks at once: the container's **stdout** (so `docker logs -f rs-mcp-server` works and orchestrators can scrape it) and a **size-rotated file** at `/logs/uvicorn.log` on the `rs-mcp-server-logs` volume. The entrypoint pipes uvicorn through `rotatelogs -e` to fan out to both — `-e` echoes to the console while the file rotates at `LOG_MAX_SIZE` (default `10M`), keeping `LOG_BACKUPS` (default `5`) generations as `uvicorn.log.1`, `.2`, …
+
+Tail the file with `make logs` (delegates to `scripts/docker.sh logs`); because it lives on the volume it survives container removal and can still be tailed after `make stop`. The current log is always at the stable path `/logs/uvicorn.log`, so `make logs` is unaffected by rotation.
 
 ## Pre-PR checks
 

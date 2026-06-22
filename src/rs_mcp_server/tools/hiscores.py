@@ -30,11 +30,9 @@ async def get_player_stats(username: str, game: str = "rs3") -> str:
     username = username.strip()
     if not username:
         return "Please provide a player username."
-    if not _VALID_RSN.fullmatch(username):
-        return (
-            f"'{username}' isn't a valid RuneScape name — names are 1–12 characters "
-            f"(letters, digits, spaces, hyphens, or underscores)."
-        )
+    invalid = validate_username(username)
+    if invalid:
+        return invalid
 
     cache_key = f"stats:{game}:{username.lower()}"
     cached = cache.get(cache_key)
@@ -70,6 +68,19 @@ def _as_int(value: object) -> int:
         return int(value)
     except (TypeError, ValueError):
         return 0
+
+
+def validate_username(username: str) -> str | None:
+    """Return an error message if `username` isn't a valid RSN format, else None.
+
+    Callers handle the empty case themselves, since their messaging differs.
+    """
+    if not _VALID_RSN.fullmatch(username):
+        return (
+            f"'{username}' isn't a valid RuneScape name — names are 1–12 characters "
+            f"(letters, digits, spaces, hyphens, or underscores)."
+        )
+    return None
 
 
 def _format_stats(username: str, game: str, data: dict) -> str:

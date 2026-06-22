@@ -3,7 +3,7 @@ import httpx
 import pytest
 
 from rs_mcp_server import cache as _cache_mod
-from rs_mcp_server.tools.player_progress import get_player_achievement_progress
+from rs_mcp_server.tools.player_progress import _format_progress, get_player_achievement_progress
 
 
 @pytest.fixture(autouse=True)
@@ -220,3 +220,23 @@ class TestValidation:
     async def test_empty_username(self):
         result = await get_player_achievement_progress("Noxious Foe", "", "osrs")
         assert "required" in result
+
+    @pytest.mark.anyio
+    async def test_invalid_username_rejected(self):
+        # Short-circuits (before any API call) with a clear message — previously
+        # an invalid username reached the hiscores API and 403-crashed.
+        result = await get_player_achievement_progress("Peach Conjurer", "<script>", "osrs")
+        assert "isn't a valid RuneScape name" in result
+
+
+class TestFormatProgressRobustness:
+    def test_combat_achievement_activity_missing_fields(self):
+        # Activity dict missing rank/score (or string-typed) must not crash.
+        data = {"activities": [{"name": "Commander Zilyana"}]}
+        out = _format_progress("Combat Achievement", "Commander Zilyana", "Tester", data)
+        assert "Commander Zilyana" in out
+
+    def test_combat_achievement_string_rank(self):
+        data = {"activities": [{"name": "Commander Zilyana", "rank": "5", "score": "50"}]}
+        out = _format_progress("Combat Achievement", "Commander Zilyana", "Tester", data)
+        assert "50 KCs" in out

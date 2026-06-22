@@ -52,6 +52,7 @@ CASES: list[tuple[str, dict, list[str]]] = [
     ("get_achievement",     {"name": "Falador Diary", "game": "osrs"},                                      ["**Falador Diary**", "Achievement Diary", "OSRS Wiki", "Areas:"]),
     ("get_achievement",     {"name": "The Essence of Magic", "game": "rs3"},                                ["**The Essence of Magic**", "Achievement", "RS3 Wiki", "Score:"]),
     ("get_player_achievement_progress", {"name": "Noxious Foe", "username": "Lynx Titan", "game": "osrs"},  ["**Noxious Foe**", "Progress for Lynx Titan"]),
+    ("get_player_achievement_progress", {"name": "Noxious Foe", "username": "ThisNameIsTooLong", "game": "osrs"}, ["isn't a valid RuneScape name"]),
     ("get_money_makers",       {"game": "osrs", "limit": 5},                                                ["money-making methods (OSRS)", "GP/hr", "Category"]),
     ("get_money_makers",       {"game": "rs3", "limit": 5, "category": "combat"},                           ["money-making methods (RS3)", "Category", "Combat"]),
     ("get_money_maker_method", {"method_name": "Bird house trapping", "game": "osrs"},                      ["**Bird house trapping**", "Category", "Inputs"]),

@@ -11,6 +11,7 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._wiki_parsing import disambiguate
 
 _TTL = 3600
 
@@ -267,11 +268,7 @@ async def get_money_maker_method(method_name: str, game: str = "rs3") -> str:
 
 
 def _disambiguate_method(display_name: str, url: str, wiki_label: str) -> str:
-    return (
-        f'Did you mean **"{display_name}"** ({wiki_label} Wiki)?\n'
-        f"{url}\n\n"
-        f'Re-invoke `get_money_maker_method` with method_name="{display_name}" to fetch the details.'
-    )
+    return disambiguate(display_name, url, wiki_label, "get_money_maker_method", "method_name", "details")
 
 
 def _render_method(name: str, url: str, wiki_label: str, fields: dict, template_name: str) -> str:

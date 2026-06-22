@@ -5,7 +5,11 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, SEARCH_RESULT_LIMIT, WIKI_APIS, WIKI_BASE_URLS, http_get
-from ._wiki_parsing import parse_template_fields as _parse_fields, titles_match as _titles_match
+from ._wiki_parsing import (
+    disambiguate,
+    parse_template_fields as _parse_fields,
+    titles_match as _titles_match,
+)
 
 _TTL = 3600  # 1 hour — matches wiki lookup bucket
 
@@ -92,11 +96,7 @@ async def get_quest_info(quest_name: str, game: str = "rs3") -> str:
 
 
 def _disambiguate(title: str, url: str, wiki_label: str) -> str:
-    return (
-        f'Did you mean **"{title}"** ({wiki_label} Wiki)?\n'
-        f"{url}\n\n"
-        f'Re-invoke `get_quest_info` with quest_name="{title}" to fetch the details.'
-    )
+    return disambiguate(title, url, wiki_label, "get_quest_info", "quest_name", "details")
 
 
 def _cache_and_return(value: str, cache_key: str) -> str:

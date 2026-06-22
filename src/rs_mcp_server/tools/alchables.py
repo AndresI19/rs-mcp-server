@@ -30,13 +30,13 @@ Daily volume sources:
 - OSRS — prices.runescape.wiki /1h projected to a day.
 - RS3  — Trade volume column on the Alchemiser mk. II wiki page.
 """
-import html
 from html.parser import HTMLParser
 
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, http_get
+from ._wiki_parsing import collapse_whitespace as _collapse
 from .prices import osrs_mapping
 
 _OSRS_LATEST_URL = "https://prices.runescape.wiki/api/v1/osrs/latest"
@@ -353,10 +353,6 @@ class _AlchTableParser(HTMLParser):
         elif tag == "tr" and self._row is not None:
             self._rows.append(self._row)
             self._row = None
-
-
-def _collapse(s: str) -> str:
-    return " ".join(html.unescape(s).split())
 
 
 def _sv_float(value: str | None) -> float | None:

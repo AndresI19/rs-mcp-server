@@ -7,6 +7,8 @@ HTML via action=parse and parse the table by its `item-drops` class.
 import html
 import re
 
+import httpx
+
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
@@ -65,7 +67,7 @@ async def _fetch_page(item_name: str, game: str) -> dict | None:
     }
     try:
         data = await http_get(WIKI_APIS[game], params=params)
-    except Exception:
+    except httpx.HTTPError:
         return None
     if "error" in data:
         return None

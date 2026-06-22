@@ -145,3 +145,14 @@ class TestGetItemDropSources:
     async def test_unknown_game_rejected(self, monkeypatch):
         result = await get_item_drop_sources("Abyssal whip", "rs2")
         assert "Unknown game 'rs2'" in result
+
+    @pytest.mark.anyio
+    async def test_non_http_error_is_not_masked(self, monkeypatch):
+        # The fetch only swallows httpx errors now — a programming bug (e.g. a
+        # ValueError) must surface, not be hidden behind a misleading "not found".
+        async def boom(url, params=None, timeout=10.0):
+            raise ValueError("parsing bug")
+
+        monkeypatch.setattr("rs_mcp_server.tools.drops.http_get", boom)
+        with pytest.raises(ValueError):
+            await get_item_drop_sources("Abyssal whip", "rs3")

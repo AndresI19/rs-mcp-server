@@ -35,13 +35,20 @@ from html.parser import HTMLParser
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._constants import MW_BASE_PARAMS, WIKI_APIS
+from ._constants import (
+    MW_BASE_PARAMS,
+    OSRS_PRICES_1H,
+    OSRS_PRICES_LATEST,
+    TTL_5MIN,
+    TTL_HOUR,
+    WIKI_APIS,
+)
 from ._http import http_get
 from ._wiki_parsing import TableScope, collapse_whitespace as _collapse, markdown_table
 from .prices import osrs_mapping
 
-_OSRS_LATEST_URL = "https://prices.runescape.wiki/api/v1/osrs/latest"
-_OSRS_1H_URL = "https://prices.runescape.wiki/api/v1/osrs/1h"
+_OSRS_LATEST_URL = OSRS_PRICES_LATEST
+_OSRS_1H_URL = OSRS_PRICES_1H
 _NATURE_RUNE_ID_OSRS = 561
 _RS3_PAGE = "Money_making_guide/Operating_the_Alchemiser_mk._II"
 
@@ -56,9 +63,9 @@ _MIRAGE_ROI_MAX = 20.0      # slow only: ROI% > this is treated as likely mispri
 _EASY_TOP_N = 3
 _SLOW_TOP_N = 2
 
-_TTL_LATEST = 300
-_TTL_1H = 300
-_TTL_RS3_TABLE = 3600
+_TTL_LATEST = TTL_5MIN
+_TTL_1H = TTL_5MIN
+_TTL_RS3_TABLE = TTL_HOUR
 
 _VALID_MODES = ("manual", "passive")
 _DEFAULT_MODE = {"osrs": "manual", "rs3": "passive"}

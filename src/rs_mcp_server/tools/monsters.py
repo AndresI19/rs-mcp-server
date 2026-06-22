@@ -3,7 +3,7 @@
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._constants import WIKI_APIS, WIKI_LABELS
+from ._constants import TTL_HOUR, WIKI_APIS, WIKI_LABELS
 from ._http import http_get
 from ._wiki_parsing import (
     clean_wikitext as _clean,
@@ -17,7 +17,7 @@ from ._wiki_parsing import (
     titles_match as _titles_match,
 )
 
-_TTL = 3600
+_TTL = TTL_HOUR
 
 _OSRS_FIELDS = [
     ("Combat level", "combat"),

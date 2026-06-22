@@ -6,19 +6,28 @@ import httpx
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._constants import MW_BASE_PARAMS, WIKI_APIS
+from ._constants import (
+    MW_BASE_PARAMS,
+    OSRS_PRICES_5M,
+    OSRS_PRICES_LATEST,
+    OSRS_PRICES_MAPPING,
+    TTL_5MIN,
+    TTL_DAY,
+    TTL_HOUR,
+    WIKI_APIS,
+)
 from ._http import http_get
 
-_OSRS_MAPPING_URL    = "https://prices.runescape.wiki/api/v1/osrs/mapping"
-_OSRS_LATEST_URL     = "https://prices.runescape.wiki/api/v1/osrs/latest"
-_OSRS_5M_URL         = "https://prices.runescape.wiki/api/v1/osrs/5m"
-_RS3_GE_DETAIL       = "https://secure.runescape.com/m=itemdb_rs/api/catalogue/detail.json"
+_OSRS_MAPPING_URL = OSRS_PRICES_MAPPING
+_OSRS_LATEST_URL = OSRS_PRICES_LATEST
+_OSRS_5M_URL = OSRS_PRICES_5M
+_RS3_GE_DETAIL = "https://secure.runescape.com/m=itemdb_rs/api/catalogue/detail.json"
 _GEPRICE_CATALOG_URL = "https://geprice.com/api/items"
 
-_TTL_PRICE    = 300    # 5 minutes
-_TTL_MAPPING  = 86400  # 24 hours — only changes on game updates
-_TTL_OSRS_5M  = 300    # 5 minutes — endpoint refreshes on the same cadence
-_TTL_GEPRICE  = 3600   # 1 hour — geprice catalog refreshes weekly
+_TTL_PRICE = TTL_5MIN
+_TTL_MAPPING = TTL_DAY
+_TTL_OSRS_5M = TTL_5MIN
+_TTL_GEPRICE = TTL_HOUR
 
 
 @instrument("get_item_price")

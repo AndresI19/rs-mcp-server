@@ -11,7 +11,7 @@ from html.parser import HTMLParser
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._constants import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, WIKI_LABELS
+from ._constants import MW_BASE_PARAMS, TTL_HOUR, WIKI_APIS, WIKI_BASE_URLS, WIKI_LABELS
 from ._http import http_get
 from ._wiki_parsing import (
     TableScope,
@@ -25,7 +25,7 @@ from ._wiki_parsing import (
     titles_match as _titles_match,
 )
 
-_TTL = 3600
+_TTL = TTL_HOUR
 
 _MASTER_PAGE = "Money_making_guide"
 _METHOD_PREFIX = "Money making guide/"

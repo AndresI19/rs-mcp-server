@@ -14,7 +14,7 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
-from ._wiki_parsing import collapse_whitespace as _collapse
+from ._wiki_parsing import TableScope, collapse_whitespace as _collapse
 
 _TTL = 3600
 
@@ -154,9 +154,7 @@ class _CluesParser(HTMLParser):
         self._heading: str | None = None
         self._heading_id = ""
         self._heading_buf: list[str] = []
-        self._depth = 0
-        self._in_table = False
-        self._target_depth = 0
+        self._scope = TableScope(lambda cls: "wikitable" in cls)
         self._row: list[dict] | None = None
         self._row_has_th = False
         self._cell: dict | None = None
@@ -168,11 +166,8 @@ class _CluesParser(HTMLParser):
             self._heading_id = ad.get("id", "")
             self._heading_buf = []
         elif tag == "table":
-            self._depth += 1
-            if not self._in_table and "wikitable" in (ad.get("class") or "").split():
-                self._in_table = True
-                self._target_depth = self._depth
-        elif self._in_table and self._depth == self._target_depth:
+            self._scope.open_table(ad)
+        elif self._scope.at_target_level():
             if tag == "tr":
                 self._row = []
                 self._row_has_th = False
@@ -188,7 +183,7 @@ class _CluesParser(HTMLParser):
     def handle_data(self, data):
         if self._heading is not None:
             self._heading_buf.append(data)
-        elif self._in_table and self._depth == self._target_depth and self._cell is not None:
+        elif self._scope.at_target_level() and self._cell is not None:
             self._cell["text"] += data
 
     def handle_endtag(self, tag):
@@ -196,10 +191,8 @@ class _CluesParser(HTMLParser):
             self._apply_heading()
             self._heading = None
         elif tag == "table":
-            if self._in_table and self._depth == self._target_depth:
-                self._in_table = False
-            self._depth -= 1
-        elif self._in_table and self._depth == self._target_depth:
+            self._scope.close_table()
+        elif self._scope.at_target_level():
             if tag == "td" and self._cell is not None and self._row is not None:
                 self._row.append(_finalize_cell(self._cell))
                 self._cell = None

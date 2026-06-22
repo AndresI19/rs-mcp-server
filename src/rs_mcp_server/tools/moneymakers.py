@@ -13,6 +13,7 @@ from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
 from ._wiki_parsing import (
+    TableScope,
     disambiguate,
     fetch_page_params,
     find_template as _find_template,
@@ -97,10 +98,7 @@ class _MasterTableParser(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.headers: list[str] = []
         self.rows: list[list[dict]] = []
-        self._depth = 0
-        self._in_target = False
-        self._target_depth = 0
-        self._done = False           # capture only the first sortable table
+        self._scope = TableScope(lambda cls: "wikitable" in cls and "sortable" in cls, first_only=True)
         self._row: list[dict] | None = None
         self._cell: dict | None = None
         self._th: list[str] | None = None
@@ -109,13 +107,9 @@ class _MasterTableParser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         ad = dict(attrs)
         if tag == "table":
-            self._depth += 1
-            cls = (ad.get("class") or "").split()
-            if not self._in_target and not self._done and "wikitable" in cls and "sortable" in cls:
-                self._in_target = True
-                self._target_depth = self._depth
+            self._scope.open_table(ad)
             return
-        if not self._in_target or self._depth != self._target_depth:
+        if not self._scope.at_target_level():
             return  # ignore tags inside a table nested in a cell
         if tag == "tr":
             self._row = []
@@ -141,12 +135,9 @@ class _MasterTableParser(HTMLParser):
 
     def handle_endtag(self, tag):
         if tag == "table":
-            if self._in_target and self._depth == self._target_depth:
-                self._in_target = False
-                self._done = True
-            self._depth -= 1
+            self._scope.close_table()
             return
-        if not self._in_target or self._depth != self._target_depth:
+        if not self._scope.at_target_level():
             return
         if tag == "a":
             self._in_a = False

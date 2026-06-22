@@ -195,3 +195,48 @@ def parse_page_response(data: dict, title: str, game: str) -> dict | None:
         "url": f"{WIKI_BASE_URLS[game]}{resolved_title.replace(' ', '_')}",
         "content": content,
     }
+
+
+class TableScope:
+    """Shared <table> nesting tracker for the html.parser table walkers.
+
+    Each walker calls ``open_table``/``close_table`` on <table> start/end and
+    guards its tr/td/th handling with ``at_target_level()``. This keeps the depth
+    bookkeeping — which makes a table nested inside a cell get ignored rather than
+    corrupt the row stream — in one place; each walker still owns its cell capture.
+
+    ``is_target(class_list)`` selects which table to enter; ``first_only`` stops
+    after the first match so later tables on the page are ignored.
+    """
+
+    def __init__(self, is_target: Callable[[list[str]], bool], first_only: bool = False) -> None:
+        self._is_target = is_target
+        self._first_only = first_only
+        self.depth = 0
+        self.in_target = False
+        self._target_depth = 0
+        self._done = False
+
+    def open_table(self, attrs: dict) -> bool:
+        """Register a <table> open; return True if it is the newly-entered target."""
+        self.depth += 1
+        if (not self.in_target and not self._done
+                and self._is_target((attrs.get("class") or "").split())):
+            self.in_target = True
+            self._target_depth = self.depth
+            return True
+        return False
+
+    def close_table(self) -> bool:
+        """Register a </table>; return True if the target table just closed."""
+        closed = self.in_target and self.depth == self._target_depth
+        if closed:
+            self.in_target = False
+            if self._first_only:
+                self._done = True
+        self.depth -= 1
+        return closed
+
+    def at_target_level(self) -> bool:
+        """True when inside the target table at its own nesting level (not a nested one)."""
+        return self.in_target and self.depth == self._target_depth

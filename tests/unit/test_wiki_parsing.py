@@ -1,10 +1,46 @@
 """Unit tests for the shared wikitext-parsing helpers."""
 from rs_mcp_server.tools._wiki_parsing import (
+    TableScope,
     clean_wikitext,
     find_template,
     parse_template_fields,
     titles_match,
 )
+
+
+class TestTableScope:
+    def test_enters_and_exits_target(self):
+        s = TableScope(lambda cls: "wikitable" in cls)
+        assert not s.at_target_level()
+        assert s.open_table({"class": "wikitable sortable"}) is True
+        assert s.at_target_level()
+        assert s.close_table() is True
+        assert not s.at_target_level()
+
+    def test_non_target_table_ignored(self):
+        s = TableScope(lambda cls: "wikitable" in cls)
+        assert s.open_table({"class": "infobox"}) is False
+        assert not s.at_target_level()
+
+    def test_nested_table_is_not_at_target_level(self):
+        s = TableScope(lambda cls: "wikitable" in cls)
+        s.open_table({"class": "wikitable"})
+        s.open_table({"class": "wikitable"})  # nested inside a cell
+        assert not s.at_target_level()        # depth != target depth
+        s.close_table()
+        assert s.at_target_level()            # back at the outer table
+
+    def test_first_only_ignores_later_targets(self):
+        s = TableScope(lambda cls: "wikitable" in cls, first_only=True)
+        s.open_table({"class": "wikitable"})
+        s.close_table()
+        assert s.open_table({"class": "wikitable"}) is False  # second one ignored
+
+    def test_multi_target_re_enters_when_not_first_only(self):
+        s = TableScope(lambda cls: "wikitable" in cls)
+        s.open_table({"class": "wikitable"})
+        s.close_table()
+        assert s.open_table({"class": "wikitable"}) is True   # re-enters each table
 
 
 class TestTitlesMatch:

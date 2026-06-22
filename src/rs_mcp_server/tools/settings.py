@@ -11,6 +11,7 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._wiki_parsing import TableScope
 
 _TTL = 3600
 _PAGE = "Settings"
@@ -97,8 +98,7 @@ class _SettingsParser(HTMLParser):
         self._heading_id = ""
         self._buf: list[str] = []
         self._capture = False
-        self._table_depth = 0
-        self._in_table = False
+        self._scope = TableScope(lambda cls: "wikitable" in cls)
         self._cells: list[str] | None = None
         self._row_has_th = False
 
@@ -110,10 +110,8 @@ class _SettingsParser(HTMLParser):
             self._buf = []
             self._capture = True
         elif tag == "table":
-            self._table_depth += 1
-            if "wikitable" in (ad.get("class") or "").split():
-                self._in_table = True
-        elif self._in_table:
+            self._scope.open_table(ad)
+        elif self._scope.at_target_level():
             if tag == "tr":
                 self._cells = []
                 self._row_has_th = False
@@ -144,9 +142,7 @@ class _SettingsParser(HTMLParser):
             self._emit_row()
             self._cells = None
         elif tag == "table":
-            self._table_depth -= 1
-            if self._table_depth == 0:
-                self._in_table = False
+            self._scope.close_table()
 
     def _emit_row(self) -> None:
         if self._row_has_th or self._cells is None or len(self._cells) < 2:

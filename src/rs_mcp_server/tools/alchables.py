@@ -36,7 +36,7 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, http_get
-from ._wiki_parsing import collapse_whitespace as _collapse
+from ._wiki_parsing import TableScope, collapse_whitespace as _collapse
 from .prices import osrs_mapping
 
 _OSRS_LATEST_URL = "https://prices.runescape.wiki/api/v1/osrs/latest"
@@ -287,8 +287,7 @@ class _AlchTableParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.tables: list[dict] = []
-        self._depth = 0
-        self._wt_depth: int | None = None
+        self._scope = TableScope(lambda cls: "wikitable" in cls)
         self._headers: list[str] | None = None
         self._rows: list[list[dict]] | None = None
         self._row: list[dict] | None = None
@@ -300,13 +299,11 @@ class _AlchTableParser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         ad = dict(attrs)
         if tag == "table":
-            self._depth += 1
-            if self._wt_depth is None and "wikitable" in (ad.get("class") or "").split():
-                self._wt_depth = self._depth
+            if self._scope.open_table(ad):
                 self._headers = []
                 self._rows = []
             return
-        if self._wt_depth is None or self._depth != self._wt_depth:
+        if not self._scope.at_target_level():
             return
         if tag == "tr":
             self._row = []
@@ -320,7 +317,7 @@ class _AlchTableParser(HTMLParser):
             self._in_a = True
 
     def handle_data(self, data):
-        if self._wt_depth is None or self._depth != self._wt_depth:
+        if not self._scope.at_target_level():
             return
         if self._in_th:
             self._th += data
@@ -331,14 +328,12 @@ class _AlchTableParser(HTMLParser):
 
     def handle_endtag(self, tag):
         if tag == "table":
-            if self._wt_depth is not None and self._depth == self._wt_depth:
+            if self._scope.close_table():
                 self.tables.append({"headers": self._headers, "rows": self._rows})
-                self._wt_depth = None
                 self._headers = None
                 self._rows = None
-            self._depth -= 1
             return
-        if self._wt_depth is None or self._depth != self._wt_depth:
+        if not self._scope.at_target_level():
             return
         if tag == "th" and self._in_th:
             self._in_th = False

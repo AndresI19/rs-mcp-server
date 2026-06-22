@@ -89,39 +89,46 @@ async def get_equipment_stats(item_name: str, game: str = "rs3") -> str:
         return cached
 
     wiki_label = "RS3" if game == "rs3" else "OSRS"
-    stats_def = _STATS_BY_GAME[game]
 
+    result = (
+        await _stats_from_direct(item_name, game, wiki_label)
+        or await _stats_from_search(item_name, game, wiki_label)
+    )
+    if result is None:
+        return f"No equipment found for '{item_name}' on the {wiki_label} wiki."
+    return _cache_and_return(result, cache_key)
+
+
+async def _stats_from_direct(item_name: str, game: str, wiki_label: str) -> str | None:
+    """Direct page lookup: render an exact Infobox-Bonuses hit, or disambiguate a near-title."""
     direct = await _fetch_page(item_name, game, follow_redirects=True)
-    if direct is not None:
-        body = _find_template(direct["content"], "Infobox Bonuses")
-        if body is not None:
-            if _titles_match(item_name, direct["title"]):
-                sections = await _fetch_named_sections(direct["title"], game)
-                return _cache_and_return(
-                    _format_stats(direct["title"], direct["url"], wiki_label, _parse_fields(body), stats_def, sections),
-                    cache_key,
-                )
-            return _cache_and_return(
-                _disambiguate(direct["title"], direct["url"], wiki_label),
-                cache_key,
-            )
+    if direct is None:
+        return None
+    body = _find_template(direct["content"], "Infobox Bonuses")
+    if body is None:
+        return None
+    if _titles_match(item_name, direct["title"]):
+        return await _render_stats(direct, game, wiki_label, body)
+    return _disambiguate(direct["title"], direct["url"], wiki_label)
 
+
+async def _stats_from_search(item_name: str, game: str, wiki_label: str) -> str | None:
+    """Search fallback: disambiguate a near-title, else render the hit."""
     candidate = await _search_equipment(item_name, game)
     if candidate is None:
-        return f"No equipment found for '{item_name}' on the {wiki_label} wiki."
-
+        return None
     if not _titles_match(item_name, candidate["title"]):
-        return _cache_and_return(
-            _disambiguate(candidate["title"], candidate["url"], wiki_label),
-            cache_key,
-        )
-
-    # _search_equipment guarantees candidate["content"] contains an Infobox Bonuses template.
+        return _disambiguate(candidate["title"], candidate["url"], wiki_label)
+    # _search_equipment guarantees the content carries an Infobox Bonuses template.
     body = _find_template(candidate["content"], "Infobox Bonuses")
-    sections = await _fetch_named_sections(candidate["title"], game)
-    return _cache_and_return(
-        _format_stats(candidate["title"], candidate["url"], wiki_label, _parse_fields(body), stats_def, sections),
-        cache_key,
+    return await _render_stats(candidate, game, wiki_label, body)
+
+
+async def _render_stats(page: dict, game: str, wiki_label: str, body: str) -> str:
+    """Format an equipment page's bonuses table plus its named-section prose."""
+    sections = await _fetch_named_sections(page["title"], game)
+    return _format_stats(
+        page["title"], page["url"], wiki_label, _parse_fields(body), _STATS_BY_GAME[game], sections
     )
 
 

@@ -3,7 +3,8 @@
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import WIKI_APIS, http_get
+from ._constants import TTL_HOUR, WIKI_APIS, WIKI_LABELS
+from ._http import http_get
 from ._wiki_parsing import (
     clean_wikitext as _clean,
     disambiguate,
@@ -15,8 +16,6 @@ from ._wiki_parsing import (
     search_params,
     titles_match as _titles_match,
 )
-
-_TTL = 3600
 
 _OSRS_FIELDS = [
     ("Combat level", "combat"),
@@ -72,7 +71,7 @@ async def get_monster_info(monster_name: str, game: str = "rs3") -> str:
     if cached:
         return cached
 
-    wiki_label = "RS3" if game == "rs3" else "OSRS"
+    wiki_label = WIKI_LABELS[game]
     fields_def = _FIELDS_BY_GAME[game]
 
     direct = await _fetch_page(monster_name, game, follow_redirects=True)
@@ -123,7 +122,7 @@ def _disambiguate(title: str, url: str, wiki_label: str) -> str:
 
 
 def _cache_and_return(value: str, cache_key: str) -> str:
-    cache.set(cache_key, value, _TTL)
+    cache.set(cache_key, value, TTL_HOUR)
     return value
 
 

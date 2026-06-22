@@ -14,10 +14,10 @@ import httpx
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._constants import *
+from ._http import http_get
 from ._wiki_parsing import TableScope, collapse_whitespace as _collapse
 
-_TTL_DROPS = 3600
 _TOP_N = 3
 
 
@@ -35,12 +35,12 @@ async def get_item_drop_sources(item_name: str, game: str = "rs3") -> str:
         return cached
 
     result = await _fetch_and_format(item_name, game)
-    cache.set(cache_key, result, _TTL_DROPS)
+    cache.set(cache_key, result, TTL_HOUR)
     return result
 
 
 async def _fetch_and_format(item_name: str, game: str) -> str:
-    wiki_label = "RS3" if game == "rs3" else "OSRS"
+    wiki_label = WIKI_LABELS[game]
 
     page = await _fetch_page(item_name, game)
     if page is None:

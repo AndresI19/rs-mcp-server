@@ -6,18 +6,11 @@ import httpx
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import MW_BASE_PARAMS, WIKI_APIS, http_get
+from ._constants import *
+from ._http import http_get
 
-_OSRS_MAPPING_URL    = "https://prices.runescape.wiki/api/v1/osrs/mapping"
-_OSRS_LATEST_URL     = "https://prices.runescape.wiki/api/v1/osrs/latest"
-_OSRS_5M_URL         = "https://prices.runescape.wiki/api/v1/osrs/5m"
-_RS3_GE_DETAIL       = "https://secure.runescape.com/m=itemdb_rs/api/catalogue/detail.json"
+_RS3_GE_DETAIL = "https://secure.runescape.com/m=itemdb_rs/api/catalogue/detail.json"
 _GEPRICE_CATALOG_URL = "https://geprice.com/api/items"
-
-_TTL_PRICE    = 300    # 5 minutes
-_TTL_MAPPING  = 86400  # 24 hours — only changes on game updates
-_TTL_OSRS_5M  = 300    # 5 minutes — endpoint refreshes on the same cadence
-_TTL_GEPRICE  = 3600   # 1 hour — geprice catalog refreshes weekly
 
 
 @instrument("get_item_price")
@@ -36,7 +29,7 @@ async def get_item_price(item_name: str, game: str = "rs3") -> str:
         return cached
 
     result = await (_get_osrs_price(item_name) if game == "osrs" else _get_rs3_price(item_name))
-    cache.set(cache_key, result, _TTL_PRICE)
+    cache.set(cache_key, result, TTL_5MIN)
     return result
 
 
@@ -48,8 +41,8 @@ async def osrs_mapping() -> list[dict]:
     cached = cache.get("osrs:mapping")
     if cached is not None:
         return cached
-    data = await http_get(_OSRS_MAPPING_URL)
-    cache.set("osrs:mapping", data, _TTL_MAPPING)
+    data = await http_get(OSRS_PRICES_MAPPING)
+    cache.set("osrs:mapping", data, TTL_DAY)
     return data
 
 
@@ -72,7 +65,7 @@ async def _get_osrs_price(item_name: str) -> str:
     item_id = item["id"]
     canonical = item["name"]
 
-    data = await http_get(_OSRS_LATEST_URL, params={"id": item_id})
+    data = await http_get(OSRS_PRICES_LATEST, params={"id": item_id})
     info = data.get("data", {}).get(str(item_id))
     if not info:
         return f"Price data unavailable for '{canonical}' (OSRS)."
@@ -205,10 +198,10 @@ async def _osrs_5m_bulk() -> dict | None:
     if cached is not None:
         return cached
     try:
-        data = await http_get(_OSRS_5M_URL)
+        data = await http_get(OSRS_PRICES_5M)
     except httpx.HTTPError:
         return None
-    cache.set("osrs:5m:all", data, _TTL_OSRS_5M)
+    cache.set("osrs:5m:all", data, TTL_5MIN)
     return data
 
 
@@ -235,7 +228,7 @@ async def _geprice_catalog() -> list[dict] | None:
         return None
     if not isinstance(data, list):
         return None
-    cache.set("geprice:catalog", data, _TTL_GEPRICE)
+    cache.set("geprice:catalog", data, TTL_HOUR)
     return data
 
 

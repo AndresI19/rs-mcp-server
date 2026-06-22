@@ -10,7 +10,9 @@ import html
 import re
 from collections.abc import Callable
 
-from ._http import MW_BASE_PARAMS, SEARCH_RESULT_LIMIT, WIKI_BASE_URLS
+import roman
+
+from ._constants import MW_BASE_PARAMS, SEARCH_RESULT_LIMIT, WIKI_BASE_URLS
 
 
 def titles_match(a: str, b: str) -> bool:
@@ -260,6 +262,14 @@ def match_by_name(query: str, items: list[dict], key: str) -> tuple[str, object]
         contains.sort(key=lambda it: abs(len(it[key]) - len(q)))
         return ("did_you_mean", contains[:5])
     return ("none", None)
+
+
+def roman_variant_titles(name: str, depth: int = 5) -> str:
+    """Pipe-joined sequel-page titles ('<name> I' … up to ``depth``) for one batched
+    MediaWiki ``titles=`` lookup (#78). ``depth`` caps how many sequel candidates are
+    queried at once; the wiki's deepest tiered series sit comfortably under the default.
+    """
+    return "|".join(f"{name} {roman.toRoman(n)}" for n in range(1, depth + 1))
 
 
 def render_variants(variants: list[dict], wiki_label: str, base_name: str, tool: str) -> str:

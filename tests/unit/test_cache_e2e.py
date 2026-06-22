@@ -12,7 +12,8 @@ gets, or never sets), these tests are the safety net.
 import pytest
 
 from rs_mcp_server import cache
-from rs_mcp_server.tools.prices import _TTL_PRICE, get_item_price
+from rs_mcp_server.tools._constants import TTL_5MIN
+from rs_mcp_server.tools.prices import get_item_price
 
 
 def _spy_http_get():
@@ -86,7 +87,7 @@ class TestCacheMissAfterTtl:
 
         # Advance past the price TTL (300s) but not past the mapping TTL (86400s).
         # The 5m cache happens to share the 300s TTL too, so it also expires here.
-        clock[0] = 1000.0 + _TTL_PRICE + 1
+        clock[0] = 1000.0 + TTL_5MIN + 1
 
         # Second call: price + 5m caches expired → re-fire /latest and /5m.
         # Mapping cache still hot (24h TTL) → no second /mapping fetch.

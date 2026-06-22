@@ -11,7 +11,8 @@ from html.parser import HTMLParser
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._constants import *
+from ._http import http_get
 from ._wiki_parsing import (
     TableScope,
     disambiguate,
@@ -23,8 +24,6 @@ from ._wiki_parsing import (
     parse_template_fields as _parse_fields,
     titles_match as _titles_match,
 )
-
-_TTL = 3600
 
 _MASTER_PAGE = "Money_making_guide"
 _METHOD_PREFIX = "Money making guide/"
@@ -68,7 +67,7 @@ async def get_money_makers(
         rows = await _fetch_master_rows(game)
         if rows is None:
             return f"Could not load the Money Making Guide for {game.upper()}."
-        cache.set(cache_key, rows, _TTL)
+        cache.set(cache_key, rows, TTL_HOUR)
 
     return _render_master_table(rows, game, category, members_only, limit)
 
@@ -239,7 +238,7 @@ def _cell_field(cells: list[dict], col_index: dict[str, int], key: str, attr: st
 
 
 def _render_master_table(rows: list[dict], game: str, category: str | None, members_only: bool, limit: int) -> str:
-    wiki_label = "RS3" if game == "rs3" else "OSRS"
+    wiki_label = WIKI_LABELS[game]
     page_url = f"{WIKI_BASE_URLS[game]}{_MASTER_PAGE}"
     has_category = any(r["category"] for r in rows)
     has_intensity = any(r["intensity"] for r in rows)
@@ -320,7 +319,7 @@ async def get_money_maker_method(method_name: str, game: str = "rs3") -> str:
     if cached:
         return cached
 
-    wiki_label = "RS3" if game == "rs3" else "OSRS"
+    wiki_label = WIKI_LABELS[game]
 
     result = (
         await _method_from_direct(method_name, game, wiki_label)
@@ -456,7 +455,7 @@ def _find_method_template(wikitext: str) -> tuple[str | None, str]:
 # ---------------------------------------------------------------------------
 
 def _cache_and_return(value: str, cache_key: str) -> str:
-    cache.set(cache_key, value, _TTL)
+    cache.set(cache_key, value, TTL_HOUR)
     return value
 
 

@@ -7,7 +7,8 @@ import httpx
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import MW_BASE_PARAMS, WIKI_APIS, http_get
+from ._constants import MW_BASE_PARAMS, TTL_HOUR, WIKI_APIS, WIKI_LABELS
+from ._http import http_get
 from ._wiki_parsing import (
     clean_wikitext as _clean,
     disambiguate,
@@ -19,8 +20,6 @@ from ._wiki_parsing import (
     search_params,
     titles_match as _titles_match,
 )
-
-_TTL = 3600
 
 # Section headings whose prose should be surfaced alongside the infobox.
 # Each entry is (canonical display label, accepted heading variants — lowercased).
@@ -88,7 +87,7 @@ async def get_equipment_stats(item_name: str, game: str = "rs3") -> str:
     if cached:
         return cached
 
-    wiki_label = "RS3" if game == "rs3" else "OSRS"
+    wiki_label = WIKI_LABELS[game]
 
     result = (
         await _stats_from_direct(item_name, game, wiki_label)
@@ -137,7 +136,7 @@ def _disambiguate(title: str, url: str, wiki_label: str) -> str:
 
 
 def _cache_and_return(value: str, cache_key: str) -> str:
-    cache.set(cache_key, value, _TTL)
+    cache.set(cache_key, value, TTL_HOUR)
     return value
 
 

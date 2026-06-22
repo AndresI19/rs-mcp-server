@@ -13,10 +13,10 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._aliases import expand_aliases
-from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._constants import *
+from ._http import http_get
 from ._wiki_parsing import join_text
 
-_TTL = 3600  # 1 hour
 _MAX_EXTRACT_CHARS = 1500
 
 
@@ -33,7 +33,7 @@ async def search_wiki(query: str, game: str = "rs3") -> str:
     if cached:
         return cached
 
-    wiki_label = "RS3" if game == "rs3" else "OSRS"
+    wiki_label = WIKI_LABELS[game]
 
     title = await _find_title(query, game)
     if title is None:
@@ -55,7 +55,7 @@ async def search_wiki(query: str, game: str = "rs3") -> str:
             body = body[:_MAX_EXTRACT_CHARS].rsplit("\n", 1)[0] + "\n..."
         result = f"**{title}** ({wiki_label} Wiki)\n{url}\n\n{body}"
 
-    cache.set(cache_key, result, _TTL)
+    cache.set(cache_key, result, TTL_HOUR)
     return result
 
 

@@ -3,7 +3,8 @@
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._constants import *
+from ._http import http_get
 from ._wiki_parsing import (
     clean_wikitext as _clean,
     disambiguate,
@@ -13,11 +14,10 @@ from ._wiki_parsing import (
     parse_page_response,
     parse_template_fields as _parse_fields,
     render_variants,
+    roman_variant_titles,
     search_params,
     titles_match as _titles_match,
 )
-
-_TTL = 3600
 
 _OSRS_CA_FIELDS = [
     ("Description", "description"),
@@ -68,7 +68,7 @@ async def get_achievement(name: str, game: str = "rs3") -> str:
     if cached:
         return cached
 
-    wiki_label = "RS3" if game == "rs3" else "OSRS"
+    wiki_label = WIKI_LABELS[game]
 
     # Resolve via the first strategy that lands: an exact/disambiguating direct hit,
     # a tiered roman-numeral variant set, then a type-filtered search.
@@ -146,7 +146,7 @@ def _disambiguate(title: str, url: str, wiki_label: str) -> str:
 
 
 def _cache_and_return(value: str, cache_key: str) -> str:
-    cache.set(cache_key, value, _TTL)
+    cache.set(cache_key, value, TTL_HOUR)
     return value
 
 
@@ -169,7 +169,7 @@ async def _search_achievement(query: str, game: str) -> dict | None:
 async def _enumerate_roman_variants(name: str, game: str) -> list[dict]:
     """Try '<name> I' through '<name> V' in one batch query; return variants
     that exist and carry an achievement template."""
-    titles = "|".join(f"{name} {n}" for n in ("I", "II", "III", "IV", "V"))
+    titles = roman_variant_titles(name)
     params = {
         "action": "query",
         "titles": titles,

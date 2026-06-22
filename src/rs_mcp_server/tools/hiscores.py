@@ -6,14 +6,13 @@ import httpx
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
+from ._constants import TTL_10MIN
 from ._http import http_get
 
 _HISCORES_JSON_APIS = {
     "rs3":  "https://secure.runescape.com/m=hiscore/index_lite.json",
     "osrs": "https://secure.runescape.com/m=hiscore_oldschool/index_lite.json",
 }
-
-_TTL_STATS = 600  # 10 minutes
 
 # RuneScape display names are 1–12 chars: letters, digits, spaces, hyphens, underscores.
 # Validating up front gives a clear message and avoids a 403 from the hiscores API on
@@ -58,7 +57,7 @@ async def get_player_stats(username: str, game: str = "rs3") -> str:
         )
 
     result = _format_stats(username, game, data)
-    cache.set(cache_key, result, _TTL_STATS)
+    cache.set(cache_key, result, TTL_10MIN)
     return result
 
 

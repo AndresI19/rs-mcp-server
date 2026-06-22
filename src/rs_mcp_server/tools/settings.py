@@ -10,10 +10,10 @@ from html.parser import HTMLParser
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._constants import *
+from ._http import http_get
 from ._wiki_parsing import TableScope, join_text, match_by_name
 
-_TTL = 3600
 _PAGE = "Settings"
 
 _SKIP_SECTIONS = {
@@ -37,9 +37,9 @@ async def get_game_setting(setting_name: str, game: str = "rs3") -> str:
         rows = await _fetch_settings_index(game)
         if rows is None:
             return f"Could not load the Settings page for {game.upper()}."
-        cache.set(cache_key, rows, _TTL)
+        cache.set(cache_key, rows, TTL_HOUR)
 
-    wiki_label = "RS3" if game == "rs3" else "OSRS"
+    wiki_label = WIKI_LABELS[game]
     page_url = f"{WIKI_BASE_URLS[game]}{_PAGE}"
 
     kind, payload = _match_setting(setting_name, rows)

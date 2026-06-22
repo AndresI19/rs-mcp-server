@@ -17,8 +17,6 @@ from ._constants import MW_BASE_PARAMS, TTL_HOUR, WIKI_APIS, WIKI_BASE_URLS, WIK
 from ._http import http_get
 from ._wiki_parsing import TableScope, collapse_whitespace as _collapse, join_text, match_by_name
 
-_TTL = TTL_HOUR
-
 _FORMATS = ("anagram", "cryptic", "emote", "cipher")
 _TIERS = ("beginner", "easy", "medium", "hard", "elite", "master")
 
@@ -108,11 +106,11 @@ async def _load_format(game: str, fmt: str) -> list[dict]:
     data = await http_get(WIKI_APIS[game], params=params)
     text = data.get("parse", {}).get("text")
     if not text:
-        cache.set(cache_key, [], _TTL)
+        cache.set(cache_key, [], TTL_HOUR)
         return []
 
     entries = _parse_clue_html(text, fmt)
-    cache.set(cache_key, entries, _TTL)
+    cache.set(cache_key, entries, TTL_HOUR)
     return entries
 
 

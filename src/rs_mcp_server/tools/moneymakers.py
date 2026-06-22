@@ -25,8 +25,6 @@ from ._wiki_parsing import (
     titles_match as _titles_match,
 )
 
-_TTL = TTL_HOUR
-
 _MASTER_PAGE = "Money_making_guide"
 _METHOD_PREFIX = "Money making guide/"
 
@@ -69,7 +67,7 @@ async def get_money_makers(
         rows = await _fetch_master_rows(game)
         if rows is None:
             return f"Could not load the Money Making Guide for {game.upper()}."
-        cache.set(cache_key, rows, _TTL)
+        cache.set(cache_key, rows, TTL_HOUR)
 
     return _render_master_table(rows, game, category, members_only, limit)
 
@@ -457,7 +455,7 @@ def _find_method_template(wikitext: str) -> tuple[str | None, str]:
 # ---------------------------------------------------------------------------
 
 def _cache_and_return(value: str, cache_key: str) -> str:
-    cache.set(cache_key, value, _TTL)
+    cache.set(cache_key, value, TTL_HOUR)
     return value
 
 

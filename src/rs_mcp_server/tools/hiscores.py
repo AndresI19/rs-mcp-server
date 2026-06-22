@@ -14,8 +14,6 @@ _HISCORES_JSON_APIS = {
     "osrs": "https://secure.runescape.com/m=hiscore_oldschool/index_lite.json",
 }
 
-_TTL_STATS = TTL_10MIN
-
 # RuneScape display names are 1–12 chars: letters, digits, spaces, hyphens, underscores.
 # Validating up front gives a clear message and avoids a 403 from the hiscores API on
 # obviously-invalid input (e.g. punctuation).
@@ -59,7 +57,7 @@ async def get_player_stats(username: str, game: str = "rs3") -> str:
         )
 
     result = _format_stats(username, game, data)
-    cache.set(cache_key, result, _TTL_STATS)
+    cache.set(cache_key, result, TTL_10MIN)
     return result
 
 

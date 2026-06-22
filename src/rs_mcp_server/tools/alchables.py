@@ -47,8 +47,6 @@ from ._http import http_get
 from ._wiki_parsing import TableScope, collapse_whitespace as _collapse, markdown_table
 from .prices import osrs_mapping
 
-_OSRS_LATEST_URL = OSRS_PRICES_LATEST
-_OSRS_1H_URL = OSRS_PRICES_1H
 _NATURE_RUNE_ID_OSRS = 561
 _RS3_PAGE = "Money_making_guide/Operating_the_Alchemiser_mk._II"
 
@@ -62,10 +60,6 @@ _MIRAGE_ROI_MAX = 20.0      # slow only: ROI% > this is treated as likely mispri
 # Output sizes (per category).
 _EASY_TOP_N = 3
 _SLOW_TOP_N = 2
-
-_TTL_LATEST = TTL_5MIN
-_TTL_1H = TTL_5MIN
-_TTL_RS3_TABLE = TTL_HOUR
 
 _VALID_MODES = ("manual", "passive")
 _DEFAULT_MODE = {"osrs": "manual", "rs3": "passive"}
@@ -154,8 +148,8 @@ async def _osrs_latest_bulk() -> dict:
     cached = cache.get("osrs:latest:bulk")
     if cached is not None:
         return cached
-    data = await http_get(_OSRS_LATEST_URL)
-    cache.set("osrs:latest:bulk", data, _TTL_LATEST)
+    data = await http_get(OSRS_PRICES_LATEST)
+    cache.set("osrs:latest:bulk", data, TTL_5MIN)
     return data
 
 
@@ -163,8 +157,8 @@ async def _osrs_1h_bulk() -> dict:
     cached = cache.get("osrs:1h:bulk")
     if cached is not None:
         return cached
-    data = await http_get(_OSRS_1H_URL)
-    cache.set("osrs:1h:bulk", data, _TTL_1H)
+    data = await http_get(OSRS_PRICES_1H)
+    cache.set("osrs:1h:bulk", data, TTL_5MIN)
     return data
 
 
@@ -282,7 +276,7 @@ async def _fetch_rs3_alchemiser_rows() -> list[dict] | None:
     if rows is None:
         return None
 
-    cache.set("rs3:alchemiser:table", rows, _TTL_RS3_TABLE)
+    cache.set("rs3:alchemiser:table", rows, TTL_HOUR)
     return rows
 
 

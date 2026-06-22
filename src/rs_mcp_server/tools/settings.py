@@ -14,7 +14,6 @@ from ._constants import MW_BASE_PARAMS, TTL_HOUR, WIKI_APIS, WIKI_BASE_URLS, WIK
 from ._http import http_get
 from ._wiki_parsing import TableScope, join_text, match_by_name
 
-_TTL = TTL_HOUR
 _PAGE = "Settings"
 
 _SKIP_SECTIONS = {
@@ -38,7 +37,7 @@ async def get_game_setting(setting_name: str, game: str = "rs3") -> str:
         rows = await _fetch_settings_index(game)
         if rows is None:
             return f"Could not load the Settings page for {game.upper()}."
-        cache.set(cache_key, rows, _TTL)
+        cache.set(cache_key, rows, TTL_HOUR)
 
     wiki_label = WIKI_LABELS[game]
     page_url = f"{WIKI_BASE_URLS[game]}{_PAGE}"

@@ -9,8 +9,6 @@ from ._constants import MW_BASE_PARAMS, TTL_HOUR, WIKI_APIS, WIKI_BASE_URLS, WIK
 from ._http import http_get
 from ._wiki_parsing import find_template, parse_template_fields as _parse_fields
 
-_TTL = TTL_HOUR
-
 _TEMPLATES = ("Infobox Recipe", "Recipe")
 
 
@@ -44,7 +42,7 @@ async def get_item_recipe(item_name: str, game: str = "rs3") -> str:
     pages = data.get("query", {}).get("pages", [])
     if not pages or pages[0].get("missing"):
         result = f"Recipe for '{item_name}' not found on the {wiki_label} wiki."
-        cache.set(cache_key, result, _TTL)
+        cache.set(cache_key, result, TTL_HOUR)
         return result
 
     page = pages[0]
@@ -58,12 +56,12 @@ async def get_item_recipe(item_name: str, game: str = "rs3") -> str:
             f"**{title}** ({wiki_label} Wiki)\n{url}\n\n"
             f"No recipe template found on this page — it may not be craftable."
         )
-        cache.set(cache_key, result, _TTL)
+        cache.set(cache_key, result, TTL_HOUR)
         return result
 
     fields = _parse_fields(body)
     result = _format_recipe(title, url, wiki_label, fields)
-    cache.set(cache_key, result, _TTL)
+    cache.set(cache_key, result, TTL_HOUR)
     return result
 
 

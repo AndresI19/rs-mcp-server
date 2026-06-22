@@ -74,3 +74,22 @@ class TestTtl:
         clock[0] = 1020.0
         cache.get("k")
         assert "k" not in cache._store
+
+
+# ── bounded LRU eviction ──────────────────────────────────────────────────────
+
+class TestEviction:
+    def test_overflow_evicts_least_recently_used(self, monkeypatch):
+        monkeypatch.setattr(cache, "_MAX_ENTRIES", 3)
+        for key in ("a", "b", "c"):
+            cache.set(key, key, ttl_seconds=60)
+        cache.get("a")  # touch "a" so "b" becomes least-recently-used
+        cache.set("d", "d", ttl_seconds=60)  # overflow -> evict LRU
+        assert "b" not in cache._store
+        assert set(cache._store) == {"a", "c", "d"}
+
+    def test_store_never_exceeds_max(self, monkeypatch):
+        monkeypatch.setattr(cache, "_MAX_ENTRIES", 5)
+        for i in range(50):
+            cache.set(f"k{i}", i, ttl_seconds=60)
+        assert len(cache._store) == 5

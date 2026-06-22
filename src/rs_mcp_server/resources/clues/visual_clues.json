@@ -28,8 +28,8 @@
       "blurb": "A puzzle box is a sliding-tile picture puzzle solved in-client. See the step-by-step solutions:"
     },
     "compass": {
-      "guide_url": "https://runescape.wiki/w/Treasure_Trails/Guide/Compass",
-      "blurb": "A compass clue gives only an arrow pointing toward the dig spot. Use the directional guide to triangulate it:"
+      "in_game": true,
+      "blurb": "this one's genuinely not worth a lookup — the in-game compass points an arrow straight at the dig spot. Follow the arrow until it spins, then dig. It's one of the easiest clue steps."
     },
     "scan": {
       "guide_url": "https://runescape.wiki/w/Treasure_Trails/Guide/Scans",

@@ -300,7 +300,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="solve_clue",
-            description="Look up a RuneScape clue scroll step by its clue text and return the solution (NPC, location, items required, decoded text, answer). Solves the text formats — anagram, cryptic, emote, cipher, and challenge-scroll Q&A — across both games; resolves coordinate clues from a built-in dataset when you pass the degrees (e.g. '04 degrees 13 minutes south, 16 degrees 25 minutes east'); and for visual/interactive clues (maps, puzzle boxes, light boxes, compass, scan, hot/cold, etc.) returns a link to the relevant wiki guide. clue_format and tier are optional hints; without them the tool auto-detects coordinates and searches all text formats. Ciphers are OSRS-only; challenge scrolls and coordinates are not tier-segmented. If the user has not specified which game (RS3 or OSRS), ask them before calling this tool.",
+            description="Look up a RuneScape clue scroll step by its clue text and return the solution (NPC, location, items required, decoded text, answer). Solves the text formats — anagram, cryptic, emote, cipher, challenge-scroll Q&A, and RS3 simple clues — across both games; resolves coordinate clues from a built-in dataset when you pass the degrees (e.g. '04 degrees 13 minutes south, 16 degrees 25 minutes east'); and for visual/interactive clues (maps, puzzle boxes, light boxes, compass, scan, hot/cold, etc.) returns a link to the relevant wiki guide. clue_format and tier are optional hints; without them the tool auto-detects coordinates and searches all text formats. Ciphers are OSRS-only; challenge scrolls and coordinates are not tier-segmented. If the user has not specified which game (RS3 or OSRS), ask them before calling this tool.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -312,7 +312,7 @@ async def list_tools() -> list[Tool]:
                     },
                     "clue_format": {
                         "type": "string",
-                        "enum": ["anagram", "cryptic", "emote", "cipher", "challenge", "coordinate"],
+                        "enum": ["anagram", "cryptic", "emote", "cipher", "challenge", "simple", "coordinate"],
                         "description": "Optional format hint to narrow the lookup. Ciphers are OSRS-only. Coordinates are auto-detected from the degrees text, so the hint is rarely needed.",
                     },
                     "tier": {

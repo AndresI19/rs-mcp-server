@@ -3,7 +3,7 @@ import pytest
 
 from rs_mcp_server import cache as _cache_mod
 from rs_mcp_server.tools._aliases import expand_aliases
-from rs_mcp_server.tools.wiki import search_wiki
+from rs_mcp_server.tools.wiki import _extract_prose_from_html, search_wiki
 
 
 @pytest.fixture(autouse=True)
@@ -87,6 +87,37 @@ class TestSearchWiki:
         result = await search_wiki("Trimmed masterwork", "rs3")
         assert "Set bonus" in result
         assert "12% damage reduction against demons" in result
+
+
+class TestEmptyQuery:
+    @pytest.mark.anyio
+    async def test_empty_query_rejected(self):
+        assert "provide a search query" in await search_wiki("", "rs3")
+
+    @pytest.mark.anyio
+    async def test_whitespace_query_rejected(self):
+        assert "provide a search query" in await search_wiki("   ", "osrs")
+
+
+class TestExtractProse:
+    def test_attribute_with_gt_not_corrupted(self):
+        # The old regex tag-scan leaked 'b">' into the text; html.parser parses the attr.
+        assert _extract_prose_from_html('<p data-x="a>b">real text</p>') == "real text"
+
+    def test_inline_tag_abutting_punctuation_has_no_spurious_space(self):
+        # Old regex replaced each inline tag with a space → "unsired ."; parser keeps it tight.
+        out = _extract_prose_from_html("<p>sacrificing an <a href='x'>unsired</a>.</p>")
+        assert out == "sacrificing an unsired."
+
+    def test_headings_and_order_preserved(self):
+        out = _extract_prose_from_html("<h2>Title</h2><p>Body one.</p><h3>Sub</h3><p>Body two.</p>")
+        assert "## Title" in out and "### Sub" in out
+        assert out.index("Body one.") < out.index("### Sub") < out.index("Body two.")
+
+    def test_empty_and_unclosed_html(self):
+        assert _extract_prose_from_html("") == ""
+        # Unclosed trailing <p> is still flushed rather than silently dropped.
+        assert _extract_prose_from_html("<p>trailing unclosed") == "trailing unclosed"
 
 
 class TestExpandAliases:

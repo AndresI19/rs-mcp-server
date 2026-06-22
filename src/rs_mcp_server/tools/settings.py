@@ -4,9 +4,8 @@ Parses the rendered Settings page HTML on each game's wiki, walks <h2>/<h3>
 headings and <table class="wikitable"> rows to build a name → description index,
 then supports exact / substring / fuzzy / description / wiki-search-fallback lookup.
 """
-import html
-import re
 from difflib import get_close_matches
+from html.parser import HTMLParser
 
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
@@ -80,62 +79,99 @@ async def _fetch_settings_index(game: str) -> list[dict] | None:
 # HTML parser
 # ---------------------------------------------------------------------------
 
-_HEADING_OR_TABLE = re.compile(
-    r'<h2[^>]*id="([^"]+)"[^>]*>(.*?)</h2>'
-    r'|<h3[^>]*id="([^"]+)"[^>]*>(.*?)</h3>'
-    r'|<table[^>]*class="[^"]*wikitable[^"]*"[^>]*>(.*?)</table>',
-    re.DOTALL,
-)
+class _SettingsParser(HTMLParser):
+    """Walk <h2>/<h3> headings and <table class="wikitable"> rows in document order.
+
+    Replaces a regex that matched <h2|h3|table> blocks then re-split <tr>/<td> with
+    '.*?' — fragile on any nested table, and unreadable. html.parser tracks
+    section/subsection state and emits one row per 2-column data row; capturing cell
+    text via handle_data also drops inner tags without a separate tag-stripping pass.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.rows: list[dict] = []
+        self.section = self.section_anchor = ""
+        self.subsection = self.subsection_anchor = ""
+        self._heading: str | None = None
+        self._heading_id = ""
+        self._buf: list[str] = []
+        self._capture = False
+        self._table_depth = 0
+        self._in_table = False
+        self._cells: list[str] | None = None
+        self._row_has_th = False
+
+    def handle_starttag(self, tag, attrs):
+        ad = dict(attrs)
+        if tag in ("h2", "h3"):
+            self._heading = tag
+            self._heading_id = ad.get("id", "")
+            self._buf = []
+            self._capture = True
+        elif tag == "table":
+            self._table_depth += 1
+            if "wikitable" in (ad.get("class") or "").split():
+                self._in_table = True
+        elif self._in_table:
+            if tag == "tr":
+                self._cells = []
+                self._row_has_th = False
+            elif tag == "th":
+                self._row_has_th = True
+            elif tag == "td" and self._cells is not None:
+                self._buf = []
+                self._capture = True
+
+    def handle_data(self, data):
+        if self._capture:
+            self._buf.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == self._heading:
+            text = " ".join("".join(self._buf).split())
+            if self._heading == "h2":
+                self.section, self.section_anchor = text, self._heading_id
+                self.subsection = self.subsection_anchor = ""
+            else:
+                self.subsection, self.subsection_anchor = text, self._heading_id
+            self._heading = None
+            self._capture = False
+        elif tag == "td" and self._cells is not None and self._capture:
+            self._cells.append(" ".join("".join(self._buf).split()))
+            self._capture = False
+        elif tag == "tr" and self._cells is not None:
+            self._emit_row()
+            self._cells = None
+        elif tag == "table":
+            self._table_depth -= 1
+            if self._table_depth == 0:
+                self._in_table = False
+
+    def _emit_row(self) -> None:
+        if self._row_has_th or self._cells is None or len(self._cells) < 2:
+            return
+        if (self.section_anchor.lower() in _SKIP_SECTIONS
+                or self.subsection_anchor.lower() in _SKIP_SECTIONS):
+            return
+        name, desc = self._cells[0], self._cells[1]
+        if not name or not desc:
+            return
+        self.rows.append({
+            "name": name,
+            "name_lower": name.lower(),
+            "section": self.section,
+            "subsection": self.subsection,
+            "description": desc,
+            "anchor": self.subsection_anchor or self.section_anchor,
+        })
 
 
 def _parse_settings_html(html_text: str) -> list[dict]:
-    """Walk h2/h3/table tags in document order, build a flat list of setting rows."""
-    rows: list[dict] = []
-    section = ""
-    section_anchor = ""
-    subsection = ""
-    subsection_anchor = ""
-
-    for m in _HEADING_OR_TABLE.finditer(html_text):
-        h2_id, h2_text, h3_id, h3_text, table_body = m.groups()
-        if h2_id is not None:
-            section = _strip_tags(h2_text).strip()
-            section_anchor = h2_id
-            subsection = ""
-            subsection_anchor = ""
-        elif h3_id is not None:
-            subsection = _strip_tags(h3_text).strip()
-            subsection_anchor = h3_id
-        else:
-            if section_anchor.lower() in _SKIP_SECTIONS or subsection_anchor.lower() in _SKIP_SECTIONS:
-                continue
-            anchor = subsection_anchor or section_anchor
-            for tr_match in re.finditer(r"<tr[^>]*>(.*?)</tr>", table_body, re.DOTALL):
-                tr_html = tr_match.group(1)
-                if "<th" in tr_html:
-                    continue
-                cells = re.findall(r"<td[^>]*>(.*?)</td>", tr_html, re.DOTALL)
-                if len(cells) < 2:
-                    continue
-                name = _strip_tags(cells[0]).strip()
-                desc = _strip_tags(cells[1]).strip()
-                if not name or not desc:
-                    continue
-                rows.append({
-                    "name": name,
-                    "name_lower": name.lower(),
-                    "section": section,
-                    "subsection": subsection,
-                    "description": desc,
-                    "anchor": anchor,
-                })
-    return rows
-
-
-def _strip_tags(s: str) -> str:
-    s = re.sub(r"<[^>]+>", " ", s)
-    s = html.unescape(s)
-    return re.sub(r"\s+", " ", s).strip()
+    """Walk h2/h3 headings and wikitable rows in document order into setting rows."""
+    parser = _SettingsParser()
+    parser.feed(html_text)
+    return parser.rows
 
 
 # ---------------------------------------------------------------------------

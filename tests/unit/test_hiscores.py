@@ -164,3 +164,50 @@ class TestGetPlayerStats:
         result = await get_player_stats("anyone", "rs3")
         assert "temporarily unavailable" in result
         assert "RS3" in result
+
+    @pytest.mark.anyio
+    async def test_non_404_status_degrades_gracefully(self, monkeypatch):
+        # A non-404 HTTP error (e.g. 503 outage, 403) must not crash the tool.
+        async def fake_http_get(url, params=None, timeout=10.0):
+            raise httpx.HTTPStatusError(
+                "503", request=httpx.Request("GET", url), response=httpx.Response(503)
+            )
+
+        monkeypatch.setattr("rs_mcp_server.tools.hiscores.http_get", fake_http_get)
+        result = await get_player_stats("anyone", "osrs")
+        assert "Couldn't retrieve" in result
+        assert "503" in result
+
+
+class TestUsernameValidation:
+    @pytest.mark.anyio
+    async def test_empty_username(self):
+        assert "provide a player username" in await get_player_stats("", "osrs")
+
+    @pytest.mark.anyio
+    async def test_whitespace_username(self):
+        assert "provide a player username" in await get_player_stats("   ", "osrs")
+
+    @pytest.mark.anyio
+    async def test_invalid_chars_rejected(self):
+        assert "isn't a valid RuneScape name" in await get_player_stats("<script>", "osrs")
+
+    @pytest.mark.anyio
+    async def test_overlong_name_rejected(self):
+        assert "isn't a valid RuneScape name" in await get_player_stats("ThisNameIsTooLong", "osrs")
+
+
+class TestFormatStatsRobustness:
+    def test_missing_numeric_fields_do_not_crash(self):
+        data = {
+            "skills": [{"name": "Overall", "rank": 1}, {"name": "Attack", "level": 99}],
+            "activities": [{"name": "Zulrah", "rank": 5}],  # rank but no score
+        }
+        out = _format_stats("Tester", "osrs", data)
+        assert "**Tester** (OSRS Hiscores)" in out
+        assert "Attack" in out
+        assert "Zulrah" in out
+
+    def test_string_numeric_fields_coerced(self):
+        data = {"skills": [{"name": "Overall", "rank": "1", "level": "2277"}], "activities": []}
+        assert "Total level: 2,277" in _format_stats("Tester", "osrs", data)

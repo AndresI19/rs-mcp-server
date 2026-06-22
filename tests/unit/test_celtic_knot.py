@@ -50,15 +50,15 @@ class TestToolResponse:
         assert "solution" in out.lower()
 
     @pytest.mark.anyio
-    async def test_no_solution_message(self):
+    async def test_unsolvable_is_reported(self):
         out = await solve_celtic_knot([[1, 1], [2, 2]], [[0, 0, 1, 0]])
-        assert "No rotation makes every intersection match" in out
+        assert "unsolvable as read" in out
 
     @pytest.mark.anyio
-    async def test_under_determined_message(self):
-        # All-identical runes → every rotation matches → too many candidates.
+    async def test_cannot_determine_message(self):
+        # All-identical runes → every rotation matches → too many candidates to pin one.
         out = await solve_celtic_knot([[1, 1, 1, 1], [1, 1, 1, 1]], [[0, 0, 1, 0]])
-        assert "Under-determined" in out
+        assert "Can't pin a single answer" in out
 
     @pytest.mark.anyio
     async def test_validation_rejects_bad_ring_index(self):
@@ -94,4 +94,23 @@ class TestRealisticScale:
         current = [[rings[r][(p - offsets[r]) % n] for p in range(n)] for r in range(3)]
         sols = _find_solutions(current, intersections)
         assert sols, "full-size knot should be solvable"
+        assert all(_consistent(current, intersections, s) for s in sols)
+
+    def test_structural_occlusion_never_returns_a_wrong_guess(self):
+        # Real screenshots hide the under-path rune at every crossing. The solver may end up
+        # under-determined, but every candidate it returns must satisfy the visible runes —
+        # it must never invent an inconsistent answer.
+        n = 24
+        rings = [[f"r{r}_{i}" for i in range(n)] for r in range(3)]
+        intersections = [
+            [0, 2, 1, 5], [0, 9, 2, 3], [0, 16, 1, 20],
+            [1, 1, 2, 18], [1, 12, 2, 7], [0, 22, 2, 14],
+        ]
+        for j, (ra, pa, rb, pb) in enumerate(intersections):
+            rings[ra][pa] = rings[rb][pb] = f"X{j}"
+        current = [[rings[r][(p - off) % n] for p in range(n)] for r, off in zip(range(3), [5, 11, 19])]
+        for ra, pa, rb, pb in intersections:
+            current[rb][pb] = None  # under-path rune hidden at every crossing
+        sols = _find_solutions(current, intersections)
+        assert sols, "the real solution must survive occlusion"
         assert all(_consistent(current, intersections, s) for s in sols)

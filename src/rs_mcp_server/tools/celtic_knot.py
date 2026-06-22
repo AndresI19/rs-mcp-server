@@ -35,7 +35,14 @@ Study the puzzle screenshot and build two arguments, then call this tool again w
 - Encode each rune as a TOKEN — give every distinct rune a number (1, 2, 3, …) and reuse
   the SAME number for the same rune everywhere it appears, **including across different
   rings**. You needn't know what a rune depicts; only "same rune → same token" matters.
-- If a rune is hidden under a crossing path, use `null` for that slot.
+- If a rune is hidden under a crossing path, use `null` for that slot (see Occlusion below).
+
+**Occlusion is structural.** At every crossing the two paths interlace: one passes OVER
+and one UNDER, and the over path HIDES the under path's rune at that spot. So at each
+crossing you can read only ONE of the two runes — record `null` for the hidden (under) one.
+Expect about one `null` per crossing. Read every other slot you can: the more you leave
+`null`, the fewer constraints remain, and with heavy occlusion the solver may not be able
+to pin a single answer — it will say so rather than guess.
 
 **2. `intersections`** — one entry per crossing, as `[ring_a, slot_a, ring_b, slot_b]`,
 meaning the rune at slot_a of ring_a must equal the rune at slot_b of ring_b for that
@@ -124,13 +131,16 @@ async def solve_celtic_knot(
     solutions = _find_solutions(rings, intersections)
 
     if not solutions:
-        return ("No rotation makes every intersection match. Re-check the rune tokens and the "
-                "intersection mapping — a wrong token or slot index will rule out the real answer.")
+        return ("These runes have no consistent rotation — the knot is **unsolvable as read**. A real "
+                "Celtic knot always has a solution, so this almost always means a rune was misread or "
+                "an intersection was mis-mapped; double-check those. If the reading is definitely "
+                "correct, the puzzle is genuinely unsolvable.")
 
     if len(solutions) > _MAX_CANDIDATES:
-        return (f"Under-determined: more than {_MAX_CANDIDATES} rotation sets satisfy the runes you "
-                "could see. Too many runes were hidden — rotate the rings in-game to expose more, "
-                "then read the knot again.")
+        return ("**Can't pin a single answer.** More than "
+                f"{_MAX_CANDIDATES} rotation sets fit the runes you could see — too many were hidden "
+                "at the crossings to determine the solution. Rotate the rings a few steps in-game to "
+                "expose different runes, screenshot again, and re-read the knot.")
 
     solutions.sort(key=lambda ks: _clicks(ks, lengths))
     best = solutions[0]

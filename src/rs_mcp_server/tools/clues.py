@@ -229,8 +229,12 @@ def _finalize_cell(cell: dict) -> dict:
 # RS3 anagram pages prefix every clue with this verbose intro; strip it.
 _ANAGRAM_PREFIX = re.compile(r"^this anagram reveals who to speak to next:?\s*", re.IGNORECASE)
 
+# Clue-table column layout: 0 = clue text, 1 = the answer (solution / decoded text /
+# emote items, by format), 2 = location.
+_CLUE_COL, _ANSWER_COL, _LOCATION_COL = 0, 1, 2
 
-def _row_to_entry(cells: list[str], fmt: str, tier: str) -> dict | None:
+
+def _row_to_entry(cells: list[dict], fmt: str, tier: str) -> dict | None:
     if fmt == "anagram":
         return _row_anagram(cells, tier)
     if fmt == "cryptic":
@@ -243,9 +247,9 @@ def _row_to_entry(cells: list[str], fmt: str, tier: str) -> dict | None:
 
 
 def _row_anagram(cells: list[dict], tier: str) -> dict | None:
-    clue = _ANAGRAM_PREFIX.sub("", cells[0]["text"]).strip()
-    solution = cells[1]["text"] if len(cells) > 1 else ""
-    location = cells[2]["text"] if len(cells) > 2 else ""
+    clue = _ANAGRAM_PREFIX.sub("", cells[_CLUE_COL]["text"]).strip()
+    solution = cells[_ANSWER_COL]["text"] if len(cells) > _ANSWER_COL else ""
+    location = cells[_LOCATION_COL]["text"] if len(cells) > _LOCATION_COL else ""
     if not clue:
         return None
     return {
@@ -259,9 +263,9 @@ def _row_anagram(cells: list[dict], tier: str) -> dict | None:
 
 
 def _row_cryptic(cells: list[dict], tier: str) -> dict | None:
-    clue = cells[0]["text"]
-    solution = cells[1]["text"] if len(cells) > 1 else ""
-    location = cells[2]["text"] if len(cells) > 2 else ""
+    clue = cells[_CLUE_COL]["text"]
+    solution = cells[_ANSWER_COL]["text"] if len(cells) > _ANSWER_COL else ""
+    location = cells[_LOCATION_COL]["text"] if len(cells) > _LOCATION_COL else ""
     if not clue:
         return None
     return {
@@ -275,9 +279,9 @@ def _row_cryptic(cells: list[dict], tier: str) -> dict | None:
 
 
 def _row_emote(cells: list[dict], tier: str) -> dict | None:
-    clue = cells[0]["text"]
-    items = cells[1]["items"] if len(cells) > 1 else ""
-    location = cells[2]["text"] if len(cells) > 2 else ""
+    clue = cells[_CLUE_COL]["text"]
+    items = cells[_ANSWER_COL]["items"] if len(cells) > _ANSWER_COL else ""
+    location = cells[_LOCATION_COL]["text"] if len(cells) > _LOCATION_COL else ""
     if not clue:
         return None
     return {
@@ -291,9 +295,9 @@ def _row_emote(cells: list[dict], tier: str) -> dict | None:
 
 
 def _row_cipher(cells: list[dict], tier: str) -> dict | None:
-    cipher = cells[0]["text"]
-    decoded = cells[1]["text"] if len(cells) > 1 else ""
-    location = cells[2]["text"] if len(cells) > 2 else ""
+    cipher = cells[_CLUE_COL]["text"]
+    decoded = cells[_ANSWER_COL]["text"] if len(cells) > _ANSWER_COL else ""
+    location = cells[_LOCATION_COL]["text"] if len(cells) > _LOCATION_COL else ""
     if not cipher:
         return None
     return {

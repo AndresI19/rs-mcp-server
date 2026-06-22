@@ -262,5 +262,7 @@ def _extract_named_sections(html_text: str) -> dict[str, str]:
 def _truncate(s: str, limit: int) -> str:
     if len(s) <= limit:
         return s
+    # Prefer to end at a sentence boundary — trim back to the last period within the
+    # limit — falling back to a hard character cut when there's none to trim to.
     cut = s[:limit].rsplit(".", 1)[0]
     return (cut + "." if cut else s[:limit]) + " …"

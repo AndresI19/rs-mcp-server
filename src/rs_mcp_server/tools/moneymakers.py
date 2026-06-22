@@ -216,12 +216,21 @@ def _parse_master_html(html_text: str, game: str) -> list[dict]:
             "url": url,
             "profit_value": profit_value if profit_value is not None else 0,
             "profit_text": profit_cell["text"] or "?",
-            "skills": cells[col_index["skills"]]["text"] if "skills" in col_index and col_index["skills"] < len(cells) else "",
-            "category": cells[col_index["category"]]["text"] if "category" in col_index and col_index["category"] < len(cells) else "",
-            "intensity": cells[col_index["intensity"]]["text"] if "intensity" in col_index and col_index["intensity"] < len(cells) else "",
-            "members": cells[col_index["members"]]["members"] if "members" in col_index and col_index["members"] < len(cells) else None,
+            "skills": _cell_field(cells, col_index, "skills", "text", ""),
+            "category": _cell_field(cells, col_index, "category", "text", ""),
+            "intensity": _cell_field(cells, col_index, "intensity", "text", ""),
+            "members": _cell_field(cells, col_index, "members", "members", None),
         })
     return rows
+
+
+def _cell_field(cells: list[dict], col_index: dict[str, int], key: str, attr: str, default):
+    """Value of cells[col_index[key]][attr], or `default` when that column is absent
+    from this row/table (header missing, or the row has fewer cells than expected)."""
+    i = col_index.get(key)
+    if i is not None and i < len(cells):
+        return cells[i][attr]
+    return default
 
 
 def _render_master_table(rows: list[dict], game: str, category: str | None, members_only: bool, limit: int) -> str:

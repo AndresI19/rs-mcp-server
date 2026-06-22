@@ -155,3 +155,43 @@ def first_matching_page(data: dict, game: str, matches: Callable[[str], bool]) -
             "content": content,
         }
     return None
+
+
+def fetch_page_params(title: str, follow_redirects: bool) -> dict:
+    """Params for a direct MediaWiki title lookup (page wikitext + canonical URL).
+
+    The caller issues the request with its own ``http_get`` so unit tests can
+    monkeypatch it per module; this only builds the shared parameter dict.
+    """
+    params = {
+        "action": "query",
+        "titles": title,
+        "prop": "revisions|info",
+        "rvprop": "content",
+        "rvslots": "main",
+        "inprop": "url",
+        **MW_BASE_PARAMS,
+    }
+    if follow_redirects:
+        params["redirects"] = 1
+    return params
+
+
+def parse_page_response(data: dict, title: str, game: str) -> dict | None:
+    """Extract ``{title, url, content}`` from a query=revisions response.
+
+    Returns None when the page is missing or carries no revision content.
+    """
+    pages = data.get("query", {}).get("pages", [])
+    if not pages or pages[0].get("missing"):
+        return None
+    revisions = pages[0].get("revisions") or []
+    if not revisions:
+        return None
+    content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
+    resolved_title = pages[0].get("title", title)
+    return {
+        "title": resolved_title,
+        "url": f"{WIKI_BASE_URLS[game]}{resolved_title.replace(' ', '_')}",
+        "content": content,
+    }

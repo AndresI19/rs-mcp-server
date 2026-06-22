@@ -18,6 +18,7 @@ from ._wiki_parsing import (
     fetch_page_params,
     find_template as _find_template,
     join_text,
+    markdown_table,
     parse_page_response,
     parse_template_fields as _parse_fields,
     titles_match as _titles_match,
@@ -253,16 +254,15 @@ def _render_master_table(rows: list[dict], game: str, category: str | None, memb
         else:
             notes.append("*Note: members-only flag not surfaced on this wiki's master page; filter ignored.*")
 
-    if category == "combat":
+    if category in ("combat", "skilling"):
         if has_category:
-            filtered = [r for r in filtered if r["category"].lower().startswith("combat")]
+            want_combat = category == "combat"
+            filtered = [r for r in filtered if r["category"].lower().startswith("combat") == want_combat]
         else:
-            notes.append(f"*Note: category filtering not available on {wiki_label} master page; results not filtered. Use `get_money_maker_method` to see a specific method's category.*")
-    elif category == "skilling":
-        if has_category:
-            filtered = [r for r in filtered if not r["category"].lower().startswith("combat")]
-        else:
-            notes.append(f"*Note: category filtering not available on {wiki_label} master page; results not filtered. Use `get_money_maker_method` to see a specific method's category.*")
+            notes.append(
+                f"*Note: category filtering not available on {wiki_label} master page; "
+                f"results not filtered. Use `get_money_maker_method` to see a specific method's category.*"
+            )
 
     filtered = sorted(filtered, key=lambda r: r["profit_value"], reverse=True)[:limit]
 
@@ -280,28 +280,26 @@ def _render_master_table(rows: list[dict], game: str, category: str | None, memb
     if has_members:
         cols.append("Members")
 
-    lines.append("| " + " | ".join(cols) + " |")
-    lines.append("|" + "|".join(["---"] * len(cols)) + "|")
-
     if not filtered:
-        lines.append("| – | _no methods match the filters_ | – |" + "| – " * (len(cols) - 3) + "|")
-        return "\n".join(lines)
+        table_rows = [["–", "_no methods match the filters_", "–"] + ["–"] * (len(cols) - 3)]
+    else:
+        table_rows = []
+        for rank, r in enumerate(filtered, start=1):
+            link = f"[{r['name']}]({r['url']})"
+            cells = [str(rank), link, r["profit_text"]]
+            if has_category:
+                cells.append(r["category"] or "–")
+            if has_intensity:
+                cells.append(r["intensity"] or "–")
+            skills = (r["skills"] or "–").replace("\n", " ").replace("|", "/")
+            if len(skills) > 60:
+                skills = skills[:57] + "…"
+            cells.append(skills)
+            if has_members:
+                cells.append("✓" if r["members"] else "")
+            table_rows.append(cells)
 
-    for rank, r in enumerate(filtered, start=1):
-        link = f"[{r['name']}]({r['url']})"
-        cells = [str(rank), link, r["profit_text"]]
-        if has_category:
-            cells.append(r["category"] or "–")
-        if has_intensity:
-            cells.append(r["intensity"] or "–")
-        skills = (r["skills"] or "–").replace("\n", " ").replace("|", "/")
-        if len(skills) > 60:
-            skills = skills[:57] + "…"
-        cells.append(skills)
-        if has_members:
-            cells.append("✓" if r["members"] else "")
-        lines.append("| " + " | ".join(cells) + " |")
-
+    lines += markdown_table(cols, table_rows)
     return "\n".join(lines)
 
 

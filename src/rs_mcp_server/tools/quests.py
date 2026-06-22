@@ -1,8 +1,10 @@
 """get_quest_info tool — RuneScape Wiki quest data via MediaWiki API."""
 import re
+
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
-from ._http import http_get, WIKI_APIS, WIKI_BASE_URLS, MW_BASE_PARAMS
+
+from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
 from ._wiki_parsing import parse_template_fields as _parse_fields, titles_match as _titles_match
 
 _TTL = 3600  # 1 hour — matches wiki lookup bucket

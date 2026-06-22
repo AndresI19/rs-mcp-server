@@ -35,7 +35,8 @@ import re
 
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
-from ._http import http_get, MW_BASE_PARAMS, WIKI_APIS
+
+from ._http import MW_BASE_PARAMS, WIKI_APIS, http_get
 from .prices import osrs_mapping
 
 _OSRS_LATEST_URL = "https://prices.runescape.wiki/api/v1/osrs/latest"

@@ -1,7 +1,6 @@
 """Unit tests for cache.py (issue #18)."""
 from rs_mcp_server import cache
 
-
 # ── get / set round-trips ─────────────────────────────────────────────────────
 
 class TestGet:

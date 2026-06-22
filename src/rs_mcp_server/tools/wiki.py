@@ -12,7 +12,7 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._aliases import expand_aliases
-from ._http import http_get, WIKI_APIS, WIKI_BASE_URLS, MW_BASE_PARAMS
+from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
 
 _TTL = 3600  # 1 hour
 _MAX_EXTRACT_CHARS = 1500

@@ -2,10 +2,9 @@
 import pytest
 
 from rs_mcp_server.tools.moneymakers import (
-    get_money_makers,
     get_money_maker_method,
+    get_money_makers,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

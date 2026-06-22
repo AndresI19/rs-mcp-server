@@ -99,7 +99,7 @@ async def get_equipment_stats(item_name: str, game: str = "rs3") -> str:
                 cache_key,
             )
 
-    candidate = await _search_item(item_name, game)
+    candidate = await _search_equipment(item_name, game)
     if candidate is None:
         return f"No equipment found for '{item_name}' on the {wiki_label} wiki."
 
@@ -109,7 +109,7 @@ async def get_equipment_stats(item_name: str, game: str = "rs3") -> str:
             cache_key,
         )
 
-    # _search_item guarantees candidate["content"] contains an Infobox Bonuses template.
+    # _search_equipment guarantees candidate["content"] contains an Infobox Bonuses template.
     body = _find_template(candidate["content"], "Infobox Bonuses")
     sections = await _fetch_named_sections(candidate["title"], game)
     return _cache_and_return(
@@ -167,7 +167,7 @@ async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | N
     }
 
 
-async def _search_item(query: str, game: str) -> dict | None:
+async def _search_equipment(query: str, game: str) -> dict | None:
     params = {
         "action": "query",
         "generator": "search",

@@ -18,8 +18,6 @@ from ._wiki_parsing import (
     titles_match as _titles_match,
 )
 
-_TTL = TTL_HOUR
-
 _OSRS_CA_FIELDS = [
     ("Description", "description"),
     ("Tier", "tier"),
@@ -147,7 +145,7 @@ def _disambiguate(title: str, url: str, wiki_label: str) -> str:
 
 
 def _cache_and_return(value: str, cache_key: str) -> str:
-    cache.set(cache_key, value, _TTL)
+    cache.set(cache_key, value, TTL_HOUR)
     return value
 
 

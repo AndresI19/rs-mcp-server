@@ -17,7 +17,6 @@ from ._constants import MW_BASE_PARAMS, TTL_HOUR, WIKI_APIS, WIKI_BASE_URLS, WIK
 from ._http import http_get
 from ._wiki_parsing import join_text
 
-_TTL = TTL_HOUR
 _MAX_EXTRACT_CHARS = 1500
 
 
@@ -56,7 +55,7 @@ async def search_wiki(query: str, game: str = "rs3") -> str:
             body = body[:_MAX_EXTRACT_CHARS].rsplit("\n", 1)[0] + "\n..."
         result = f"**{title}** ({wiki_label} Wiki)\n{url}\n\n{body}"
 
-    cache.set(cache_key, result, _TTL)
+    cache.set(cache_key, result, TTL_HOUR)
     return result
 
 

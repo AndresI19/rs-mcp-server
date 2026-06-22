@@ -18,7 +18,6 @@ from ._constants import MW_BASE_PARAMS, TTL_HOUR, WIKI_APIS, WIKI_BASE_URLS, WIK
 from ._http import http_get
 from ._wiki_parsing import TableScope, collapse_whitespace as _collapse
 
-_TTL_DROPS = TTL_HOUR
 _TOP_N = 3
 
 
@@ -36,7 +35,7 @@ async def get_item_drop_sources(item_name: str, game: str = "rs3") -> str:
         return cached
 
     result = await _fetch_and_format(item_name, game)
-    cache.set(cache_key, result, _TTL_DROPS)
+    cache.set(cache_key, result, TTL_HOUR)
     return result
 
 

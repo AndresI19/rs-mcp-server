@@ -9,8 +9,6 @@ from ._http import http_get
 from .achievements import _dispatch, _fetch_page, _parse_fields, _titles_match, get_achievement
 from .hiscores import _HISCORES_JSON_APIS, _as_int, validate_username
 
-_TTL_PROGRESS = TTL_10MIN
-
 
 @instrument("get_player_achievement_progress")
 async def get_player_achievement_progress(name: str, username: str, game: str = "rs3") -> str:
@@ -51,7 +49,7 @@ async def get_player_achievement_progress(name: str, username: str, game: str = 
         else:
             note = f"Couldn't retrieve hiscores right now (HTTP {e.response.status_code}). Try again shortly."
         result = f"{info}\n\n**Progress for {username}:** {note}"
-        cache.set(cache_key, result, _TTL_PROGRESS)
+        cache.set(cache_key, result, TTL_10MIN)
         return result
     except httpx.RequestError:
         return (
@@ -61,7 +59,7 @@ async def get_player_achievement_progress(name: str, username: str, game: str = 
 
     progress = _format_progress(kind, monster, username, data)
     result = f"{info}\n\n{progress}"
-    cache.set(cache_key, result, _TTL_PROGRESS)
+    cache.set(cache_key, result, TTL_10MIN)
     return result
 
 

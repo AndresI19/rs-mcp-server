@@ -17,8 +17,6 @@ from ._wiki_parsing import (
     titles_match as _titles_match,
 )
 
-_TTL = TTL_HOUR
-
 _TEMPLATES = ("Infobox Quest", "Quest details")
 
 # (display label, keys to try in order) — a label falls back to its alternate keys,
@@ -107,7 +105,7 @@ def _disambiguate(title: str, url: str, wiki_label: str) -> str:
 
 
 def _cache_and_return(value: str, cache_key: str) -> str:
-    cache.set(cache_key, value, _TTL)
+    cache.set(cache_key, value, TTL_HOUR)
     return value
 
 

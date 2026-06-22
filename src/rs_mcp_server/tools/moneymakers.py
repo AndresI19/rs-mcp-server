@@ -6,6 +6,7 @@ Two tools:
 """
 import html
 import re
+from collections.abc import Iterator
 
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
@@ -336,7 +337,7 @@ def _render_method(name: str, url: str, wiki_label: str, fields: dict, template_
     return "\n".join(lines)
 
 
-def _enumerate_io(fields: dict, prefix: str):
+def _enumerate_io(fields: dict[str, str], prefix: str) -> Iterator[tuple[str, str]]:
     i = 1
     while True:
         item = fields.get(f"{prefix}{i}")

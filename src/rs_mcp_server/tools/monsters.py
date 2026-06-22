@@ -3,7 +3,8 @@
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import WIKI_APIS, WIKI_LABELS, http_get
+from ._constants import WIKI_APIS, WIKI_LABELS
+from ._http import http_get
 from ._wiki_parsing import (
     clean_wikitext as _clean,
     disambiguate,

@@ -8,6 +8,9 @@ helpers stay in each module so the test suite can monkeypatch ``http_get`` local
 """
 import html
 import re
+from collections.abc import Callable
+
+from ._http import MW_BASE_PARAMS, SEARCH_RESULT_LIMIT, WIKI_BASE_URLS
 
 
 def titles_match(a: str, b: str) -> bool:
@@ -89,3 +92,41 @@ def disambiguate(name: str, url: str, wiki_label: str, tool: str, param: str, no
         f"{url}\n\n"
         f'Re-invoke `{tool}` with {param}="{name}" to fetch the {noun}.'
     )
+
+
+def search_params(search_term: str) -> dict:
+    """MediaWiki ``generator=search`` params that fetch candidate pages with content.
+
+    The caller issues the request with its own ``http_get`` (so unit tests can
+    monkeypatch it per module); this only builds the shared parameter dict.
+    """
+    return {
+        "action": "query",
+        "generator": "search",
+        "gsrsearch": search_term,
+        "gsrlimit": SEARCH_RESULT_LIMIT,
+        "prop": "revisions|info",
+        "rvprop": "content",
+        "rvslots": "main",
+        "inprop": "url",
+        **MW_BASE_PARAMS,
+    }
+
+
+def first_matching_page(data: dict, game: str, matches: Callable[[str], bool]) -> dict | None:
+    """Return the first search result whose wikitext satisfies ``matches`` — the
+    type-filter that stops generically-named hits from being returned."""
+    for page in data.get("query", {}).get("pages", []):
+        revisions = page.get("revisions") or []
+        if not revisions:
+            continue
+        content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
+        if not matches(content):
+            continue
+        title = page.get("title", "")
+        return {
+            "title": title,
+            "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
+            "content": content,
+        }
+    return None

@@ -4,10 +4,12 @@ import re
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import MW_BASE_PARAMS, SEARCH_RESULT_LIMIT, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
 from ._wiki_parsing import (
     disambiguate,
+    first_matching_page,
     parse_template_fields as _parse_fields,
+    search_params,
     titles_match as _titles_match,
 )
 
@@ -149,31 +151,10 @@ async def _search_quest(query: str, game: str) -> dict | None:
     a quest's name) get skipped instead of confidently returned.
     """
     for search_term in (f'{query} incategory:"Quests"', query):
-        params = {
-            "action": "query",
-            "generator": "search",
-            "gsrsearch": search_term,
-            "gsrlimit": SEARCH_RESULT_LIMIT,
-            "prop": "revisions|info",
-            "rvprop": "content",
-            "rvslots": "main",
-            "inprop": "url",
-            **MW_BASE_PARAMS,
-        }
-        data = await http_get(WIKI_APIS[game], params=params)
-        for page in data.get("query", {}).get("pages", []):
-            revisions = page.get("revisions") or []
-            if not revisions:
-                continue
-            content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
-            if not _has_quest_template(content):
-                continue
-            title = page.get("title", "")
-            return {
-                "title": title,
-                "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
-                "content": content,
-            }
+        data = await http_get(WIKI_APIS[game], params=search_params(search_term))
+        match = first_matching_page(data, game, _has_quest_template)
+        if match:
+            return match
     return None
 
 

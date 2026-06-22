@@ -36,7 +36,7 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, http_get
-from ._wiki_parsing import collapse_whitespace as _collapse
+from ._wiki_parsing import TableScope, collapse_whitespace as _collapse, markdown_table
 from .prices import osrs_mapping
 
 _OSRS_LATEST_URL = "https://prices.runescape.wiki/api/v1/osrs/latest"
@@ -287,8 +287,7 @@ class _AlchTableParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.tables: list[dict] = []
-        self._depth = 0
-        self._wt_depth: int | None = None
+        self._scope = TableScope(lambda cls: "wikitable" in cls)
         self._headers: list[str] | None = None
         self._rows: list[list[dict]] | None = None
         self._row: list[dict] | None = None
@@ -300,13 +299,11 @@ class _AlchTableParser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         ad = dict(attrs)
         if tag == "table":
-            self._depth += 1
-            if self._wt_depth is None and "wikitable" in (ad.get("class") or "").split():
-                self._wt_depth = self._depth
+            if self._scope.open_table(ad):
                 self._headers = []
                 self._rows = []
             return
-        if self._wt_depth is None or self._depth != self._wt_depth:
+        if not self._scope.at_target_level():
             return
         if tag == "tr":
             self._row = []
@@ -320,7 +317,7 @@ class _AlchTableParser(HTMLParser):
             self._in_a = True
 
     def handle_data(self, data):
-        if self._wt_depth is None or self._depth != self._wt_depth:
+        if not self._scope.at_target_level():
             return
         if self._in_th:
             self._th += data
@@ -331,14 +328,12 @@ class _AlchTableParser(HTMLParser):
 
     def handle_endtag(self, tag):
         if tag == "table":
-            if self._wt_depth is not None and self._depth == self._wt_depth:
+            if self._scope.close_table():
                 self.tables.append({"headers": self._headers, "rows": self._rows})
-                self._wt_depth = None
                 self._headers = None
                 self._rows = None
-            self._depth -= 1
             return
-        if self._wt_depth is None or self._depth != self._wt_depth:
+        if not self._scope.at_target_level():
             return
         if tag == "th" and self._in_th:
             self._in_th = False
@@ -367,6 +362,13 @@ def _sv_float(value: str | None) -> float | None:
 def _sv_int(value: str | None) -> int | None:
     f = _sv_float(value)
     return int(f) if f is not None else None
+
+
+def _opt_sort(cells: list[dict], col_index: dict[str, int], key: str, conv) -> int | float | None:
+    """Convert an optional column's data-sort-value via `conv`, or None if absent."""
+    if key not in col_index:
+        return None
+    return conv(cells[col_index[key]]["sort"])
 
 
 def _parse_rs3_table(html_text: str) -> list[dict] | None:
@@ -412,10 +414,10 @@ def _parse_rs3_table(html_text: str) -> list[dict] | None:
         if profit is None or profit <= 0:
             continue
 
-        ge_price = _sv_int(cells[col_index["ge price"]]["sort"]) if "ge price" in col_index else None
+        ge_price = _opt_sort(cells, col_index, "ge price", _sv_int)
         high_alch = _sv_int(cells[col_index["high alch"]]["sort"])
-        roi = _sv_float(cells[col_index["roi%"]]["sort"]) if "roi%" in col_index else None
-        buy_limit = _sv_int(cells[col_index["limit"]]["sort"]) if "limit" in col_index else None
+        roi = _opt_sort(cells, col_index, "roi%", _sv_float)
+        buy_limit = _opt_sort(cells, col_index, "limit", _sv_int)
         volume = _sv_int(cells[col_index["trade volume"]]["sort"])
         max_daily = _sv_int(cells[col_index["max daily profit"]]["sort"])
 
@@ -477,6 +479,26 @@ async def _get_best_alchables_rs3(mode: str) -> str:
 # Renderers
 # ---------------------------------------------------------------------------
 
+_PASSIVE_COLUMNS = ["#", "Item", "GE Price", "High Alch", "Profit/cast",
+                    "Max daily profit", "Volume", "Limit", "ROI%"]
+
+
+def _render_alch_section(emoji: str, label: str, top_n: int, rows: list[dict]) -> list[str]:
+    """Render one passive-mode section (Easy or Slow buys) as markdown table lines."""
+    lines = [f"### {emoji} {label} buys — top {top_n} by max daily profit"]
+    if not rows:
+        lines.append(f"_No items qualify as {label.lower()} buys right now._")
+        return lines
+    table_rows = [
+        [str(rank), r["name"], f"{r['ge_price']:,}", f"{r['highalch']:,}",
+         f"+{int(round(r['profit'])):,}", f"{r['max_daily']:,}",
+         f"{r['volume']:,}", f"{r['buy_limit']:,}", f"{r['roi']:.1f}%"]
+        for rank, r in enumerate(rows, start=1)
+    ]
+    lines += markdown_table(_PASSIVE_COLUMNS, table_rows)
+    return lines
+
+
 def _render_passive_two_tables(easy: list[dict], slow: list[dict], page_url: str) -> str:
     title = "**Best Alchables (RS3)** — passive (Alchemiser mk. II)"
     lines = [title, page_url, ""]
@@ -487,32 +509,9 @@ def _render_passive_two_tables(easy: list[dict], slow: list[dict], page_url: str
     top_easy = sorted(easy, key=sort_key)[:_EASY_TOP_N]
     top_slow = sorted(slow, key=sort_key)[:_SLOW_TOP_N]
 
-    lines.append(f"### 🟢 Easy buys — top {_EASY_TOP_N} by max daily profit")
-    if top_easy:
-        lines.append("| # | Item | GE Price | High Alch | Profit/cast | Max daily profit | Volume | Limit | ROI% |")
-        lines.append("|---|------|----------|-----------|-------------|------------------|--------|-------|------|")
-        for rank, r in enumerate(top_easy, start=1):
-            lines.append(
-                f"| {rank} | {r['name']} | {r['ge_price']:,} | {r['highalch']:,} | "
-                f"+{int(round(r['profit'])):,} | {r['max_daily']:,} | "
-                f"{r['volume']:,} | {r['buy_limit']:,} | {r['roi']:.1f}% |"
-            )
-    else:
-        lines.append("_No items qualify as easy buys right now._")
-
+    lines += _render_alch_section("🟢", "Easy", _EASY_TOP_N, top_easy)
     lines.append("")
-    lines.append(f"### 🟡 Slow buys — top {_SLOW_TOP_N} by max daily profit")
-    if top_slow:
-        lines.append("| # | Item | GE Price | High Alch | Profit/cast | Max daily profit | Volume | Limit | ROI% |")
-        lines.append("|---|------|----------|-----------|-------------|------------------|--------|-------|------|")
-        for rank, r in enumerate(top_slow, start=1):
-            lines.append(
-                f"| {rank} | {r['name']} | {r['ge_price']:,} | {r['highalch']:,} | "
-                f"+{int(round(r['profit'])):,} | {r['max_daily']:,} | "
-                f"{r['volume']:,} | {r['buy_limit']:,} | {r['roi']:.1f}% |"
-            )
-    else:
-        lines.append("_No items qualify as slow buys right now._")
+    lines += _render_alch_section("🟡", "Slow", _SLOW_TOP_N, top_slow)
 
     lines.append("")
     lines.append(
@@ -571,8 +570,7 @@ def _render_mixed(
     header = ["#", "Item", columns[0], columns[1], "Profit/cast", "Volume", "Limit", "ROI%", "Category"]
     if members_column:
         header.append("P2P")
-    lines.append("| " + " | ".join(header) + " |")
-    lines.append("|" + "|".join(["---"] * len(header)) + "|")
+    table_rows = []
     for rank, r in enumerate(merged, start=1):
         cells = [
             str(rank),
@@ -587,7 +585,8 @@ def _render_mixed(
         ]
         if members_column:
             cells.append("✓" if r.get("members") else "")
-        lines.append("| " + " | ".join(cells) + " |")
+        table_rows.append(cells)
+    lines += markdown_table(header, table_rows)
     lines.append("")
     lines.append(footer)
     return "\n".join(lines)

@@ -1,10 +1,91 @@
 """Unit tests for the shared wikitext-parsing helpers."""
 from rs_mcp_server.tools._wiki_parsing import (
+    TableScope,
     clean_wikitext,
     find_template,
+    markdown_table,
+    match_by_name,
     parse_template_fields,
+    render_variants,
     titles_match,
 )
+
+
+class TestMarkdownTable:
+    def test_header_separator_and_rows(self):
+        assert markdown_table(["A", "B"], [["1", "2"], ["3", "4"]]) == [
+            "| A | B |",
+            "|---|---|",
+            "| 1 | 2 |",
+            "| 3 | 4 |",
+        ]
+
+    def test_empty_rows_gives_header_and_separator_only(self):
+        assert markdown_table(["A", "B"], []) == ["| A | B |", "|---|---|"]
+
+
+class TestMatchByName:
+    _ITEMS = [{"k": "dragon dagger"}, {"k": "dragon scimitar"}, {"k": "rune scimitar"}]
+
+    def test_exact(self):
+        kind, payload = match_by_name("Dragon Dagger", self._ITEMS, "k")
+        assert kind == "exact" and payload == {"k": "dragon dagger"}
+
+    def test_substring_sorted_by_closeness(self):
+        kind, payload = match_by_name("scimitar", self._ITEMS, "k")
+        assert kind == "did_you_mean"
+        # both 'rune scimitar' and 'dragon scimitar' contain it; closer length first
+        assert payload[0]["k"] == "rune scimitar"
+
+    def test_none_and_empty(self):
+        assert match_by_name("zzz", self._ITEMS, "k") == ("none", None)
+        assert match_by_name("   ", self._ITEMS, "k") == ("none", None)
+
+
+class TestRenderVariants:
+    def test_renders_list_and_tool_hint(self):
+        out = render_variants(
+            [{"title": "Wuthering I", "url": "u1"}, {"title": "Wuthering II", "url": "u2"}],
+            "RS3", "Wuthering", "get_achievement",
+        )
+        assert 'Multiple tiered variants of **"Wuthering"**' in out
+        assert "- **Wuthering I** — u1" in out
+        assert "`get_achievement`" in out
+
+
+class TestTableScope:
+    def test_enters_and_exits_target(self):
+        s = TableScope(lambda cls: "wikitable" in cls)
+        assert not s.at_target_level()
+        assert s.open_table({"class": "wikitable sortable"}) is True
+        assert s.at_target_level()
+        assert s.close_table() is True
+        assert not s.at_target_level()
+
+    def test_non_target_table_ignored(self):
+        s = TableScope(lambda cls: "wikitable" in cls)
+        assert s.open_table({"class": "infobox"}) is False
+        assert not s.at_target_level()
+
+    def test_nested_table_is_not_at_target_level(self):
+        s = TableScope(lambda cls: "wikitable" in cls)
+        s.open_table({"class": "wikitable"})
+        s.open_table({"class": "wikitable"})  # nested inside a cell
+        assert not s.at_target_level()        # depth != target depth
+        s.close_table()
+        assert s.at_target_level()            # back at the outer table
+
+    def test_first_only_ignores_later_targets(self):
+        s = TableScope(lambda cls: "wikitable" in cls, first_only=True)
+        s.open_table({"class": "wikitable"})
+        s.close_table()
+        assert s.open_table({"class": "wikitable"}) is False  # second one ignored
+
+    def test_multi_target_re_enters_when_not_first_only(self):
+        s = TableScope(lambda cls: "wikitable" in cls)
+        s.open_table({"class": "wikitable"})
+        s.close_table()
+        assert s.open_table({"class": "wikitable"}) is True   # re-enters each table
 
 
 class TestTitlesMatch:

@@ -11,6 +11,7 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._wiki_parsing import TableScope, join_text, match_by_name
 
 _TTL = 3600
 _PAGE = "Settings"
@@ -97,8 +98,7 @@ class _SettingsParser(HTMLParser):
         self._heading_id = ""
         self._buf: list[str] = []
         self._capture = False
-        self._table_depth = 0
-        self._in_table = False
+        self._scope = TableScope(lambda cls: "wikitable" in cls)
         self._cells: list[str] | None = None
         self._row_has_th = False
 
@@ -110,10 +110,8 @@ class _SettingsParser(HTMLParser):
             self._buf = []
             self._capture = True
         elif tag == "table":
-            self._table_depth += 1
-            if "wikitable" in (ad.get("class") or "").split():
-                self._in_table = True
-        elif self._in_table:
+            self._scope.open_table(ad)
+        elif self._scope.at_target_level():
             if tag == "tr":
                 self._cells = []
                 self._row_has_th = False
@@ -129,7 +127,7 @@ class _SettingsParser(HTMLParser):
 
     def handle_endtag(self, tag):
         if tag == self._heading:
-            text = " ".join("".join(self._buf).split())
+            text = join_text(self._buf)
             if self._heading == "h2":
                 self.section, self.section_anchor = text, self._heading_id
                 self.subsection = self.subsection_anchor = ""
@@ -138,15 +136,13 @@ class _SettingsParser(HTMLParser):
             self._heading = None
             self._capture = False
         elif tag == "td" and self._cells is not None and self._capture:
-            self._cells.append(" ".join("".join(self._buf).split()))
+            self._cells.append(join_text(self._buf))
             self._capture = False
         elif tag == "tr" and self._cells is not None:
             self._emit_row()
             self._cells = None
         elif tag == "table":
-            self._table_depth -= 1
-            if self._table_depth == 0:
-                self._in_table = False
+            self._scope.close_table()
 
     def _emit_row(self) -> None:
         if self._row_has_th or self._cells is None or len(self._cells) < 2:
@@ -183,14 +179,9 @@ def _match_setting(query: str, rows: list[dict]) -> tuple[str, object]:
     if not q:
         return ("none", None)
 
-    exact = [r for r in rows if r["name_lower"] == q]
-    if exact:
-        return ("exact", exact[0])
-
-    contains = [r for r in rows if q in r["name_lower"]]
-    if contains:
-        contains.sort(key=lambda r: abs(len(r["name_lower"]) - len(q)))
-        return ("did_you_mean", contains[:5])
+    kind, payload = match_by_name(query, rows, "name_lower")
+    if kind != "none":
+        return kind, payload
 
     # Fuzzy match — typo recovery before falling back to description text.
     names = [r["name"] for r in rows]

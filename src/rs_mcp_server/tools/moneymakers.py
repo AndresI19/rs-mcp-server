@@ -13,8 +13,13 @@ from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
 from ._wiki_parsing import (
+    TableScope,
     disambiguate,
+    fetch_page_params,
     find_template as _find_template,
+    join_text,
+    markdown_table,
+    parse_page_response,
     parse_template_fields as _parse_fields,
     titles_match as _titles_match,
 )
@@ -27,6 +32,9 @@ _METHOD_PREFIX = "Money making guide/"
 _VALID_CATEGORIES = ("combat", "skilling")
 
 _METHOD_TEMPLATES = ("Mmgtable recurring", "Mmgtable")
+
+# Indices into a parsed cell's link list: [href, text-fragments].
+_LINK_HREF, _LINK_TEXT = 0, 1
 
 
 # ---------------------------------------------------------------------------
@@ -95,10 +103,7 @@ class _MasterTableParser(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.headers: list[str] = []
         self.rows: list[list[dict]] = []
-        self._depth = 0
-        self._in_target = False
-        self._target_depth = 0
-        self._done = False           # capture only the first sortable table
+        self._scope = TableScope(lambda cls: "wikitable" in cls and "sortable" in cls, first_only=True)
         self._row: list[dict] | None = None
         self._cell: dict | None = None
         self._th: list[str] | None = None
@@ -107,13 +112,9 @@ class _MasterTableParser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         ad = dict(attrs)
         if tag == "table":
-            self._depth += 1
-            cls = (ad.get("class") or "").split()
-            if not self._in_target and not self._done and "wikitable" in cls and "sortable" in cls:
-                self._in_target = True
-                self._target_depth = self._depth
+            self._scope.open_table(ad)
             return
-        if not self._in_target or self._depth != self._target_depth:
+        if not self._scope.at_target_level():
             return  # ignore tags inside a table nested in a cell
         if tag == "tr":
             self._row = []
@@ -139,24 +140,21 @@ class _MasterTableParser(HTMLParser):
 
     def handle_endtag(self, tag):
         if tag == "table":
-            if self._in_target and self._depth == self._target_depth:
-                self._in_target = False
-                self._done = True
-            self._depth -= 1
+            self._scope.close_table()
             return
-        if not self._in_target or self._depth != self._target_depth:
+        if not self._scope.at_target_level():
             return
         if tag == "a":
             self._in_a = False
         elif tag == "th" and self._th is not None:
-            self.headers.append(" ".join("".join(self._th).split()))
+            self.headers.append(join_text(self._th))
             self._th = None
         elif tag == "td" and self._cell is not None:
             link = None
             if self._cell["link"] is not None:
-                link = (" ".join("".join(self._cell["link"][1]).split()), self._cell["link"][0])
+                link = (join_text(self._cell["link"][_LINK_TEXT]), self._cell["link"][_LINK_HREF])
             self._row.append({
-                "text": " ".join("".join(self._cell["text"]).split()),
+                "text": join_text(self._cell["text"]),
                 "sort_value": self._cell["sort_value"],
                 "link": link,
                 "members": self._cell["members"],
@@ -223,12 +221,21 @@ def _parse_master_html(html_text: str, game: str) -> list[dict]:
             "url": url,
             "profit_value": profit_value if profit_value is not None else 0,
             "profit_text": profit_cell["text"] or "?",
-            "skills": cells[col_index["skills"]]["text"] if "skills" in col_index and col_index["skills"] < len(cells) else "",
-            "category": cells[col_index["category"]]["text"] if "category" in col_index and col_index["category"] < len(cells) else "",
-            "intensity": cells[col_index["intensity"]]["text"] if "intensity" in col_index and col_index["intensity"] < len(cells) else "",
-            "members": cells[col_index["members"]]["members"] if "members" in col_index and col_index["members"] < len(cells) else None,
+            "skills": _cell_field(cells, col_index, "skills", "text", ""),
+            "category": _cell_field(cells, col_index, "category", "text", ""),
+            "intensity": _cell_field(cells, col_index, "intensity", "text", ""),
+            "members": _cell_field(cells, col_index, "members", "members", None),
         })
     return rows
+
+
+def _cell_field(cells: list[dict], col_index: dict[str, int], key: str, attr: str, default):
+    """Value of cells[col_index[key]][attr], or `default` when that column is absent
+    from this row/table (header missing, or the row has fewer cells than expected)."""
+    i = col_index.get(key)
+    if i is not None and i < len(cells):
+        return cells[i][attr]
+    return default
 
 
 def _render_master_table(rows: list[dict], game: str, category: str | None, members_only: bool, limit: int) -> str:
@@ -247,16 +254,15 @@ def _render_master_table(rows: list[dict], game: str, category: str | None, memb
         else:
             notes.append("*Note: members-only flag not surfaced on this wiki's master page; filter ignored.*")
 
-    if category == "combat":
+    if category in ("combat", "skilling"):
         if has_category:
-            filtered = [r for r in filtered if r["category"].lower().startswith("combat")]
+            want_combat = category == "combat"
+            filtered = [r for r in filtered if r["category"].lower().startswith("combat") == want_combat]
         else:
-            notes.append(f"*Note: category filtering not available on {wiki_label} master page; results not filtered. Use `get_money_maker_method` to see a specific method's category.*")
-    elif category == "skilling":
-        if has_category:
-            filtered = [r for r in filtered if not r["category"].lower().startswith("combat")]
-        else:
-            notes.append(f"*Note: category filtering not available on {wiki_label} master page; results not filtered. Use `get_money_maker_method` to see a specific method's category.*")
+            notes.append(
+                f"*Note: category filtering not available on {wiki_label} master page; "
+                f"results not filtered. Use `get_money_maker_method` to see a specific method's category.*"
+            )
 
     filtered = sorted(filtered, key=lambda r: r["profit_value"], reverse=True)[:limit]
 
@@ -274,28 +280,26 @@ def _render_master_table(rows: list[dict], game: str, category: str | None, memb
     if has_members:
         cols.append("Members")
 
-    lines.append("| " + " | ".join(cols) + " |")
-    lines.append("|" + "|".join(["---"] * len(cols)) + "|")
-
     if not filtered:
-        lines.append("| – | _no methods match the filters_ | – |" + "| – " * (len(cols) - 3) + "|")
-        return "\n".join(lines)
+        table_rows = [["–", "_no methods match the filters_", "–"] + ["–"] * (len(cols) - 3)]
+    else:
+        table_rows = []
+        for rank, r in enumerate(filtered, start=1):
+            link = f"[{r['name']}]({r['url']})"
+            cells = [str(rank), link, r["profit_text"]]
+            if has_category:
+                cells.append(r["category"] or "–")
+            if has_intensity:
+                cells.append(r["intensity"] or "–")
+            skills = (r["skills"] or "–").replace("\n", " ").replace("|", "/")
+            if len(skills) > 60:
+                skills = skills[:57] + "…"
+            cells.append(skills)
+            if has_members:
+                cells.append("✓" if r["members"] else "")
+            table_rows.append(cells)
 
-    for rank, r in enumerate(filtered, start=1):
-        link = f"[{r['name']}]({r['url']})"
-        cells = [str(rank), link, r["profit_text"]]
-        if has_category:
-            cells.append(r["category"] or "–")
-        if has_intensity:
-            cells.append(r["intensity"] or "–")
-        skills = (r["skills"] or "–").replace("\n", " ").replace("|", "/")
-        if len(skills) > 60:
-            skills = skills[:57] + "…"
-        cells.append(skills)
-        if has_members:
-            cells.append("✓" if r["members"] else "")
-        lines.append("| " + " | ".join(cells) + " |")
-
+    lines += markdown_table(cols, table_rows)
     return "\n".join(lines)
 
 
@@ -317,48 +321,51 @@ async def get_money_maker_method(method_name: str, game: str = "rs3") -> str:
         return cached
 
     wiki_label = "RS3" if game == "rs3" else "OSRS"
-    full_title = f"{_METHOD_PREFIX}{method_name}"
 
-    direct = await _fetch_page(full_title, game, follow_redirects=True)
-    if direct is not None:
-        body, template_name = _find_method_template(direct["content"])
-        if body is not None:
-            display_name = direct["title"].removeprefix(_METHOD_PREFIX)
-            if _titles_match(method_name, display_name):
-                return _cache_and_return(
-                    _render_method(display_name, direct["url"], wiki_label, _parse_fields(body), template_name),
-                    cache_key,
-                )
-            return _cache_and_return(
-                _disambiguate_method(display_name, direct["url"], wiki_label),
-                cache_key,
-            )
+    result = (
+        await _method_from_direct(method_name, game, wiki_label)
+        or await _method_from_search(method_name, game, wiki_label)
+    )
+    if result is None:
+        return f"No money-making method found for '{method_name}' on the {wiki_label} wiki."
+    return _cache_and_return(result, cache_key)
 
+
+async def _method_from_direct(method_name: str, game: str, wiki_label: str) -> str | None:
+    """Direct subpage lookup under the 'Money making guide/' prefix."""
+    direct = await _fetch_page(f"{_METHOD_PREFIX}{method_name}", game, follow_redirects=True)
+    if direct is None:
+        return None
+    body, template_name = _find_method_template(direct["content"])
+    if body is None:
+        return None
+    display_name = direct["title"].removeprefix(_METHOD_PREFIX)
+    if _titles_match(method_name, display_name):
+        return _render_method(display_name, direct["url"], wiki_label, _parse_fields(body), template_name)
+    return _disambiguate_method(display_name, direct["url"], wiki_label)
+
+
+async def _method_from_search(method_name: str, game: str, wiki_label: str) -> str | None:
+    """Search fallback: disambiguate a near-title, else fetch + render the method page."""
     candidate = await _search_method(method_name, game)
     if candidate is None:
-        return f"No money-making method found for '{method_name}' on the {wiki_label} wiki."
+        return None
+    display_name = candidate["title"].removeprefix(_METHOD_PREFIX)
+    if not _titles_match(method_name, display_name):
+        return _disambiguate_method(display_name, candidate["url"], wiki_label)
 
-    candidate_display = candidate["title"].removeprefix(_METHOD_PREFIX)
-    if not _titles_match(method_name, candidate_display):
-        return _cache_and_return(
-            _disambiguate_method(candidate_display, candidate["url"], wiki_label),
-            cache_key,
-        )
-
+    # _search_method returns title/url only; re-fetch to get the page wikitext.
     page = await _fetch_page(candidate["title"], game, follow_redirects=False)
     if page is None:
-        return f"No money-making method found for '{method_name}' on the {wiki_label} wiki."
+        return None
     body, template_name = _find_method_template(page["content"])
     if body is None:
         return (
-            f"**{candidate_display}** ({wiki_label} Wiki)\n"
+            f"**{display_name}** ({wiki_label} Wiki)\n"
             f"{page['url']}\n\n"
             f"Page exists but no Mmgtable template found — it may not be a money-making method."
         )
-    return _cache_and_return(
-        _render_method(candidate_display, page["url"], wiki_label, _parse_fields(body), template_name),
-        cache_key,
-    )
+    return _render_method(display_name, page["url"], wiki_label, _parse_fields(body), template_name)
 
 
 def _disambiguate_method(display_name: str, url: str, wiki_label: str) -> str:
@@ -454,34 +461,8 @@ def _cache_and_return(value: str, cache_key: str) -> str:
 
 
 async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | None:
-    params = {
-        "action": "query",
-        "titles": title,
-        "prop": "revisions|info",
-        "rvprop": "content",
-        "rvslots": "main",
-        "inprop": "url",
-        **MW_BASE_PARAMS,
-    }
-    if follow_redirects:
-        params["redirects"] = 1
-    data = await http_get(WIKI_APIS[game], params=params)
-    pages = data.get("query", {}).get("pages", [])
-    if not pages:
-        return None
-    page = pages[0]
-    if page.get("missing"):
-        return None
-    revisions = page.get("revisions", [])
-    if not revisions:
-        return None
-    content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
-    resolved_title = page.get("title", title)
-    return {
-        "title": resolved_title,
-        "url": f"{WIKI_BASE_URLS[game]}{resolved_title.replace(' ', '_')}",
-        "content": content,
-    }
+    data = await http_get(WIKI_APIS[game], params=fetch_page_params(title, follow_redirects))
+    return parse_page_response(data, title, game)
 
 
 async def _search_method(query: str, game: str) -> dict | None:

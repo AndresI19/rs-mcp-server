@@ -155,3 +155,142 @@ def first_matching_page(data: dict, game: str, matches: Callable[[str], bool]) -
             "content": content,
         }
     return None
+
+
+def fetch_page_params(title: str, follow_redirects: bool) -> dict:
+    """Params for a direct MediaWiki title lookup (page wikitext + canonical URL).
+
+    The caller issues the request with its own ``http_get`` so unit tests can
+    monkeypatch it per module; this only builds the shared parameter dict.
+    """
+    params = {
+        "action": "query",
+        "titles": title,
+        "prop": "revisions|info",
+        "rvprop": "content",
+        "rvslots": "main",
+        "inprop": "url",
+        **MW_BASE_PARAMS,
+    }
+    if follow_redirects:
+        params["redirects"] = 1
+    return params
+
+
+def parse_page_response(data: dict, title: str, game: str) -> dict | None:
+    """Extract ``{title, url, content}`` from a query=revisions response.
+
+    Returns None when the page is missing or carries no revision content.
+    """
+    pages = data.get("query", {}).get("pages", [])
+    if not pages or pages[0].get("missing"):
+        return None
+    revisions = pages[0].get("revisions") or []
+    if not revisions:
+        return None
+    content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
+    resolved_title = pages[0].get("title", title)
+    return {
+        "title": resolved_title,
+        "url": f"{WIKI_BASE_URLS[game]}{resolved_title.replace(' ', '_')}",
+        "content": content,
+    }
+
+
+class TableScope:
+    """Shared <table> nesting tracker for the html.parser table walkers.
+
+    Each walker calls ``open_table``/``close_table`` on <table> start/end and
+    guards its tr/td/th handling with ``at_target_level()``. This keeps the depth
+    bookkeeping — which makes a table nested inside a cell get ignored rather than
+    corrupt the row stream — in one place; each walker still owns its cell capture.
+
+    ``is_target(class_list)`` selects which table to enter; ``first_only`` stops
+    after the first match so later tables on the page are ignored.
+    """
+
+    def __init__(self, is_target: Callable[[list[str]], bool], first_only: bool = False) -> None:
+        self._is_target = is_target
+        self._first_only = first_only
+        self.depth = 0
+        self.in_target = False
+        self._target_depth = 0
+        self._done = False
+
+    def open_table(self, attrs: dict) -> bool:
+        """Register a <table> open; return True if it is the newly-entered target."""
+        self.depth += 1
+        if (not self.in_target and not self._done
+                and self._is_target((attrs.get("class") or "").split())):
+            self.in_target = True
+            self._target_depth = self.depth
+            return True
+        return False
+
+    def close_table(self) -> bool:
+        """Register a </table>; return True if the target table just closed."""
+        closed = self.in_target and self.depth == self._target_depth
+        if closed:
+            self.in_target = False
+            if self._first_only:
+                self._done = True
+        self.depth -= 1
+        return closed
+
+    def at_target_level(self) -> bool:
+        """True when inside the target table at its own nesting level (not a nested one)."""
+        return self.in_target and self.depth == self._target_depth
+
+
+def match_by_name(query: str, items: list[dict], key: str) -> tuple[str, object]:
+    """Exact-then-substring match on ``items[key]`` (which must be pre-lowercased).
+
+    Returns ``(kind, payload)``: ``("exact", item)``, ``("did_you_mean", up to 5
+    substring hits sorted by length-closeness to the query)``, or ``("none", None)``.
+    Callers wanting fuzzy/secondary tiers layer them on a ``"none"`` result.
+    """
+    q = query.strip().lower()
+    if not q:
+        return ("none", None)
+    exact = [it for it in items if it[key] == q]
+    if exact:
+        return ("exact", exact[0])
+    contains = [it for it in items if q in it[key]]
+    if contains:
+        contains.sort(key=lambda it: abs(len(it[key]) - len(q)))
+        return ("did_you_mean", contains[:5])
+    return ("none", None)
+
+
+def render_variants(variants: list[dict], wiki_label: str, base_name: str, tool: str) -> str:
+    """Render the 'multiple tiered variants' list shared by the roman-numeral lookups
+    (e.g. achievements, quests). ``tool`` tailors the re-invoke hint."""
+    lines = [f'Multiple tiered variants of **"{base_name}"** found ({wiki_label} Wiki):', ""]
+    for v in variants:
+        lines.append(f"- **{v['title']}** — {v['url']}")
+    lines.append("")
+    lines.append(f"Re-invoke `{tool}` with the exact tier name to fetch full details.")
+    return "\n".join(lines)
+
+
+def join_text(parts: list[str]) -> str:
+    """Join accumulated text fragments and collapse whitespace runs to single spaces.
+
+    The html.parser table/section walkers build up a cell's or heading's text as a
+    list of data chunks; this concatenates them and normalises spacing in one step.
+    """
+    return " ".join("".join(parts).split())
+
+
+def markdown_table(headers: list[str], rows: list[list[str]]) -> list[str]:
+    """Build a markdown table (header row, separator, data rows) as a list of lines.
+
+    Shared by the tools that emit ranked tables (alchables, moneymakers) so they
+    don't each re-spell the ``| a | b |`` / ``|---|---|`` row construction.
+    """
+    lines = [
+        "| " + " | ".join(headers) + " |",
+        "|" + "|".join(["---"] * len(headers)) + "|",
+    ]
+    lines.extend("| " + " | ".join(row) + " |" for row in rows)
+    return lines

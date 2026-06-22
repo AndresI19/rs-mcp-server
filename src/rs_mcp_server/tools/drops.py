@@ -15,7 +15,7 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
-from ._wiki_parsing import collapse_whitespace as _collapse
+from ._wiki_parsing import TableScope, collapse_whitespace as _collapse
 
 _TTL_DROPS = 3600
 _TOP_N = 3
@@ -93,9 +93,7 @@ class _DropsTableParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.rows: list[dict] = []
-        self._table_depth = 0
-        self._in_target = False
-        self._target_depth = 0
+        self._scope = TableScope(lambda cls: "item-drops" in cls)
         self._row: dict | None = None
         self._row_has_th = False
         self._cell = -1
@@ -104,15 +102,10 @@ class _DropsTableParser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         ad = dict(attrs)
         if tag == "table":
-            self._table_depth += 1
-            if not self._in_target and "item-drops" in (ad.get("class") or "").split():
-                self._in_target = True
-                self._target_depth = self._table_depth
+            self._scope.open_table(ad)
             return
-        if not self._in_target:
-            return
-        if self._table_depth != self._target_depth:
-            return  # inside a table nested in a cell — ignore its rows/cells
+        if not self._scope.at_target_level():
+            return  # outside the target table, or in a table nested in a cell
         if tag == "tr":
             self._row = {"source": "", "version": "", "level": None, "quantity": "",
                          "rarity": "", "_src_title": None, "_rarity_fraction": None}
@@ -134,10 +127,8 @@ class _DropsTableParser(HTMLParser):
             self._row["_rarity_fraction"] = ad["data-drop-fraction"]
 
     def handle_data(self, data):
-        if not self._in_target or self._row is None or self._cell < 0:
+        if not self._scope.at_target_level() or self._row is None or self._cell < 0:
             return
-        if self._table_depth != self._target_depth:
-            return  # text inside a nested table is not the cell's own content
         if self._capture_version:
             self._row["version"] += data
         elif self._cell == 0:
@@ -149,13 +140,9 @@ class _DropsTableParser(HTMLParser):
 
     def handle_endtag(self, tag):
         if tag == "table":
-            if self._in_target and self._table_depth == self._target_depth:
-                self._in_target = False
-            self._table_depth -= 1
+            self._scope.close_table()
             return
-        if not self._in_target:
-            return
-        if self._table_depth != self._target_depth:
+        if not self._scope.at_target_level():
             return
         if tag == "span":
             self._capture_version = False

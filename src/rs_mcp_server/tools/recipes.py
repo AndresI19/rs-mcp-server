@@ -6,7 +6,7 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
-from ._wiki_parsing import parse_template_fields as _parse_fields
+from ._wiki_parsing import find_template, parse_template_fields as _parse_fields
 
 _TTL = 3600
 
@@ -67,24 +67,12 @@ async def get_item_recipe(item_name: str, game: str = "rs3") -> str:
 
 
 def _find_recipe_template(wikitext: str) -> str | None:
-    """Locate the first {{Infobox Recipe}} or {{Recipe}} template; return its body or None."""
-    match = re.search(r"\{\{(?:Infobox Recipe|Recipe)\b", wikitext, re.IGNORECASE)
-    if not match:
-        return None
-    i = match.end()
-    depth = 2
-    while i < len(wikitext) and depth > 0:
-        if wikitext[i:i + 2] == "{{":
-            depth += 2
-            i += 2
-        elif wikitext[i:i + 2] == "}}":
-            depth -= 2
-            i += 2
-        else:
-            i += 1
-    if depth != 0:
-        return None
-    return wikitext[match.end():i - 2]
+    """Return the body of the first {{Infobox Recipe}} or {{Recipe}} template, or None."""
+    for name in ("Infobox Recipe", "Recipe"):
+        body = find_template(wikitext, name)
+        if body is not None:
+            return body
+    return None
 
 
 def _clean(s: str) -> str:

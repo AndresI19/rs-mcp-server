@@ -3,12 +3,14 @@
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._http import WIKI_APIS, http_get
 from ._wiki_parsing import (
     clean_wikitext as _clean,
     disambiguate,
+    fetch_page_params,
     find_template as _find_template,
     first_matching_page,
+    parse_page_response,
     parse_template_fields as _parse_fields,
     search_params,
     titles_match as _titles_match,
@@ -130,35 +132,8 @@ def _cache_and_return(value: str, cache_key: str) -> str:
 # ---------------------------------------------------------------------------
 
 async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | None:
-    params = {
-        "action": "query",
-        "titles": title,
-        "prop": "revisions|info",
-        "rvprop": "content",
-        "rvslots": "main",
-        "inprop": "url",
-        **MW_BASE_PARAMS,
-    }
-    if follow_redirects:
-        params["redirects"] = 1
-
-    data = await http_get(WIKI_APIS[game], params=params)
-    pages = data.get("query", {}).get("pages", [])
-    if not pages:
-        return None
-    page = pages[0]
-    if page.get("missing"):
-        return None
-    revisions = page.get("revisions", [])
-    if not revisions:
-        return None
-    content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
-    resolved_title = page.get("title", title)
-    return {
-        "title": resolved_title,
-        "url": f"{WIKI_BASE_URLS[game]}{resolved_title.replace(' ', '_')}",
-        "content": content,
-    }
+    data = await http_get(WIKI_APIS[game], params=fetch_page_params(title, follow_redirects))
+    return parse_page_response(data, title, game)
 
 
 async def _search_monster(query: str, game: str) -> dict | None:

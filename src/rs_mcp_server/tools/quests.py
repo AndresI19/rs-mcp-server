@@ -7,8 +7,11 @@ from rs_mcp_server.logging import instrument
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
 from ._wiki_parsing import (
     disambiguate,
+    fetch_page_params,
     first_matching_page,
+    parse_page_response,
     parse_template_fields as _parse_fields,
+    render_variants,
     search_params,
     titles_match as _titles_match,
 )
@@ -17,17 +20,18 @@ _TTL = 3600  # 1 hour — matches wiki lookup bucket
 
 _TEMPLATES = ("Infobox Quest", "Quest details")
 
+# (display label, keys to try in order) — a label falls back to its alternate keys,
+# so "Quest series" takes `series` if present, else `main_series`.
 _FIELDS = (
-    ("Difficulty", "difficulty"),
-    ("Length", "length"),
-    ("Members", "members"),
-    ("Quest series", "series"),
-    ("Quest series", "main_series"),
-    ("Start point", "start"),
-    ("Requirements", "requirements"),
-    ("Items required", "items"),
-    ("Recommended", "recommended"),
-    ("Rewards", "rewards"),
+    ("Difficulty", ("difficulty",)),
+    ("Length", ("length",)),
+    ("Members", ("members",)),
+    ("Quest series", ("series", "main_series")),
+    ("Start point", ("start",)),
+    ("Requirements", ("requirements",)),
+    ("Items required", ("items",)),
+    ("Recommended", ("recommended",)),
+    ("Rewards", ("rewards",)),
 )
 
 
@@ -76,7 +80,7 @@ async def get_quest_info(quest_name: str, game: str = "rs3") -> str:
         )
     if len(variants) >= 2:
         return _cache_and_return(
-            _render_variants(variants, wiki_label, quest_name),
+            render_variants(variants, wiki_label, quest_name, "get_quest_info"),
             cache_key,
         )
 
@@ -112,35 +116,8 @@ def _cache_and_return(value: str, cache_key: str) -> str:
 
 async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | None:
     """Direct title lookup. Returns dict with title/url/content, or None if missing."""
-    params = {
-        "action": "query",
-        "titles": title,
-        "prop": "revisions|info",
-        "rvprop": "content",
-        "rvslots": "main",
-        "inprop": "url",
-        **MW_BASE_PARAMS,
-    }
-    if follow_redirects:
-        params["redirects"] = 1
-
-    data = await http_get(WIKI_APIS[game], params=params)
-    pages = data.get("query", {}).get("pages", [])
-    if not pages:
-        return None
-    page = pages[0]
-    if page.get("missing"):
-        return None
-    revisions = page.get("revisions", [])
-    if not revisions:
-        return None
-    content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
-    resolved_title = page.get("title", title)
-    return {
-        "title": resolved_title,
-        "url": f"{WIKI_BASE_URLS[game]}{resolved_title.replace(' ', '_')}",
-        "content": content,
-    }
+    data = await http_get(WIKI_APIS[game], params=fetch_page_params(title, follow_redirects))
+    return parse_page_response(data, title, game)
 
 
 async def _search_quest(query: str, game: str) -> dict | None:
@@ -196,15 +173,6 @@ async def _enumerate_roman_variants(quest_name: str, game: str) -> list[dict]:
     return found
 
 
-def _render_variants(variants: list[dict], wiki_label: str, base_name: str) -> str:
-    lines = [f'Multiple tiered variants of **"{base_name}"** found ({wiki_label} Wiki):', ""]
-    for v in variants:
-        lines.append(f"- **{v['title']}** — {v['url']}")
-    lines.append("")
-    lines.append("Re-invoke `get_quest_info` with the exact tier name to fetch full details.")
-    return "\n".join(lines)
-
-
 def _has_quest_template(wikitext: str) -> bool:
     return any(_find_template(wikitext, name) is not None for name in _TEMPLATES)
 
@@ -241,20 +209,24 @@ def _merged_fields(wikitext: str) -> dict[str, str]:
     return merged
 
 
+def _first_value(fields: dict[str, str], keys: tuple[str, ...]) -> str:
+    """First non-empty value among `keys`, letting a label fall back to an alternate key."""
+    for k in keys:
+        if fields.get(k):
+            return fields[k]
+    return ""
+
+
 def _format_from_content(title: str, url: str, wiki_label: str, wikitext: str) -> str:
     fields = _merged_fields(wikitext)
     lines = [f"**{title}** ({wiki_label} Wiki)", url, ""]
-    seen_labels: set[str] = set()
-    for label, key in _FIELDS:
-        if label in seen_labels:
-            continue
-        value = fields.get(key)
+    for label, keys in _FIELDS:
+        value = _first_value(fields, keys)
         if not value:
             continue
         cleaned = _clean_wikitext(value)
         if not cleaned:
             continue
-        seen_labels.add(label)
         if "\n" in cleaned or len(cleaned) > 60:
             lines.append(f"**{label}:**")
             for sub in cleaned.split("\n"):

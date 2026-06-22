@@ -7,9 +7,12 @@ from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
 from ._wiki_parsing import (
     clean_wikitext as _clean,
     disambiguate,
+    fetch_page_params,
     find_template as _find_template,
     first_matching_page,
+    parse_page_response,
     parse_template_fields as _parse_fields,
+    render_variants,
     search_params,
     titles_match as _titles_match,
 )
@@ -67,67 +70,67 @@ async def get_achievement(name: str, game: str = "rs3") -> str:
 
     wiki_label = "RS3" if game == "rs3" else "OSRS"
 
+    # Resolve via the first strategy that lands: an exact/disambiguating direct hit,
+    # a tiered roman-numeral variant set, then a type-filtered search.
+    result = (
+        await _from_direct(name, game, wiki_label)
+        or await _from_roman_variants(name, game, wiki_label)
+        or await _from_search(name, game, wiki_label)
+    )
+    if result is None:
+        return f"No achievement found for '{name}' on the {wiki_label} wiki."
+    return _cache_and_return(result, cache_key)
+
+
+def _format_match(title: str, url: str, wiki_label: str, match: tuple) -> str:
+    """Render an achievement from a _dispatch() match — (body, fields_def, kind)."""
+    body, fields_def, kind = match
+    return _format_achievement(title, url, wiki_label, kind, _parse_fields(body), fields_def)
+
+
+async def _from_direct(name: str, game: str, wiki_label: str) -> str | None:
+    """Direct page lookup: format an exact hit, disambiguate a near-title, or — when
+    the page exists but is the wrong type — retry an '(achievement)' disambig suffix."""
     direct = await _fetch_page(name, game, follow_redirects=True)
-    if direct is not None:
-        match = _dispatch(direct["content"])
-        if match is not None:
-            body, fields_def, kind = match
-            if _titles_match(name, direct["title"]):
-                return _cache_and_return(
-                    _format_achievement(direct["title"], direct["url"], wiki_label, kind, _parse_fields(body), fields_def),
-                    cache_key,
-                )
-            return _cache_and_return(
-                _disambiguate(direct["title"], direct["url"], wiki_label),
-                cache_key,
-            )
+    if direct is None:
+        return None
+    match = _dispatch(direct["content"])
+    if match is not None:
+        if _titles_match(name, direct["title"]):
+            return _format_match(direct["title"], direct["url"], wiki_label, match)
+        return _disambiguate(direct["title"], direct["url"], wiki_label)
 
-        # Page exists but is the wrong type (e.g. Flow_State is a relic page,
-        # but Flow_State_(achievement) exists). Retry with disambig suffix.
-        for suffix in ("achievement",):
-            suffixed = await _fetch_page(f"{name} ({suffix})", game, follow_redirects=True)
-            if suffixed is not None:
-                match = _dispatch(suffixed["content"])
-                if match is not None:
-                    body, fields_def, kind = match
-                    return _cache_and_return(
-                        _format_achievement(suffixed["title"], suffixed["url"], wiki_label, kind, _parse_fields(body), fields_def),
-                        cache_key,
-                    )
+    # Page exists but is the wrong type (e.g. Flow_State is a relic page, but
+    # Flow_State_(achievement) exists). Retry with a disambig suffix.
+    for suffix in ("achievement",):
+        suffixed = await _fetch_page(f"{name} ({suffix})", game, follow_redirects=True)
+        if suffixed is not None:
+            match = _dispatch(suffixed["content"])
+            if match is not None:
+                return _format_match(suffixed["title"], suffixed["url"], wiki_label, match)
+    return None
 
-    # Roman-numeral variant enumeration (#78): handles names like "Are You
-    # Winning, Zam?" where the bare page isn't an achievement but I/II/III/IV
-    # variants are. One batch query covers all five suffixes.
+
+async def _from_roman_variants(name: str, game: str, wiki_label: str) -> str | None:
+    """Roman-numeral variant enumeration (#78): handles names like 'Are You Winning,
+    Zam?' whose bare page isn't an achievement but whose I–V variants are."""
     variants = await _enumerate_roman_variants(name, game)
     if len(variants) == 1:
         v = variants[0]
-        body, fields_def, kind = _dispatch(v["content"])
-        return _cache_and_return(
-            _format_achievement(v["title"], v["url"], wiki_label, kind, _parse_fields(body), fields_def),
-            cache_key,
-        )
+        return _format_match(v["title"], v["url"], wiki_label, _dispatch(v["content"]))
     if len(variants) >= 2:
-        return _cache_and_return(
-            _render_variants(variants, wiki_label, name),
-            cache_key,
-        )
+        return render_variants(variants, wiki_label, name, "get_achievement")
+    return None
 
+
+async def _from_search(name: str, game: str, wiki_label: str) -> str | None:
+    """Type-filtered search fallback: disambiguate a near-title, else format the hit."""
     candidate = await _search_achievement(name, game)
     if candidate is None:
-        return f"No achievement found for '{name}' on the {wiki_label} wiki."
-
+        return None
     if not _titles_match(name, candidate["title"]):
-        return _cache_and_return(
-            _disambiguate(candidate["title"], candidate["url"], wiki_label),
-            cache_key,
-        )
-
-    # _search_achievement guarantees candidate["content"] contains an achievement template.
-    body, fields_def, kind = _dispatch(candidate["content"])
-    return _cache_and_return(
-        _format_achievement(candidate["title"], candidate["url"], wiki_label, kind, _parse_fields(body), fields_def),
-        cache_key,
-    )
+        return _disambiguate(candidate["title"], candidate["url"], wiki_label)
+    return _format_match(candidate["title"], candidate["url"], wiki_label, _dispatch(candidate["content"]))
 
 
 def _dispatch(content: str) -> tuple[str, list[tuple[str, str]], str] | None:
@@ -152,35 +155,8 @@ def _cache_and_return(value: str, cache_key: str) -> str:
 # ---------------------------------------------------------------------------
 
 async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | None:
-    params = {
-        "action": "query",
-        "titles": title,
-        "prop": "revisions|info",
-        "rvprop": "content",
-        "rvslots": "main",
-        "inprop": "url",
-        **MW_BASE_PARAMS,
-    }
-    if follow_redirects:
-        params["redirects"] = 1
-
-    data = await http_get(WIKI_APIS[game], params=params)
-    pages = data.get("query", {}).get("pages", [])
-    if not pages:
-        return None
-    page = pages[0]
-    if page.get("missing"):
-        return None
-    revisions = page.get("revisions", [])
-    if not revisions:
-        return None
-    content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
-    resolved_title = page.get("title", title)
-    return {
-        "title": resolved_title,
-        "url": f"{WIKI_BASE_URLS[game]}{resolved_title.replace(' ', '_')}",
-        "content": content,
-    }
+    data = await http_get(WIKI_APIS[game], params=fetch_page_params(title, follow_redirects))
+    return parse_page_response(data, title, game)
 
 
 async def _search_achievement(query: str, game: str) -> dict | None:
@@ -222,15 +198,6 @@ async def _enumerate_roman_variants(name: str, game: str) -> list[dict]:
             "content": content,
         })
     return found
-
-
-def _render_variants(variants: list[dict], wiki_label: str, base_name: str) -> str:
-    lines = [f'Multiple tiered variants of **"{base_name}"** found ({wiki_label} Wiki):', ""]
-    for v in variants:
-        lines.append(f"- **{v['title']}** — {v['url']}")
-    lines.append("")
-    lines.append("Re-invoke `get_achievement` with the exact tier name to fetch full details.")
-    return "\n".join(lines)
 
 
 def _format_achievement(title: str, url: str, wiki_label: str, kind: str, fields: dict[str, str], fields_def: list[tuple[str, str]]) -> str:

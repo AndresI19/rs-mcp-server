@@ -14,7 +14,7 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
-from ._wiki_parsing import collapse_whitespace as _collapse
+from ._wiki_parsing import TableScope, collapse_whitespace as _collapse, join_text, match_by_name
 
 _TTL = 3600
 
@@ -154,9 +154,7 @@ class _CluesParser(HTMLParser):
         self._heading: str | None = None
         self._heading_id = ""
         self._heading_buf: list[str] = []
-        self._depth = 0
-        self._in_table = False
-        self._target_depth = 0
+        self._scope = TableScope(lambda cls: "wikitable" in cls)
         self._row: list[dict] | None = None
         self._row_has_th = False
         self._cell: dict | None = None
@@ -168,11 +166,8 @@ class _CluesParser(HTMLParser):
             self._heading_id = ad.get("id", "")
             self._heading_buf = []
         elif tag == "table":
-            self._depth += 1
-            if not self._in_table and "wikitable" in (ad.get("class") or "").split():
-                self._in_table = True
-                self._target_depth = self._depth
-        elif self._in_table and self._depth == self._target_depth:
+            self._scope.open_table(ad)
+        elif self._scope.at_target_level():
             if tag == "tr":
                 self._row = []
                 self._row_has_th = False
@@ -188,7 +183,7 @@ class _CluesParser(HTMLParser):
     def handle_data(self, data):
         if self._heading is not None:
             self._heading_buf.append(data)
-        elif self._in_table and self._depth == self._target_depth and self._cell is not None:
+        elif self._scope.at_target_level() and self._cell is not None:
             self._cell["text"] += data
 
     def handle_endtag(self, tag):
@@ -196,10 +191,8 @@ class _CluesParser(HTMLParser):
             self._apply_heading()
             self._heading = None
         elif tag == "table":
-            if self._in_table and self._depth == self._target_depth:
-                self._in_table = False
-            self._depth -= 1
-        elif self._in_table and self._depth == self._target_depth:
+            self._scope.close_table()
+        elif self._scope.at_target_level():
             if tag == "td" and self._cell is not None and self._row is not None:
                 self._row.append(_finalize_cell(self._cell))
                 self._cell = None
@@ -208,7 +201,7 @@ class _CluesParser(HTMLParser):
                 self._row = None
 
     def _apply_heading(self) -> None:
-        text = " ".join("".join(self._heading_buf).split())
+        text = join_text(self._heading_buf)
         tier = _tier_from_heading(text)
         if tier:
             self.current_tier = tier
@@ -236,8 +229,12 @@ def _finalize_cell(cell: dict) -> dict:
 # RS3 anagram pages prefix every clue with this verbose intro; strip it.
 _ANAGRAM_PREFIX = re.compile(r"^this anagram reveals who to speak to next:?\s*", re.IGNORECASE)
 
+# Clue-table column layout: 0 = clue text, 1 = the answer (solution / decoded text /
+# emote items, by format), 2 = location.
+_CLUE_COL, _ANSWER_COL, _LOCATION_COL = 0, 1, 2
 
-def _row_to_entry(cells: list[str], fmt: str, tier: str) -> dict | None:
+
+def _row_to_entry(cells: list[dict], fmt: str, tier: str) -> dict | None:
     if fmt == "anagram":
         return _row_anagram(cells, tier)
     if fmt == "cryptic":
@@ -250,9 +247,9 @@ def _row_to_entry(cells: list[str], fmt: str, tier: str) -> dict | None:
 
 
 def _row_anagram(cells: list[dict], tier: str) -> dict | None:
-    clue = _ANAGRAM_PREFIX.sub("", cells[0]["text"]).strip()
-    solution = cells[1]["text"] if len(cells) > 1 else ""
-    location = cells[2]["text"] if len(cells) > 2 else ""
+    clue = _ANAGRAM_PREFIX.sub("", cells[_CLUE_COL]["text"]).strip()
+    solution = cells[_ANSWER_COL]["text"] if len(cells) > _ANSWER_COL else ""
+    location = cells[_LOCATION_COL]["text"] if len(cells) > _LOCATION_COL else ""
     if not clue:
         return None
     return {
@@ -266,9 +263,9 @@ def _row_anagram(cells: list[dict], tier: str) -> dict | None:
 
 
 def _row_cryptic(cells: list[dict], tier: str) -> dict | None:
-    clue = cells[0]["text"]
-    solution = cells[1]["text"] if len(cells) > 1 else ""
-    location = cells[2]["text"] if len(cells) > 2 else ""
+    clue = cells[_CLUE_COL]["text"]
+    solution = cells[_ANSWER_COL]["text"] if len(cells) > _ANSWER_COL else ""
+    location = cells[_LOCATION_COL]["text"] if len(cells) > _LOCATION_COL else ""
     if not clue:
         return None
     return {
@@ -282,9 +279,9 @@ def _row_cryptic(cells: list[dict], tier: str) -> dict | None:
 
 
 def _row_emote(cells: list[dict], tier: str) -> dict | None:
-    clue = cells[0]["text"]
-    items = cells[1]["items"] if len(cells) > 1 else ""
-    location = cells[2]["text"] if len(cells) > 2 else ""
+    clue = cells[_CLUE_COL]["text"]
+    items = cells[_ANSWER_COL]["items"] if len(cells) > _ANSWER_COL else ""
+    location = cells[_LOCATION_COL]["text"] if len(cells) > _LOCATION_COL else ""
     if not clue:
         return None
     return {
@@ -298,9 +295,9 @@ def _row_emote(cells: list[dict], tier: str) -> dict | None:
 
 
 def _row_cipher(cells: list[dict], tier: str) -> dict | None:
-    cipher = cells[0]["text"]
-    decoded = cells[1]["text"] if len(cells) > 1 else ""
-    location = cells[2]["text"] if len(cells) > 2 else ""
+    cipher = cells[_CLUE_COL]["text"]
+    decoded = cells[_ANSWER_COL]["text"] if len(cells) > _ANSWER_COL else ""
+    location = cells[_LOCATION_COL]["text"] if len(cells) > _LOCATION_COL else ""
     if not cipher:
         return None
     return {
@@ -322,20 +319,7 @@ def _clean_alt(s: str) -> str:
 # ---------------------------------------------------------------------------
 
 def _match_clues(query: str, entries: list[dict]) -> tuple[str, object]:
-    q = query.strip().lower()
-    if not q:
-        return ("none", None)
-
-    exact = [e for e in entries if e["clue_text_lower"] == q]
-    if exact:
-        return ("exact", exact[0])
-
-    contains = [e for e in entries if q in e["clue_text_lower"]]
-    if contains:
-        contains.sort(key=lambda e: abs(len(e["clue_text_lower"]) - len(q)))
-        return ("did_you_mean", contains[:5])
-
-    return ("none", None)
+    return match_by_name(query, entries, "clue_text_lower")
 
 
 # ---------------------------------------------------------------------------

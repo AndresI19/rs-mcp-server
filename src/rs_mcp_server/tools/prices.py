@@ -25,6 +25,10 @@ async def get_item_price(item_name: str, game: str = "rs3") -> str:
     game = game.lower()
     if game not in ("rs3", "osrs"):
         return f"Unknown game '{game}'. Use 'rs3' or 'osrs'."
+    if not item_name.strip():
+        # Without this guard the OSRS substring match below treats "" as a match
+        # for every item ('"" in name' is always True) and returns the first one.
+        return "No item name provided."
 
     cache_key = f"price:{game}:{item_name.lower()}"
     cached = cache.get(cache_key)
@@ -171,7 +175,7 @@ async def _get_rs3_price(item_name: str) -> str:
 
 def _format_street_line(entry: dict) -> str | None:
     """Render one line of geprice info, preferring this-week activity over the fallback."""
-    week_avg = entry.get("currentWeekAverage", 0)
+    week_avg = entry.get("currentWeekAverage") or 0  # `or 0` also coerces an explicit null
     if week_avg > 0:
         change = entry.get("weeklyChangePercent") or ""
         suffix = f"  ({change})" if change and change != "-" else ""
@@ -189,7 +193,7 @@ def _format_geprice_only(entry: dict) -> str | None:
     line = _format_street_line(entry)
     if line is None:
         return None
-    return f"**{entry['name']}** (RS3 community trades)\n{line}"
+    return f"**{entry.get('name', '?')}** (RS3 community trades)\n{line}"
 
 
 # ---------------------------------------------------------------------------

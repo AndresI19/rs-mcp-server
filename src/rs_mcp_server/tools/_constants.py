@@ -37,8 +37,9 @@ TTL_HOUR = 3600
 TTL_DAY = 86400
 
 # OSRS real-time prices API (prices.runescape.wiki), shared by the price and
-# alchables tools.
-OSRS_PRICES_MAPPING = "https://prices.runescape.wiki/api/v1/osrs/mapping"
-OSRS_PRICES_LATEST = "https://prices.runescape.wiki/api/v1/osrs/latest"
-OSRS_PRICES_1H = "https://prices.runescape.wiki/api/v1/osrs/1h"
-OSRS_PRICES_5M = "https://prices.runescape.wiki/api/v1/osrs/5m"
+# alchables tools. Endpoints hang off one base, so the host/version is single-sourced.
+OSRS_PRICES_BASE = "https://prices.runescape.wiki/api/v1/osrs"
+OSRS_PRICES_MAPPING = f"{OSRS_PRICES_BASE}/mapping"
+OSRS_PRICES_LATEST = f"{OSRS_PRICES_BASE}/latest"
+OSRS_PRICES_1H = f"{OSRS_PRICES_BASE}/1h"
+OSRS_PRICES_5M = f"{OSRS_PRICES_BASE}/5m"

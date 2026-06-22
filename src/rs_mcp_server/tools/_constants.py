@@ -29,6 +29,10 @@ MW_BASE_PARAMS = {
 # How many MediaWiki search candidates each typed tool fetches before type-filtering.
 SEARCH_RESULT_LIMIT = 5
 
+# Roman-numeral suffixes for enumerating sequel pages ("<name> I" … "<name> V"),
+# shared by the quest and achievement tools.
+ROMAN_NUMERALS = ("I", "II", "III", "IV", "V")
+
 # Cache TTLs in seconds. Wiki lookups bucket at one hour; the live OSRS price
 # endpoints refresh every ~5 minutes; the GE item mapping changes only on updates.
 TTL_5MIN = 300

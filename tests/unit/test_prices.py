@@ -1,4 +1,5 @@
 """End-to-end tests for the get_item_price MCP tool (issue #28, #41)."""
+import httpx
 import pytest
 
 from rs_mcp_server import cache as _cache_mod
@@ -36,6 +37,8 @@ class TestGetItemPriceRs3:
                         "day90": {"change": "+5.0%"},
                     }
                 }
+            if "geprice.com" in url:
+                return []
             raise AssertionError(f"unexpected URL: {url}")
 
         monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)
@@ -63,6 +66,8 @@ class TestGetItemPriceOsrs:
                 return [{"id": 385, "name": "Shark"}]
             if "latest" in url:
                 return {"data": {"385": {"high": 1000, "low": 900}}}
+            if url.endswith("/5m"):
+                return {"data": {}}
             raise AssertionError(f"unexpected URL: {url}")
 
         monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)
@@ -127,7 +132,7 @@ class TestGetItemPriceOsrs:
             if url.endswith("/latest"):
                 return {"data": {"1965": {"high": 50, "low": 40}}}
             if url.endswith("/5m"):
-                raise RuntimeError("transient outage")
+                raise httpx.ConnectError("transient outage")
             raise AssertionError(f"unexpected URL: {url}")
 
         monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)
@@ -209,7 +214,7 @@ class TestGetItemPriceRs3StreetPrices:
             if "itemdb_rs" in url:
                 return {"item": {"current": {"price": "1m", "trend": "neutral"}}}
             if "geprice.com" in url:
-                raise RuntimeError("transient outage")
+                raise httpx.ConnectError("transient outage")
             raise AssertionError(f"unexpected URL: {url}")
 
         monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)

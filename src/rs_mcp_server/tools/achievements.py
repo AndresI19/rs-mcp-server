@@ -127,7 +127,7 @@ async def get_achievement(name: str, game: str = "rs3") -> str:
     )
 
 
-def _dispatch(content: str) -> tuple[str, list, str] | None:
+def _dispatch(content: str) -> tuple[str, list[tuple[str, str]], str] | None:
     for template_name, fields_def, kind in _TEMPLATE_DISPATCH:
         body = _find_template(content, template_name)
         if body is not None:
@@ -258,7 +258,7 @@ def _render_variants(variants: list[dict], wiki_label: str, base_name: str) -> s
     return "\n".join(lines)
 
 
-def _format_achievement(title: str, url: str, wiki_label: str, kind: str, fields: dict, fields_def: list) -> str:
+def _format_achievement(title: str, url: str, wiki_label: str, kind: str, fields: dict[str, str], fields_def: list[tuple[str, str]]) -> str:
     lines = [f"**{title}** — {kind} ({wiki_label} Wiki)", url, ""]
     for label, key in fields_def:
         val = fields.get(key) or fields.get(f"{key}1")

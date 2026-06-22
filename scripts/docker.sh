@@ -7,6 +7,11 @@ CONTAINER_NAME="rs-mcp-server"
 VOLUME_NAME="rs-mcp-server-logs"
 CONTAINER_LOG="/logs/uvicorn.log"
 
+# Host port to publish the server on. The container always listens internally on 8000;
+# this only remaps the host side (-p ${PORT}:8000), so any free host port works:
+#   PORT=9000 make start  →  http://localhost:9000/sse
+PORT="${PORT:-8000}"
+
 # TLS is opt-in via a host cert directory mounted onto /etc/tls_certs. When TLS_CERTS_DIR
 # is set the server terminates HTTPS on the same port (real certs if present, else a
 # self-signed fallback), so the health poll must speak https and tolerate self-signed
@@ -18,7 +23,7 @@ else
     SCHEME="http"
     HEALTH_CURL_OPTS=(-sf)
 fi
-HEALTH_URL="${SCHEME}://localhost:8000/health"
+HEALTH_URL="${SCHEME}://localhost:${PORT}/health"
 
 check_docker() {
     if ! docker info >/dev/null 2>&1; then
@@ -34,7 +39,7 @@ EOF
 cmd_start() {
     check_docker
     if curl "${HEALTH_CURL_OPTS[@]}" "$HEALTH_URL" >/dev/null 2>&1; then
-        echo "Server already running — ${SCHEME}://localhost:8000/sse"
+        echo "Server already running — ${SCHEME}://localhost:${PORT}/sse"
         exit 0
     fi
 
@@ -54,7 +59,7 @@ cmd_start() {
     echo "Starting container $CONTAINER_NAME..."
     docker run --rm -d \
         --name "$CONTAINER_NAME" \
-        -p 8000:8000 \
+        -p "${PORT}:8000" \
         -v "${VOLUME_NAME}:/logs" \
         "${tls_mount[@]}" \
         -e "LOGFILE=${CONTAINER_LOG}" \
@@ -71,7 +76,7 @@ cmd_start() {
         sleep 1
         if curl "${HEALTH_CURL_OPTS[@]}" "$HEALTH_URL" >/dev/null 2>&1; then
             printf ' ready.\n'
-            printf '  MCP endpoint: %s://localhost:8000/sse\n' "$SCHEME"
+            printf '  MCP endpoint: %s://localhost:%s/sse\n' "$SCHEME" "$PORT"
             printf '  Logs:         bash %s logs\n' "$0"
             printf '  To stop:      bash %s stop\n' "$0"
             exit 0

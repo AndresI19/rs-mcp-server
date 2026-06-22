@@ -65,11 +65,36 @@ def parse_template_fields(body: str) -> dict[str, str]:
     return fields
 
 
+def _strip_templates(s: str) -> str:
+    """Remove balanced ``{{…}}`` spans, including nested ones.
+
+    A regex like ``\\{\\{[^}]*\\}\\}`` stops at the first ``}}`` and so leaves a
+    trailing ``}}`` on a nested template ({{a|{{b}}}}); walking brace depth removes
+    the whole span instead.
+    """
+    out: list[str] = []
+    depth = 0
+    i = 0
+    while i < len(s):
+        if s[i:i + 2] == "{{":
+            depth += 1
+            i += 2
+        elif s[i:i + 2] == "}}" and depth > 0:
+            depth -= 1
+            i += 2
+        else:
+            if depth == 0:
+                out.append(s[i])
+            i += 1
+    return "".join(out)
+
+
 def clean_wikitext(s: str) -> str:
-    """Strip the common wiki markup: ``[[links]]``, ``{{templates}}``, ``<tags>``."""
+    """Strip common wiki markup: ``[[links]]``, ``{{templates}}`` (incl. nested), ``<tags>``."""
     s = re.sub(r"\[\[(?:[^\]|]+\|)?([^\]]+)\]\]", r"\1", s)
-    s = re.sub(r"\{\{[^}]*\}\}", "", s)
+    s = _strip_templates(s)
     s = re.sub(r"<[^>]+>", "", s)
+    s = re.sub(r" {2,}", " ", s)  # collapse runs of spaces left where templates were removed
     return s.strip()
 
 

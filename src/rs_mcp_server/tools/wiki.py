@@ -5,8 +5,7 @@ the rendered HTML body via action=parse so transcluded templates (set bonuses,
 passive effects, etc.) appear in results. Falls back to alias-substituted
 queries (gauntlets→melee gloves, helm→helmet) when the initial search misses.
 """
-import html
-import re
+from html.parser import HTMLParser
 
 import httpx
 
@@ -25,6 +24,8 @@ async def search_wiki(query: str, game: str = "rs3") -> str:
     game = game.lower()
     if game not in WIKI_APIS:
         return f"Unknown game '{game}'. Use 'rs3' or 'osrs'."
+    if not query.strip():
+        return "Please provide a search query."
 
     cache_key = f"wiki:{game}:{query}"
     cached = cache.get(cache_key)
@@ -94,27 +95,55 @@ async def _fetch_rendered_body(title: str, game: str) -> str:
     return _extract_prose_from_html(html_text)
 
 
-def _extract_prose_from_html(html_text: str) -> str:
-    """Extract section headings + paragraph prose from rendered HTML, skipping chrome.
+class _ProseParser(HTMLParser):
+    """Collect <h2>/<h3>/<p> text from rendered wiki HTML in document order.
 
-    Pulls text from <h2>/<h3> and <p> tags only, preserving page order. Drops
-    infoboxes (<table>), navboxes/hatnotes (<div>), and other UI elements.
     Set-bonus and passive-effect templates render to <p>, so this captures them;
-    the section headers stay so the reader sees the structure (== Set bonus ==
-    followed by its prose body, never one without the other).
+    headings stay so the reader sees the structure. Infoboxes (<table>) and
+    navboxes (<div>) contribute no <p>/<h2>/<h3> text, so they fall away.
+
+    Using html.parser instead of a regex avoids two failure modes the old
+    `<(h2|h3|p)[^>]*>(.*?)</\\1>` scan had: attribute values containing '>'
+    (mis-split at the inner '>') and spurious spaces where inline tags abut
+    punctuation (regex replaced each tag with a space → "unsired ." not "unsired.").
     """
-    pieces: list[str] = []
-    for match in re.finditer(r"<(h2|h3|p)\b[^>]*>(.*?)</\1>", html_text, re.DOTALL):
-        tag, raw = match.group(1), match.group(2)
-        text = re.sub(r"<[^>]+>", " ", raw)
-        text = html.unescape(text)
-        text = re.sub(r"\s+", " ", text).strip()
-        if not text:
-            continue
-        if tag == "h2":
-            pieces.append(f"\n## {text}")
-        elif tag == "h3":
-            pieces.append(f"\n### {text}")
-        else:
-            pieces.append(text)
-    return "\n".join(pieces).strip()
+
+    _PREFIX = {"h2": "## ", "h3": "### ", "p": ""}
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.pieces: list[str] = []
+        self._tag: str | None = None
+        self._buf: list[str] = []
+
+    def handle_starttag(self, tag, attrs):
+        # Top-level target only; nested inline tags (<a>, <b>, …) just contribute data.
+        if tag in self._PREFIX and self._tag is None:
+            self._tag = tag
+            self._buf = []
+
+    def handle_data(self, data):
+        if self._tag is not None:
+            self._buf.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == self._tag:
+            self._flush()
+
+    def _flush(self) -> None:
+        if self._tag is None:
+            return
+        text = " ".join("".join(self._buf).split())
+        if text:
+            prefix = self._PREFIX[self._tag]
+            self.pieces.append(f"\n{prefix}{text}" if prefix else text)
+        self._tag = None
+        self._buf = []
+
+
+def _extract_prose_from_html(html_text: str) -> str:
+    """Extract section headings + paragraph prose from rendered HTML, skipping chrome."""
+    parser = _ProseParser()
+    parser.feed(html_text)
+    parser._flush()  # flush a trailing tag the source left unclosed
+    return "\n".join(parser.pieces).strip()

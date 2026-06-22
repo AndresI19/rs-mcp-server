@@ -6,7 +6,8 @@ import httpx
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import MW_BASE_PARAMS, WIKI_APIS, http_get
+from ._constants import MW_BASE_PARAMS, WIKI_APIS
+from ._http import http_get
 
 _OSRS_MAPPING_URL    = "https://prices.runescape.wiki/api/v1/osrs/mapping"
 _OSRS_LATEST_URL     = "https://prices.runescape.wiki/api/v1/osrs/latest"

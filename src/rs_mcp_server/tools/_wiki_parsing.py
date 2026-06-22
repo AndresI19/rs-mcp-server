@@ -10,7 +10,7 @@ import html
 import re
 from collections.abc import Callable
 
-from ._http import MW_BASE_PARAMS, SEARCH_RESULT_LIMIT, WIKI_BASE_URLS
+from ._constants import MW_BASE_PARAMS, SEARCH_RESULT_LIMIT, WIKI_BASE_URLS
 
 
 def titles_match(a: str, b: str) -> bool:

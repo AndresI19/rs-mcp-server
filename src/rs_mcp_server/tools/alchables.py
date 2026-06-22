@@ -35,7 +35,8 @@ from html.parser import HTMLParser
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import MW_BASE_PARAMS, WIKI_APIS, http_get
+from ._constants import MW_BASE_PARAMS, WIKI_APIS
+from ._http import http_get
 from ._wiki_parsing import TableScope, collapse_whitespace as _collapse, markdown_table
 from .prices import osrs_mapping
 

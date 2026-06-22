@@ -472,20 +472,33 @@ async def _get_best_alchables_rs3(mode: str) -> str:
 # Renderers
 # ---------------------------------------------------------------------------
 
+def _markdown_table(headers: list[str], rows: list[list[str]]) -> list[str]:
+    """Build a markdown table (header row, separator, data rows) as a list of lines."""
+    lines = [
+        "| " + " | ".join(headers) + " |",
+        "|" + "|".join(["---"] * len(headers)) + "|",
+    ]
+    lines.extend("| " + " | ".join(row) + " |" for row in rows)
+    return lines
+
+
+_PASSIVE_COLUMNS = ["#", "Item", "GE Price", "High Alch", "Profit/cast",
+                    "Max daily profit", "Volume", "Limit", "ROI%"]
+
+
 def _render_alch_section(emoji: str, label: str, top_n: int, rows: list[dict]) -> list[str]:
     """Render one passive-mode section (Easy or Slow buys) as markdown table lines."""
     lines = [f"### {emoji} {label} buys — top {top_n} by max daily profit"]
     if not rows:
         lines.append(f"_No items qualify as {label.lower()} buys right now._")
         return lines
-    lines.append("| # | Item | GE Price | High Alch | Profit/cast | Max daily profit | Volume | Limit | ROI% |")
-    lines.append("|---|------|----------|-----------|-------------|------------------|--------|-------|------|")
-    for rank, r in enumerate(rows, start=1):
-        lines.append(
-            f"| {rank} | {r['name']} | {r['ge_price']:,} | {r['highalch']:,} | "
-            f"+{int(round(r['profit'])):,} | {r['max_daily']:,} | "
-            f"{r['volume']:,} | {r['buy_limit']:,} | {r['roi']:.1f}% |"
-        )
+    table_rows = [
+        [str(rank), r["name"], f"{r['ge_price']:,}", f"{r['highalch']:,}",
+         f"+{int(round(r['profit'])):,}", f"{r['max_daily']:,}",
+         f"{r['volume']:,}", f"{r['buy_limit']:,}", f"{r['roi']:.1f}%"]
+        for rank, r in enumerate(rows, start=1)
+    ]
+    lines += _markdown_table(_PASSIVE_COLUMNS, table_rows)
     return lines
 
 
@@ -560,8 +573,7 @@ def _render_mixed(
     header = ["#", "Item", columns[0], columns[1], "Profit/cast", "Volume", "Limit", "ROI%", "Category"]
     if members_column:
         header.append("P2P")
-    lines.append("| " + " | ".join(header) + " |")
-    lines.append("|" + "|".join(["---"] * len(header)) + "|")
+    table_rows = []
     for rank, r in enumerate(merged, start=1):
         cells = [
             str(rank),
@@ -576,7 +588,8 @@ def _render_mixed(
         ]
         if members_column:
             cells.append("✓" if r.get("members") else "")
-        lines.append("| " + " | ".join(cells) + " |")
+        table_rows.append(cells)
+    lines += _markdown_table(header, table_rows)
     lines.append("")
     lines.append(footer)
     return "\n".join(lines)

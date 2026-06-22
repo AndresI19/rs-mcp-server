@@ -234,18 +234,6 @@ _ANAGRAM_PREFIX = re.compile(r"^this anagram reveals who to speak to next:?\s*",
 _CLUE_COL, _ANSWER_COL, _LOCATION_COL = 0, 1, 2
 
 
-def _row_to_entry(cells: list[dict], fmt: str, tier: str) -> dict | None:
-    if fmt == "anagram":
-        return _row_anagram(cells, tier)
-    if fmt == "cryptic":
-        return _row_cryptic(cells, tier)
-    if fmt == "emote":
-        return _row_emote(cells, tier)
-    if fmt == "cipher":
-        return _row_cipher(cells, tier)
-    return None
-
-
 def _row_anagram(cells: list[dict], tier: str) -> dict | None:
     clue = _ANAGRAM_PREFIX.sub("", cells[_CLUE_COL]["text"]).strip()
     solution = cells[_ANSWER_COL]["text"] if len(cells) > _ANSWER_COL else ""
@@ -310,6 +298,19 @@ def _row_cipher(cells: list[dict], tier: str) -> dict | None:
     }
 
 
+_ROW_BUILDERS = {
+    "anagram": _row_anagram,
+    "cryptic": _row_cryptic,
+    "emote":   _row_emote,
+    "cipher":  _row_cipher,
+}
+
+
+def _row_to_entry(cells: list[dict], fmt: str, tier: str) -> dict | None:
+    builder = _ROW_BUILDERS.get(fmt)
+    return builder(cells, tier) if builder else None
+
+
 def _clean_alt(s: str) -> str:
     return html.unescape(s).strip()
 
@@ -326,28 +327,23 @@ def _match_clues(query: str, entries: list[dict]) -> tuple[str, object]:
 # Rendering
 # ---------------------------------------------------------------------------
 
+# Per-format solution fields (label, entry-key), rendered in order when present.
+_SOLUTION_FIELDS = {
+    "anagram": (("Solution", "solution"), ("Location", "location")),
+    "cryptic": (("Solution", "solution"), ("Location", "location")),
+    "emote":   (("Items required", "items"), ("Location", "location")),
+    "cipher":  (("Decoded", "decoded"), ("Location", "location")),
+}
+
+
 def _render_solution(entry: dict, wiki_label: str, game: str) -> str:
     fmt = entry["format"]
     base = f"{WIKI_BASE_URLS[game]}{_PAGES[game][fmt].replace(' ', '_')}"
     header = f"**{entry['clue_text']}** ({wiki_label} Wiki — {entry['tier'].capitalize()} {fmt})"
     lines = [header, base, ""]
-
-    if fmt in ("anagram", "cryptic"):
-        if entry.get("solution"):
-            lines.append(f"**Solution:** {entry['solution']}")
-        if entry.get("location"):
-            lines.append(f"**Location:** {entry['location']}")
-    elif fmt == "emote":
-        if entry.get("items"):
-            lines.append(f"**Items required:** {entry['items']}")
-        if entry.get("location"):
-            lines.append(f"**Location:** {entry['location']}")
-    elif fmt == "cipher":
-        if entry.get("decoded"):
-            lines.append(f"**Decoded:** {entry['decoded']}")
-        if entry.get("location"):
-            lines.append(f"**Location:** {entry['location']}")
-
+    for label, key in _SOLUTION_FIELDS.get(fmt, ()):
+        if entry.get(key):
+            lines.append(f"**{label}:** {entry[key]}")
     return "\n".join(lines)
 
 

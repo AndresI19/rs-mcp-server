@@ -57,8 +57,17 @@ class TestParseTemplateFields:
 class TestCleanWikitext:
     def test_strips_links_templates_and_tags(self):
         assert clean_wikitext("[[Zulrah|the snake]]") == "the snake"
-        assert clean_wikitext("a {{template}} b") == "a  b".strip()
+        assert clean_wikitext("a {{template}} b") == "a b"  # spaces around removal collapsed
         assert clean_wikitext("<b>bold</b>") == "bold"
 
     def test_plain_text_unchanged(self):
         assert clean_wikitext("  just text  ") == "just text"
+
+    def test_nested_template_fully_removed(self):
+        # Regex '{{[^}]*}}' stopped at the first '}}' and left a stray '}}'; the
+        # balanced walk removes the whole nested span.
+        assert clean_wikitext("{{a|{{b|x}}}} tail") == "tail"
+        assert clean_wikitext("Lvl {{x}} and {{y}} done") == "Lvl and done"
+
+    def test_link_text_inside_unmatched_context_preserved(self):
+        assert clean_wikitext("see [[Krystilia]] now") == "see Krystilia now"

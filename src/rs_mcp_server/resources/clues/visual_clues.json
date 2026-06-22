@@ -1,0 +1,51 @@
+{
+  "_note": "Visual/interactive clue types the tool cannot text-solve. Each maps to the wiki guide so the user gets a clickable link to where the answer/solver lives. Hand-authored static reference.",
+  "osrs": {
+    "map": {
+      "guide_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Maps",
+      "blurb": "Map clues are a hand-drawn map of the dig site. Match yours against the maps in the guide, then dig at the matching spot:"
+    },
+    "puzzle box": {
+      "guide_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Puzzle_boxes",
+      "blurb": "A puzzle box is a sliding-tile picture puzzle solved in-client. See the step-by-step solutions:"
+    },
+    "light box": {
+      "guide_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Light_boxes",
+      "blurb": "A light box is a logic puzzle of lights to toggle on. See the solver:"
+    },
+    "hot cold": {
+      "guide_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Hot_Cold",
+      "blurb": "Hot/Cold clues use the Strange Device, which runs hotter the closer you are. Narrow the dig spot down with the location guide:"
+    }
+  },
+  "rs3": {
+    "map": {
+      "guide_url": "https://runescape.wiki/w/Treasure_Trails/Guide/Maps",
+      "blurb": "Map clues are a hand-drawn map of the dig site. Match yours against the maps in the guide, then dig at the matching spot:"
+    },
+    "puzzle box": {
+      "guide_url": "https://runescape.wiki/w/Treasure_Trails/Guide/Puzzle_boxes",
+      "blurb": "A puzzle box is a sliding-tile picture puzzle solved in-client. See the step-by-step solutions:"
+    },
+    "compass": {
+      "guide_url": "https://runescape.wiki/w/Treasure_Trails/Guide/Compass",
+      "blurb": "A compass clue gives only an arrow pointing toward the dig spot. Use the directional guide to triangulate it:"
+    },
+    "scan": {
+      "guide_url": "https://runescape.wiki/w/Treasure_Trails/Guide/Scans",
+      "blurb": "A scan clue is solved with the in-game scanner that pulses stronger near the spot. See the per-area scan guide:"
+    },
+    "celtic knot": {
+      "guide_url": "https://runescape.wiki/w/Treasure_Trails/Guide/Celtic_knots",
+      "blurb": "A Celtic knot is an in-client logic puzzle of rotating rings. See the solver:"
+    },
+    "lockbox": {
+      "guide_url": "https://runescape.wiki/w/Treasure_Trails/Guide/Lockboxes",
+      "blurb": "A lockbox is an in-client sliding puzzle. See the solver:"
+    },
+    "tower": {
+      "guide_url": "https://runescape.wiki/w/Treasure_Trails/Guide/Towers",
+      "blurb": "A towers clue is an in-client logic puzzle. See the solver:"
+    }
+  }
+}

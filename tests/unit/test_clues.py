@@ -2,8 +2,11 @@
 import pytest
 
 from rs_mcp_server.tools.clues import (
+    _detect_visual,
     _match_clues,
     _parse_clue_html,
+    _resolve_coordinate,
+    normalize_coordinate,
     solve_clue,
 )
 
@@ -50,6 +53,15 @@ _CIPHER_HTML = """
 <table class="wikitable">
 <tr><th>Cipher</th><th>Decoded</th><th>Location</th></tr>
 <tr><td>ESBZOPS QJH QFO</td><td>DRAYNOR PIG PEN</td><td>Draynor Village, north of the market</td></tr>
+</table>
+"""
+
+# Challenge scrolls are tier-less: one flat NPC|Question|Answer table, no <h3> sections.
+_CHALLENGE_HTML = """
+<table class="wikitable">
+<tr><th>NPC</th><th>Question</th><th>Answer</th></tr>
+<tr><td>Ironman tutor</td><td>How many snakeskins are needed?</td><td>666</td></tr>
+<tr><td>Gnome ball referee</td><td>How many points is a goal worth?</td><td>10</td></tr>
 </table>
 """
 
@@ -115,6 +127,22 @@ class TestParseCipherHtml:
         assert r["clue_text"] == "ESBZOPS QJH QFO"
         assert r["decoded"] == "DRAYNOR PIG PEN"
         assert "Draynor" in r["location"]
+
+
+class TestParseChallengeHtml:
+    def test_tierless_questions_extracted(self):
+        rows = _parse_clue_html(_CHALLENGE_HTML, "challenge")
+        assert len(rows) == 2
+        r = next(x for x in rows if "snakeskins" in x["clue_text"])
+        assert r["answer"] == "666"
+        assert r["npc"] == "Ironman tutor"
+        assert r["tier"] == ""          # challenge pages carry no tier
+        assert r["format"] == "challenge"
+
+    def test_question_is_the_clue_text(self):
+        # The matchable clue_text must be the question (col 1), not the NPC (col 0).
+        rows = _parse_clue_html(_CHALLENGE_HTML, "challenge")
+        assert all(r["clue_text"].startswith("How many") for r in rows)
 
 
 class TestParseSkipsTablesOutsideTier:
@@ -186,8 +214,8 @@ class TestSolveClue:
         monkeypatch.setattr("rs_mcp_server.tools.clues.http_get", fake_http_get)
         result = await solve_clue("OK CO", "osrs")
         assert "Cook" in result
-        # OSRS supports all 4 formats so 4 fetches expected
-        assert len(calls) == 4
+        # OSRS supports all 5 live formats (anagram/cryptic/emote/cipher/challenge)
+        assert len(calls) == 5
 
     @pytest.mark.anyio
     async def test_tier_filter_narrows_results(self, monkeypatch):
@@ -247,3 +275,55 @@ class TestSolveClueValidation:
     async def test_empty_text(self):
         result = await solve_clue("", "osrs")
         assert "No clue text provided" in result
+
+
+# ---------------------------------------------------------------------------
+# Coordinates (baked dataset — these tests never touch the live wiki)
+# ---------------------------------------------------------------------------
+
+class TestNormalizeCoordinate:
+    @pytest.mark.parametrize(("text", "expected"), [
+        ("04 degrees 13 minutes south, 16 degrees 25 minutes east", "04.13S,16.25E"),
+        ("00 degrees 05 minutes south, 01 degrees 13 minutes east", "00.05S,01.13E"),
+        ("00 degrees 00 minutes north 07 degrees 13 minutes west", "00.00N,07.13W"),
+        ("AN EARL", None),
+        ("Talk to the bartender of the Rusty Anchor.", None),
+    ])
+    def test_normalize(self, text, expected):
+        assert normalize_coordinate(text) == expected
+
+
+class TestResolveCoordinate:
+    def test_resolves_known_coordinate_from_baked_data(self):
+        # 00.05S,01.13E is in both committed datasets; resolution is purely local.
+        out = _resolve_coordinate(
+            "00 degrees 05 minutes south, 01 degrees 13 minutes east", "rs3", "RS3")
+        assert out is not None
+        assert "Medium coordinate" in out
+        assert "Location:" in out  # RS3 carries a text location
+
+    def test_non_coordinate_returns_none(self):
+        # None signals "not a coordinate" so the caller falls through to text formats.
+        assert _resolve_coordinate("AN EARL", "osrs", "OSRS") is None
+
+    def test_unknown_coordinate_points_to_guide(self):
+        out = _resolve_coordinate(
+            "89 degrees 59 minutes north, 89 degrees 59 minutes west", "osrs", "OSRS")
+        assert out is not None and "not in the OSRS dataset" in out
+
+
+class TestDetectVisual:
+    def test_map_detected(self):
+        v = _detect_visual("I have a hand-drawn map", "osrs")
+        assert v is not None and v[0] == "map"
+
+    def test_compass_is_rs3_only(self):
+        assert _detect_visual("compass clue", "rs3")[0] == "compass"
+        assert _detect_visual("compass clue", "osrs") is None
+
+    def test_specific_type_beats_generic_puzzle(self):
+        # "lockbox" must win over the generic "puzzle" catch-all.
+        assert _detect_visual("lockbox puzzle", "rs3")[0] == "lockbox"
+
+    def test_plain_text_clue_not_visual(self):
+        assert _detect_visual("Talk to the bartender of the Rusty Anchor", "osrs") is None

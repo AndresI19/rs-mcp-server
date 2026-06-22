@@ -13,6 +13,9 @@ __pycache__/
 *.egg-info/
 *.so
 
+# Dev-only — never shipped in the runtime image. scripts/ holds offline data
+# generators (e.g. generate_clue_data.py); their committed JSON output ships as
+# package data, but the generators themselves do not.
 tests/
 scripts/
 

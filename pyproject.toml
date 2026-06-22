@@ -26,6 +26,11 @@ test = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+# Baked clue datasets (coordinates, visual-clue links) loaded at runtime via
+# importlib.resources — must ship inside the package.
+rs_mcp_server = ["resources/clues/*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [

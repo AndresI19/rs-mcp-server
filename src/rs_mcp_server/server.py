@@ -300,11 +300,11 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="solve_clue",
-            description="Look up a RuneScape clue scroll step by its clue text and return the solution (NPC, location, items required, decoded text). Supports four text-based clue formats — anagrams, cryptics, emotes, and ciphers — across both games. Provide clue_format and tier as optional hints to narrow the search and reduce cold-cache fetches; without them, the tool searches all loaded formats. Ciphers are OSRS-only. If the user has not specified which game (RS3 or OSRS), ask them before calling this tool.",
+            description="Look up a RuneScape clue scroll step by its clue text and return the solution (NPC, location, items required, decoded text, answer). Solves the text formats — anagram, cryptic, emote, cipher, and challenge-scroll Q&A — across both games; resolves coordinate clues from a built-in dataset when you pass the degrees (e.g. '04 degrees 13 minutes south, 16 degrees 25 minutes east'); and for visual/interactive clues (maps, puzzle boxes, light boxes, compass, scan, hot/cold, etc.) returns a link to the relevant wiki guide. clue_format and tier are optional hints; without them the tool auto-detects coordinates and searches all text formats. Ciphers are OSRS-only; challenge scrolls and coordinates are not tier-segmented. If the user has not specified which game (RS3 or OSRS), ask them before calling this tool.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "clue_text": {"type": "string", "description": "The clue text the player is stuck on (anagram letters, cryptic riddle, emote instructions, or cipher text)."},
+                    "clue_text": {"type": "string", "description": "The clue text the player is stuck on — anagram letters, cryptic/challenge riddle, emote instructions, cipher text, or coordinate degrees."},
                     "game": {
                         "type": "string",
                         "enum": ["rs3", "osrs"],
@@ -312,8 +312,8 @@ async def list_tools() -> list[Tool]:
                     },
                     "clue_format": {
                         "type": "string",
-                        "enum": ["anagram", "cryptic", "emote", "cipher"],
-                        "description": "Optional format hint to narrow the lookup. Ciphers are OSRS-only.",
+                        "enum": ["anagram", "cryptic", "emote", "cipher", "challenge", "coordinate"],
+                        "description": "Optional format hint to narrow the lookup. Ciphers are OSRS-only. Coordinates are auto-detected from the degrees text, so the hint is rarely needed.",
                     },
                     "tier": {
                         "type": "string",

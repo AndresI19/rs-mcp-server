@@ -310,48 +310,51 @@ async def get_money_maker_method(method_name: str, game: str = "rs3") -> str:
         return cached
 
     wiki_label = "RS3" if game == "rs3" else "OSRS"
-    full_title = f"{_METHOD_PREFIX}{method_name}"
 
-    direct = await _fetch_page(full_title, game, follow_redirects=True)
-    if direct is not None:
-        body, template_name = _find_method_template(direct["content"])
-        if body is not None:
-            display_name = direct["title"].removeprefix(_METHOD_PREFIX)
-            if _titles_match(method_name, display_name):
-                return _cache_and_return(
-                    _render_method(display_name, direct["url"], wiki_label, _parse_fields(body), template_name),
-                    cache_key,
-                )
-            return _cache_and_return(
-                _disambiguate_method(display_name, direct["url"], wiki_label),
-                cache_key,
-            )
+    result = (
+        await _method_from_direct(method_name, game, wiki_label)
+        or await _method_from_search(method_name, game, wiki_label)
+    )
+    if result is None:
+        return f"No money-making method found for '{method_name}' on the {wiki_label} wiki."
+    return _cache_and_return(result, cache_key)
 
+
+async def _method_from_direct(method_name: str, game: str, wiki_label: str) -> str | None:
+    """Direct subpage lookup under the 'Money making guide/' prefix."""
+    direct = await _fetch_page(f"{_METHOD_PREFIX}{method_name}", game, follow_redirects=True)
+    if direct is None:
+        return None
+    body, template_name = _find_method_template(direct["content"])
+    if body is None:
+        return None
+    display_name = direct["title"].removeprefix(_METHOD_PREFIX)
+    if _titles_match(method_name, display_name):
+        return _render_method(display_name, direct["url"], wiki_label, _parse_fields(body), template_name)
+    return _disambiguate_method(display_name, direct["url"], wiki_label)
+
+
+async def _method_from_search(method_name: str, game: str, wiki_label: str) -> str | None:
+    """Search fallback: disambiguate a near-title, else fetch + render the method page."""
     candidate = await _search_method(method_name, game)
     if candidate is None:
-        return f"No money-making method found for '{method_name}' on the {wiki_label} wiki."
+        return None
+    display_name = candidate["title"].removeprefix(_METHOD_PREFIX)
+    if not _titles_match(method_name, display_name):
+        return _disambiguate_method(display_name, candidate["url"], wiki_label)
 
-    candidate_display = candidate["title"].removeprefix(_METHOD_PREFIX)
-    if not _titles_match(method_name, candidate_display):
-        return _cache_and_return(
-            _disambiguate_method(candidate_display, candidate["url"], wiki_label),
-            cache_key,
-        )
-
+    # _search_method returns title/url only; re-fetch to get the page wikitext.
     page = await _fetch_page(candidate["title"], game, follow_redirects=False)
     if page is None:
-        return f"No money-making method found for '{method_name}' on the {wiki_label} wiki."
+        return None
     body, template_name = _find_method_template(page["content"])
     if body is None:
         return (
-            f"**{candidate_display}** ({wiki_label} Wiki)\n"
+            f"**{display_name}** ({wiki_label} Wiki)\n"
             f"{page['url']}\n\n"
             f"Page exists but no Mmgtable template found — it may not be a money-making method."
         )
-    return _cache_and_return(
-        _render_method(candidate_display, page["url"], wiki_label, _parse_fields(body), template_name),
-        cache_key,
-    )
+    return _render_method(display_name, page["url"], wiki_label, _parse_fields(body), template_name)
 
 
 def _disambiguate_method(display_name: str, url: str, wiki_label: str) -> str:

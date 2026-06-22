@@ -4,7 +4,7 @@ import httpx
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._constants import *
+from ._constants import TTL_10MIN
 from ._http import http_get
 from .achievements import _dispatch, _fetch_page, _parse_fields, _titles_match, get_achievement
 from .hiscores import _HISCORES_JSON_APIS, _as_int, validate_username

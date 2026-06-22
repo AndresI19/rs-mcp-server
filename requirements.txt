@@ -358,6 +358,10 @@ referencing==0.37.0 \
     # via
     #   jsonschema
     #   jsonschema-specifications
+roman==5.2 \
+    --hash=sha256:275fe9f46290f7d0ffaea1c33251b92b8e463ace23660508ceef522e7587cb6f \
+    --hash=sha256:89d3b47400388806d06ff77ea77c79ab080bc127820dea6bf34e1f1c1b8e676e
+    # via rs-mcp-server (pyproject.toml)
 rpds-py==0.30.0 \
     --hash=sha256:07ae8a593e1c3c6b82ca3292efbe73c30b61332fd612e05abee07c79359f292f \
     --hash=sha256:0a59119fc6e3f460315fe9d08149f8102aa322299deaa5cab5b40092345c2136 \

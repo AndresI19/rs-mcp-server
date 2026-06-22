@@ -36,7 +36,7 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, http_get
-from ._wiki_parsing import TableScope, collapse_whitespace as _collapse
+from ._wiki_parsing import TableScope, collapse_whitespace as _collapse, markdown_table
 from .prices import osrs_mapping
 
 _OSRS_LATEST_URL = "https://prices.runescape.wiki/api/v1/osrs/latest"
@@ -479,16 +479,6 @@ async def _get_best_alchables_rs3(mode: str) -> str:
 # Renderers
 # ---------------------------------------------------------------------------
 
-def _markdown_table(headers: list[str], rows: list[list[str]]) -> list[str]:
-    """Build a markdown table (header row, separator, data rows) as a list of lines."""
-    lines = [
-        "| " + " | ".join(headers) + " |",
-        "|" + "|".join(["---"] * len(headers)) + "|",
-    ]
-    lines.extend("| " + " | ".join(row) + " |" for row in rows)
-    return lines
-
-
 _PASSIVE_COLUMNS = ["#", "Item", "GE Price", "High Alch", "Profit/cast",
                     "Max daily profit", "Volume", "Limit", "ROI%"]
 
@@ -505,7 +495,7 @@ def _render_alch_section(emoji: str, label: str, top_n: int, rows: list[dict]) -
          f"{r['volume']:,}", f"{r['buy_limit']:,}", f"{r['roi']:.1f}%"]
         for rank, r in enumerate(rows, start=1)
     ]
-    lines += _markdown_table(_PASSIVE_COLUMNS, table_rows)
+    lines += markdown_table(_PASSIVE_COLUMNS, table_rows)
     return lines
 
 
@@ -596,7 +586,7 @@ def _render_mixed(
         if members_column:
             cells.append("✓" if r.get("members") else "")
         table_rows.append(cells)
-    lines += _markdown_table(header, table_rows)
+    lines += markdown_table(header, table_rows)
     lines.append("")
     lines.append(footer)
     return "\n".join(lines)

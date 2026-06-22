@@ -280,3 +280,17 @@ def join_text(parts: list[str]) -> str:
     list of data chunks; this concatenates them and normalises spacing in one step.
     """
     return " ".join("".join(parts).split())
+
+
+def markdown_table(headers: list[str], rows: list[list[str]]) -> list[str]:
+    """Build a markdown table (header row, separator, data rows) as a list of lines.
+
+    Shared by the tools that emit ranked tables (alchables, moneymakers) so they
+    don't each re-spell the ``| a | b |`` / ``|---|---|`` row construction.
+    """
+    lines = [
+        "| " + " | ".join(headers) + " |",
+        "|" + "|".join(["---"] * len(headers)) + "|",
+    ]
+    lines.extend("| " + " | ".join(row) + " |" for row in rows)
+    return lines

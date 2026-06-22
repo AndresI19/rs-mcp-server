@@ -3,11 +3,25 @@ from rs_mcp_server.tools._wiki_parsing import (
     TableScope,
     clean_wikitext,
     find_template,
+    markdown_table,
     match_by_name,
     parse_template_fields,
     render_variants,
     titles_match,
 )
+
+
+class TestMarkdownTable:
+    def test_header_separator_and_rows(self):
+        assert markdown_table(["A", "B"], [["1", "2"], ["3", "4"]]) == [
+            "| A | B |",
+            "|---|---|",
+            "| 1 | 2 |",
+            "| 3 | 4 |",
+        ]
+
+    def test_empty_rows_gives_header_and_separator_only(self):
+        assert markdown_table(["A", "B"], []) == ["| A | B |", "|---|---|"]
 
 
 class TestMatchByName:

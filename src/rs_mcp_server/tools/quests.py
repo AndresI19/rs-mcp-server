@@ -4,7 +4,14 @@ import re
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._constants import MW_BASE_PARAMS, TTL_HOUR, WIKI_APIS, WIKI_BASE_URLS, WIKI_LABELS
+from ._constants import (
+    MW_BASE_PARAMS,
+    ROMAN_NUMERALS,
+    TTL_HOUR,
+    WIKI_APIS,
+    WIKI_BASE_URLS,
+    WIKI_LABELS,
+)
 from ._http import http_get
 from ._wiki_parsing import (
     disambiguate,
@@ -141,7 +148,7 @@ async def _search_quest(query: str, game: str) -> dict | None:
 async def _enumerate_roman_variants(quest_name: str, game: str) -> list[dict]:
     """Try '<name> I' through '<name> V' in one batch query; return variants
     that exist and carry a quest template."""
-    titles = "|".join(f"{quest_name} {n}" for n in ("I", "II", "III", "IV", "V"))
+    titles = "|".join(f"{quest_name} {n}" for n in ROMAN_NUMERALS)
     params = {
         "action": "query",
         "titles": titles,

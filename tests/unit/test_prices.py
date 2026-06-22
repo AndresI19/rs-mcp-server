@@ -3,7 +3,7 @@ import httpx
 import pytest
 
 from rs_mcp_server import cache as _cache_mod
-from rs_mcp_server.tools.prices import get_item_price
+from rs_mcp_server.tools.prices import _format_geprice_only, _format_street_line, get_item_price
 
 
 @pytest.fixture(autouse=True)
@@ -243,6 +243,24 @@ class TestGetItemPriceRs3StreetPrices:
         assert "RS3 Grand Exchange" in result
         assert "Street: 2,200,000,000 gp  (last traded 2026-04-08)" in result
         assert "Street avg" not in result
+
+
+class TestPriceEdgeCases:
+    @pytest.mark.anyio
+    async def test_empty_item_rejected(self):
+        # Without the guard, the OSRS substring match ('"" in name' is always True)
+        # returns the first mapping item instead of an error.
+        assert "No item name provided" in await get_item_price("", "osrs")
+
+    def test_street_line_null_week_average_does_not_crash(self):
+        # geprice can return currentWeekAverage: null — must not 'None > 0' crash.
+        line = _format_street_line({"currentWeekAverage": None, "fallbackPrice": 100, "fallbackDate": "2024"})
+        assert line == "Street: 100 gp  (last traded 2024)"
+        assert _format_street_line({"currentWeekAverage": None}) is None
+
+    def test_geprice_only_missing_name_does_not_crash(self):
+        out = _format_geprice_only({"currentWeekAverage": 5000})
+        assert out is not None and "RS3 community trades" in out
 
     @pytest.mark.anyio
     async def test_off_ge_item_renders_last_traded_when_week_avg_zero(self, monkeypatch):

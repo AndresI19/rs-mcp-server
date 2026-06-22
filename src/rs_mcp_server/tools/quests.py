@@ -20,17 +20,18 @@ _TTL = 3600  # 1 hour — matches wiki lookup bucket
 
 _TEMPLATES = ("Infobox Quest", "Quest details")
 
+# (display label, keys to try in order) — a label falls back to its alternate keys,
+# so "Quest series" takes `series` if present, else `main_series`.
 _FIELDS = (
-    ("Difficulty", "difficulty"),
-    ("Length", "length"),
-    ("Members", "members"),
-    ("Quest series", "series"),
-    ("Quest series", "main_series"),
-    ("Start point", "start"),
-    ("Requirements", "requirements"),
-    ("Items required", "items"),
-    ("Recommended", "recommended"),
-    ("Rewards", "rewards"),
+    ("Difficulty", ("difficulty",)),
+    ("Length", ("length",)),
+    ("Members", ("members",)),
+    ("Quest series", ("series", "main_series")),
+    ("Start point", ("start",)),
+    ("Requirements", ("requirements",)),
+    ("Items required", ("items",)),
+    ("Recommended", ("recommended",)),
+    ("Rewards", ("rewards",)),
 )
 
 
@@ -208,20 +209,24 @@ def _merged_fields(wikitext: str) -> dict[str, str]:
     return merged
 
 
+def _first_value(fields: dict[str, str], keys: tuple[str, ...]) -> str:
+    """First non-empty value among `keys`, letting a label fall back to an alternate key."""
+    for k in keys:
+        if fields.get(k):
+            return fields[k]
+    return ""
+
+
 def _format_from_content(title: str, url: str, wiki_label: str, wikitext: str) -> str:
     fields = _merged_fields(wikitext)
     lines = [f"**{title}** ({wiki_label} Wiki)", url, ""]
-    seen_labels: set[str] = set()
-    for label, key in _FIELDS:
-        if label in seen_labels:
-            continue
-        value = fields.get(key)
+    for label, keys in _FIELDS:
+        value = _first_value(fields, keys)
         if not value:
             continue
         cleaned = _clean_wikitext(value)
         if not cleaned:
             continue
-        seen_labels.add(label)
         if "\n" in cleaned or len(cleaned) > 60:
             lines.append(f"**{label}:**")
             for sub in cleaned.split("\n"):

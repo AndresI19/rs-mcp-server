@@ -4,9 +4,9 @@ Two tools:
 - get_money_makers: ranks the master MMG page's hourly profit table.
 - get_money_maker_method: drill-down on a single method's subpage Mmgtable template.
 """
-import html
 import re
 from collections.abc import Iterator
+from html.parser import HTMLParser
 
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
@@ -79,67 +79,155 @@ async def _fetch_master_rows(game: str) -> list[dict] | None:
     return _parse_master_html(text, game)
 
 
-def _parse_master_html(html_text: str, game: str) -> list[dict]:
-    """Find the first wikitable sortable (the main hourly-profit table) and parse rows."""
-    table_match = re.search(
-        r'<table[^>]*class="[^"]*wikitable sortable[^"]*"[^>]*>(.*?)</table>',
-        html_text,
-        re.DOTALL,
-    )
-    if not table_match:
-        return []
-    body = table_match.group(1)
+class _MasterTableParser(HTMLParser):
+    """Parse the first 'wikitable sortable' table on the MMG master page.
 
-    header_html = re.findall(r"<th[^>]*>(.*?)</th>", body, re.DOTALL)
-    headers = [_strip_tags(h).strip().lower() for h in header_html]
+    Replaces a stack of regexes — '<table…sortable…>(.*?)</table>' then '<tr>(.*?)</tr>',
+    '<td…>(.*?)</td>', plus per-cell <a>/<img>/data-sort-value scans — that were both
+    fragile (the '.*?'-stops-at-first-close class) and easy to mis-read. Tracks table
+    depth so it captures exactly the first sortable table's own rows (matching the old
+    re.search's single-table intent, but robust to nested tables in a cell); per cell
+    it records the text, the data-sort-value attr, the first link, and whether a
+    members <img> is present — the four things the ranking needs.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.headers: list[str] = []
+        self.rows: list[list[dict]] = []
+        self._depth = 0
+        self._in_target = False
+        self._target_depth = 0
+        self._done = False           # capture only the first sortable table
+        self._row: list[dict] | None = None
+        self._cell: dict | None = None
+        self._th: list[str] | None = None
+        self._in_a = False
+
+    def handle_starttag(self, tag, attrs):
+        ad = dict(attrs)
+        if tag == "table":
+            self._depth += 1
+            cls = (ad.get("class") or "").split()
+            if not self._in_target and not self._done and "wikitable" in cls and "sortable" in cls:
+                self._in_target = True
+                self._target_depth = self._depth
+            return
+        if not self._in_target or self._depth != self._target_depth:
+            return  # ignore tags inside a table nested in a cell
+        if tag == "tr":
+            self._row = []
+        elif tag == "th":
+            self._th = []
+        elif tag == "td":
+            self._cell = {"text": [], "sort_value": _sort_value(ad.get("data-sort-value")),
+                          "link": None, "members": False}
+        elif self._cell is not None:
+            if tag == "a" and self._cell["link"] is None:
+                self._cell["link"] = [ad.get("href", ""), []]   # [href, text-parts]
+                self._in_a = True
+            elif tag == "img" and "member" in (ad.get("alt") or "").lower():
+                self._cell["members"] = True
+
+    def handle_data(self, data):
+        if self._th is not None:
+            self._th.append(data)
+        elif self._cell is not None:
+            self._cell["text"].append(data)
+            if self._in_a and self._cell["link"] is not None:
+                self._cell["link"][1].append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "table":
+            if self._in_target and self._depth == self._target_depth:
+                self._in_target = False
+                self._done = True
+            self._depth -= 1
+            return
+        if not self._in_target or self._depth != self._target_depth:
+            return
+        if tag == "a":
+            self._in_a = False
+        elif tag == "th" and self._th is not None:
+            self.headers.append(" ".join("".join(self._th).split()))
+            self._th = None
+        elif tag == "td" and self._cell is not None:
+            link = None
+            if self._cell["link"] is not None:
+                link = (" ".join("".join(self._cell["link"][1]).split()), self._cell["link"][0])
+            self._row.append({
+                "text": " ".join("".join(self._cell["text"]).split()),
+                "sort_value": self._cell["sort_value"],
+                "link": link,
+                "members": self._cell["members"],
+            })
+            self._cell = None
+        elif tag == "tr" and self._row is not None:
+            if self._row:
+                self.rows.append(self._row)
+            self._row = None
+
+
+def _sort_value(raw: str | None) -> int | None:
+    if raw is None:
+        return None
+    try:
+        return int(float(raw))
+    except ValueError:
+        return None
+
+
+def _parse_master_html(html_text: str, game: str) -> list[dict]:
+    """Rank rows from the first wikitable-sortable table on the master MMG page."""
+    parser = _MasterTableParser()
+    parser.feed(html_text)
+    headers = [h.lower() for h in parser.headers]
     if not headers:
         return []
 
     # Map normalised header → column index. Header text varies between games
     # (e.g. "Skills" vs "Skills required"); match on prefix.
-    col_index = {}
+    col_index: dict[str, int] = {}
     for i, h in enumerate(headers):
         for canonical in ("method", "hourly profit", "profit", "skills", "category", "intensity", "members"):
             if h.startswith(canonical) and canonical not in col_index:
                 col_index[canonical] = i
                 break
 
+    method_idx = col_index.get("method")
+    profit_idx = col_index.get("hourly profit", col_index.get("profit"))
+    if method_idx is None or profit_idx is None:
+        return []
+
     rows: list[dict] = []
-    for tr_match in re.finditer(r"<tr[^>]*>(.*?)</tr>", body, re.DOTALL):
-        cells_raw = re.findall(r"<td([^>]*)>(.*?)</td>", tr_match.group(1), re.DOTALL)
-        if not cells_raw:
+    for cells in parser.rows:
+        if method_idx >= len(cells) or profit_idx >= len(cells):
             continue
 
-        method_idx = col_index.get("method")
-        profit_idx = col_index.get("hourly profit", col_index.get("profit"))
-        if method_idx is None or profit_idx is None:
-            continue
-        if method_idx >= len(cells_raw) or profit_idx >= len(cells_raw):
-            continue
-
-        method_attrs, method_html = cells_raw[method_idx]
-        profit_attrs, profit_html = cells_raw[profit_idx]
-
-        name, url = _extract_method_link(method_html, game)
+        method_cell = cells[method_idx]
+        if method_cell["link"] is not None:
+            name, href = method_cell["link"]
+            url = WIKI_BASE_URLS[game].rstrip("/w/") + href if href.startswith("/") else href
+        else:
+            name, url = method_cell["text"], ""
         if not name:
             continue
 
-        profit_value = _extract_sort_value(profit_attrs)
+        profit_cell = cells[profit_idx]
+        profit_value = profit_cell["sort_value"]
         if profit_value is None:
-            profit_value = _strip_commas_to_int(_strip_tags(profit_html))
-        profit_text = _strip_tags(profit_html).strip() or "?"
+            profit_value = _strip_commas_to_int(profit_cell["text"])
 
-        row = {
+        rows.append({
             "name": name,
             "url": url,
             "profit_value": profit_value if profit_value is not None else 0,
-            "profit_text": profit_text,
-            "skills": _strip_tags(cells_raw[col_index["skills"]][1]).strip() if "skills" in col_index and col_index["skills"] < len(cells_raw) else "",
-            "category": _strip_tags(cells_raw[col_index["category"]][1]).strip() if "category" in col_index and col_index["category"] < len(cells_raw) else "",
-            "intensity": _strip_tags(cells_raw[col_index["intensity"]][1]).strip() if "intensity" in col_index and col_index["intensity"] < len(cells_raw) else "",
-            "members": _is_members_cell(cells_raw[col_index["members"]][1]) if "members" in col_index and col_index["members"] < len(cells_raw) else None,
-        }
-        rows.append(row)
+            "profit_text": profit_cell["text"] or "?",
+            "skills": cells[col_index["skills"]]["text"] if "skills" in col_index and col_index["skills"] < len(cells) else "",
+            "category": cells[col_index["category"]]["text"] if "category" in col_index and col_index["category"] < len(cells) else "",
+            "intensity": cells[col_index["intensity"]]["text"] if "intensity" in col_index and col_index["intensity"] < len(cells) else "",
+            "members": cells[col_index["members"]]["members"] if "members" in col_index and col_index["members"] < len(cells) else None,
+        })
     return rows
 
 
@@ -432,47 +520,9 @@ def _clean_wikitext(s: str) -> str:
     return s.strip()
 
 
-# ---------------------------------------------------------------------------
-# Master-page HTML helpers
-# ---------------------------------------------------------------------------
-
-def _strip_tags(s: str) -> str:
-    s = re.sub(r"<[^>]+>", " ", s)
-    s = html.unescape(s)
-    return " ".join(s.split())
-
-
-def _extract_sort_value(attrs: str) -> int | None:
-    m = re.search(r'data-sort-value="([^"]+)"', attrs)
-    if not m:
-        return None
-    raw = m.group(1)
-    try:
-        return int(float(raw))
-    except ValueError:
-        return None
-
-
 def _strip_commas_to_int(s: str) -> int | None:
     s = s.replace(",", "").strip()
     try:
         return int(float(s))
     except (ValueError, TypeError):
         return None
-
-
-def _extract_method_link(cell_html: str, game: str) -> tuple[str, str]:
-    m = re.search(r'<a\s+href="([^"]+)"[^>]*>([^<]+)</a>', cell_html)
-    if not m:
-        text = _strip_tags(cell_html)
-        return text, ""
-    href, text = m.group(1), html.unescape(m.group(2)).strip()
-    if href.startswith("/"):
-        url = WIKI_BASE_URLS[game].rstrip("/w/") + href
-    else:
-        url = href
-    return text, url
-
-
-def _is_members_cell(cell_html: str) -> bool:
-    return bool(re.search(r'<img[^>]+alt="[^"]*member', cell_html, re.IGNORECASE))

@@ -11,7 +11,7 @@ from html.parser import HTMLParser
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, WIKI_LABELS, http_get
 from ._wiki_parsing import (
     TableScope,
     disambiguate,
@@ -239,7 +239,7 @@ def _cell_field(cells: list[dict], col_index: dict[str, int], key: str, attr: st
 
 
 def _render_master_table(rows: list[dict], game: str, category: str | None, members_only: bool, limit: int) -> str:
-    wiki_label = "RS3" if game == "rs3" else "OSRS"
+    wiki_label = WIKI_LABELS[game]
     page_url = f"{WIKI_BASE_URLS[game]}{_MASTER_PAGE}"
     has_category = any(r["category"] for r in rows)
     has_intensity = any(r["intensity"] for r in rows)
@@ -320,7 +320,7 @@ async def get_money_maker_method(method_name: str, game: str = "rs3") -> str:
     if cached:
         return cached
 
-    wiki_label = "RS3" if game == "rs3" else "OSRS"
+    wiki_label = WIKI_LABELS[game]
 
     result = (
         await _method_from_direct(method_name, game, wiki_label)

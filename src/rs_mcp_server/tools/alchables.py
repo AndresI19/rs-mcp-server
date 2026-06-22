@@ -472,6 +472,23 @@ async def _get_best_alchables_rs3(mode: str) -> str:
 # Renderers
 # ---------------------------------------------------------------------------
 
+def _render_alch_section(emoji: str, label: str, top_n: int, rows: list[dict]) -> list[str]:
+    """Render one passive-mode section (Easy or Slow buys) as markdown table lines."""
+    lines = [f"### {emoji} {label} buys — top {top_n} by max daily profit"]
+    if not rows:
+        lines.append(f"_No items qualify as {label.lower()} buys right now._")
+        return lines
+    lines.append("| # | Item | GE Price | High Alch | Profit/cast | Max daily profit | Volume | Limit | ROI% |")
+    lines.append("|---|------|----------|-----------|-------------|------------------|--------|-------|------|")
+    for rank, r in enumerate(rows, start=1):
+        lines.append(
+            f"| {rank} | {r['name']} | {r['ge_price']:,} | {r['highalch']:,} | "
+            f"+{int(round(r['profit'])):,} | {r['max_daily']:,} | "
+            f"{r['volume']:,} | {r['buy_limit']:,} | {r['roi']:.1f}% |"
+        )
+    return lines
+
+
 def _render_passive_two_tables(easy: list[dict], slow: list[dict], page_url: str) -> str:
     title = "**Best Alchables (RS3)** — passive (Alchemiser mk. II)"
     lines = [title, page_url, ""]
@@ -482,32 +499,9 @@ def _render_passive_two_tables(easy: list[dict], slow: list[dict], page_url: str
     top_easy = sorted(easy, key=sort_key)[:_EASY_TOP_N]
     top_slow = sorted(slow, key=sort_key)[:_SLOW_TOP_N]
 
-    lines.append(f"### 🟢 Easy buys — top {_EASY_TOP_N} by max daily profit")
-    if top_easy:
-        lines.append("| # | Item | GE Price | High Alch | Profit/cast | Max daily profit | Volume | Limit | ROI% |")
-        lines.append("|---|------|----------|-----------|-------------|------------------|--------|-------|------|")
-        for rank, r in enumerate(top_easy, start=1):
-            lines.append(
-                f"| {rank} | {r['name']} | {r['ge_price']:,} | {r['highalch']:,} | "
-                f"+{int(round(r['profit'])):,} | {r['max_daily']:,} | "
-                f"{r['volume']:,} | {r['buy_limit']:,} | {r['roi']:.1f}% |"
-            )
-    else:
-        lines.append("_No items qualify as easy buys right now._")
-
+    lines += _render_alch_section("🟢", "Easy", _EASY_TOP_N, top_easy)
     lines.append("")
-    lines.append(f"### 🟡 Slow buys — top {_SLOW_TOP_N} by max daily profit")
-    if top_slow:
-        lines.append("| # | Item | GE Price | High Alch | Profit/cast | Max daily profit | Volume | Limit | ROI% |")
-        lines.append("|---|------|----------|-----------|-------------|------------------|--------|-------|------|")
-        for rank, r in enumerate(top_slow, start=1):
-            lines.append(
-                f"| {rank} | {r['name']} | {r['ge_price']:,} | {r['highalch']:,} | "
-                f"+{int(round(r['profit'])):,} | {r['max_daily']:,} | "
-                f"{r['volume']:,} | {r['buy_limit']:,} | {r['roi']:.1f}% |"
-            )
-    else:
-        lines.append("_No items qualify as slow buys right now._")
+    lines += _render_alch_section("🟡", "Slow", _SLOW_TOP_N, top_slow)
 
     lines.append("")
     lines.append(

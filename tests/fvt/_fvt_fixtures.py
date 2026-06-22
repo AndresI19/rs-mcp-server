@@ -34,6 +34,7 @@ CASES: list[tuple[str, dict, list[str]]] = [
     ("get_item_price",      {"item_name": "Mask of Tumeken's Resplendence", "game": "rs3"},                 ["**Mask of Tumeken's Resplendence**", "community trades", "Street"]),
     ("get_player_stats",    {"username": "Lynx Titan", "game": "osrs"},                                     ["OSRS Hiscores", "Total level"]),
     ("get_player_stats",    {"username": "Zezima", "game": "rs3"},                                          ["RS3 Hiscores", "Total level"]),
+    ("get_player_stats",    {"username": "ThisNameIsTooLong", "game": "osrs"},                              ["isn't a valid RuneScape name"]),
     ("get_quest_info",      {"quest_name": "Cook's Assistant", "game": "osrs"},                             ["**Cook's Assistant**", "Difficulty"]),
     ("get_quest_info",      {"quest_name": "Dragon Slayer", "game": "rs3"},                                 ["**Dragon Slayer**", "Difficulty"]),
     ("get_quest_info",      {"quest_name": "Dragon Slayer I", "game": "rs3"},                               ["Did you mean"]),

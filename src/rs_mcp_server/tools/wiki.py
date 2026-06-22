@@ -8,6 +8,8 @@ queries (gauntlets→melee gloves, helm→helmet) when the initial search misses
 import html
 import re
 
+import httpx
+
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
@@ -84,7 +86,7 @@ async def _fetch_rendered_body(title: str, game: str) -> str:
     }
     try:
         data = await http_get(WIKI_APIS[game], params=params)
-    except Exception:
+    except httpx.HTTPError:
         return ""
     if "error" in data:
         return ""

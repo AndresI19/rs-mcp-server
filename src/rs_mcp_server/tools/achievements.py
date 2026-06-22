@@ -5,7 +5,6 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import (
     MW_BASE_PARAMS,
-    ROMAN_NUMERALS,
     TTL_HOUR,
     WIKI_APIS,
     WIKI_BASE_URLS,
@@ -21,6 +20,7 @@ from ._wiki_parsing import (
     parse_page_response,
     parse_template_fields as _parse_fields,
     render_variants,
+    roman_variant_titles,
     search_params,
     titles_match as _titles_match,
 )
@@ -175,7 +175,7 @@ async def _search_achievement(query: str, game: str) -> dict | None:
 async def _enumerate_roman_variants(name: str, game: str) -> list[dict]:
     """Try '<name> I' through '<name> V' in one batch query; return variants
     that exist and carry an achievement template."""
-    titles = "|".join(f"{name} {n}" for n in ROMAN_NUMERALS)
+    titles = roman_variant_titles(name)
     params = {
         "action": "query",
         "titles": titles,

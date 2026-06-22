@@ -5,7 +5,7 @@ import re
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._http import MW_BASE_PARAMS, SEARCH_RESULT_LIMIT, WIKI_APIS, WIKI_BASE_URLS, http_get
 from ._wiki_parsing import (
     clean_wikitext as _clean,
     find_template as _find_template,
@@ -172,7 +172,7 @@ async def _search_equipment(query: str, game: str) -> dict | None:
         "action": "query",
         "generator": "search",
         "gsrsearch": query,
-        "gsrlimit": 5,
+        "gsrlimit": SEARCH_RESULT_LIMIT,
         "prop": "revisions|info",
         "rvprop": "content",
         "rvslots": "main",

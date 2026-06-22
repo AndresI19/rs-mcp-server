@@ -26,6 +26,9 @@ MW_BASE_PARAMS = {
     "formatversion": 2,
 }
 
+# How many MediaWiki search candidates each typed tool fetches before type-filtering.
+SEARCH_RESULT_LIMIT = 5
+
 _MAX_RETRIES = 2
 _RETRY_STATUSES = {429, 502, 503, 504}
 _client: httpx.AsyncClient | None = None

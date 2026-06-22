@@ -364,6 +364,13 @@ def _sv_int(value: str | None) -> int | None:
     return int(f) if f is not None else None
 
 
+def _opt_sort(cells: list[dict], col_index: dict[str, int], key: str, conv) -> int | float | None:
+    """Convert an optional column's data-sort-value via `conv`, or None if absent."""
+    if key not in col_index:
+        return None
+    return conv(cells[col_index[key]]["sort"])
+
+
 def _parse_rs3_table(html_text: str) -> list[dict] | None:
     """Parse the per-item alchables table on the Alchemiser mk. II wiki page."""
     parser = _AlchTableParser()
@@ -407,10 +414,10 @@ def _parse_rs3_table(html_text: str) -> list[dict] | None:
         if profit is None or profit <= 0:
             continue
 
-        ge_price = _sv_int(cells[col_index["ge price"]]["sort"]) if "ge price" in col_index else None
+        ge_price = _opt_sort(cells, col_index, "ge price", _sv_int)
         high_alch = _sv_int(cells[col_index["high alch"]]["sort"])
-        roi = _sv_float(cells[col_index["roi%"]]["sort"]) if "roi%" in col_index else None
-        buy_limit = _sv_int(cells[col_index["limit"]]["sort"]) if "limit" in col_index else None
+        roi = _opt_sort(cells, col_index, "roi%", _sv_float)
+        buy_limit = _opt_sort(cells, col_index, "limit", _sv_int)
         volume = _sv_int(cells[col_index["trade volume"]]["sort"])
         max_daily = _sv_int(cells[col_index["max daily profit"]]["sort"])
 

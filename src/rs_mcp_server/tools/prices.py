@@ -53,21 +53,19 @@ async def osrs_mapping() -> list[dict]:
     return data
 
 
+def _find_osrs_item(mapping: list[dict], item_name: str) -> dict | None:
+    """First exact (case-insensitive) GE-name match, else first substring match."""
+    query = item_name.lower()
+    exact = next((e for e in mapping if e.get("name", "").lower() == query), None)
+    if exact is not None:
+        return exact
+    return next((e for e in mapping if query in e.get("name", "").lower()), None)
+
+
 async def _get_osrs_price(item_name: str) -> str:
     mapping = await osrs_mapping()
-    query = item_name.lower()
 
-    item = None
-    for entry in mapping:
-        if entry.get("name", "").lower() == query:
-            item = entry
-            break
-    if item is None:
-        for entry in mapping:
-            if query in entry.get("name", "").lower():
-                item = entry
-                break
-
+    item = _find_osrs_item(mapping, item_name)
     if item is None:
         return f"Item '{item_name}' not found on the OSRS Grand Exchange."
 
@@ -149,11 +147,12 @@ async def _get_rs3_price(item_name: str) -> str:
     item_id, canonical = match
     detail = (await http_get(_RS3_GE_DETAIL, params={"item": item_id})).get("item", {})
 
-    price   = detail.get("current", {}).get("price", "N/A")
-    trend   = detail.get("current", {}).get("trend", "")
+    current = detail.get("current", {})
+    price = current.get("price", "N/A")
+    trend = current.get("trend", "")
     today_p = detail.get("today", {}).get("price", "")
-    d30     = detail.get("day30", {}).get("change", "")
-    d90     = detail.get("day90", {}).get("change", "")
+    d30 = detail.get("day30", {}).get("change", "")
+    d90 = detail.get("day90", {}).get("change", "")
 
     lines = [f"**{canonical}** (RS3 Grand Exchange)"]
     lines.append(f"Price:   {price} gp  ({trend})")

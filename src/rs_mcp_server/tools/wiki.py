@@ -91,10 +91,10 @@ async def _fetch_rendered_body(title: str, game: str) -> str:
     if "error" in data:
         return ""
     html_text = data.get("parse", {}).get("text") or ""
-    return _extract_prose(html_text)
+    return _extract_prose_from_html(html_text)
 
 
-def _extract_prose(html_text: str) -> str:
+def _extract_prose_from_html(html_text: str) -> str:
     """Extract section headings + paragraph prose from rendered HTML, skipping chrome.
 
     Pulls text from <h2>/<h3> and <p> tags only, preserving page order. Drops

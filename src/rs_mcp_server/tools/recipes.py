@@ -24,7 +24,7 @@ async def get_item_recipe(item_name: str, game: str = "rs3") -> str:
         return cached
 
     wiki_label = "RS3" if game == "rs3" else "OSRS"
-    canonical = item_name[:1].upper() + item_name[1:] if item_name else item_name
+    canonical = item_name[:1].upper() + item_name[1:]
 
     params = {
         "action": "query",

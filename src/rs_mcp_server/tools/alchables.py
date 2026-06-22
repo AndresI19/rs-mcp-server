@@ -482,7 +482,8 @@ def _render_passive_two_tables(easy: list[dict], slow: list[dict], page_url: str
     lines = [title, page_url, ""]
 
     # Both tables: max_daily_profit primary, ROI tiebreaker.
-    sort_key = lambda r: (-r["max_daily"], -r["roi"])  # noqa: E731
+    def sort_key(r):
+        return (-r["max_daily"], -r["roi"])
     top_easy = sorted(easy, key=sort_key)[:_EASY_TOP_N]
     top_slow = sorted(slow, key=sort_key)[:_SLOW_TOP_N]
 
@@ -547,7 +548,8 @@ def _render_mixed(
         )
         lines.append("")
 
-    sort_key = lambda r: (-r["profit"], -r["roi"])  # noqa: E731
+    def sort_key(r):
+        return (-r["profit"], -r["roi"])
     top_easy = sorted(easy_pool, key=sort_key)[:_EASY_TOP_N]
     top_slow = sorted(slow_pool, key=sort_key)[:_SLOW_TOP_N]
 

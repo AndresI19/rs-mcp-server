@@ -173,8 +173,6 @@ async def _search_equipment(query: str, game: str) -> dict | None:
     return first_matching_page(data, game, lambda c: _find_template(c, "Infobox Bonuses") is not None)
 
 
-
-
 def _format_stats(title: str, url: str, wiki_label: str, fields: dict[str, str], stats_def: list[tuple[str, str]], sections: dict[str, str]) -> str:
     lines = [f"**{title}** ({wiki_label} Wiki)", url, ""]
     for label, key in stats_def:

@@ -4,31 +4,32 @@ import sys
 import threading
 import traceback
 from contextlib import asynccontextmanager
+
 import uvicorn
 from mcp.server import Server
 from mcp.server.sse import SseServerTransport
-from mcp.types import Tool, TextContent
+from mcp.types import TextContent, Tool
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Mount, Route
 
 from rs_mcp_server.logging import setup_logging
-from rs_mcp_server.version import VERSION_INFO
-from rs_mcp_server.tools.wiki import search_wiki
-from rs_mcp_server.tools.prices import get_item_price
+from rs_mcp_server.tools.achievements import get_achievement
+from rs_mcp_server.tools.alchables import get_best_alchables
+from rs_mcp_server.tools.clues import solve_clue
+from rs_mcp_server.tools.drops import get_item_drop_sources
+from rs_mcp_server.tools.equipment import get_equipment_stats
 from rs_mcp_server.tools.hiscores import get_player_stats
+from rs_mcp_server.tools.moneymakers import get_money_maker_method, get_money_makers
+from rs_mcp_server.tools.monsters import get_monster_info
+from rs_mcp_server.tools.player_progress import get_player_achievement_progress
+from rs_mcp_server.tools.prices import get_item_price
 from rs_mcp_server.tools.quests import get_quest_info
 from rs_mcp_server.tools.recipes import get_item_recipe
-from rs_mcp_server.tools.equipment import get_equipment_stats
-from rs_mcp_server.tools.monsters import get_monster_info
-from rs_mcp_server.tools.drops import get_item_drop_sources
-from rs_mcp_server.tools.achievements import get_achievement
-from rs_mcp_server.tools.player_progress import get_player_achievement_progress
-from rs_mcp_server.tools.moneymakers import get_money_makers, get_money_maker_method
-from rs_mcp_server.tools.alchables import get_best_alchables
 from rs_mcp_server.tools.settings import get_game_setting
-from rs_mcp_server.tools.clues import solve_clue
+from rs_mcp_server.tools.wiki import search_wiki
+from rs_mcp_server.version import VERSION_INFO
 
 setup_logging()
 

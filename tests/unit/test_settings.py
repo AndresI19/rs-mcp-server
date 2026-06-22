@@ -7,7 +7,6 @@ from rs_mcp_server.tools.settings import (
     get_game_setting,
 )
 
-
 _FIXTURE_HTML = """
 <h2 id="Display">Display</h2>
 <h3 id="Skills">Skills</h3>

@@ -6,7 +6,6 @@ import pytest
 from mcp.client.session import ClientSession
 from mcp.client.sse import sse_client
 
-
 EXPECTED_TOOLS = {
     "search_wiki",
     "get_item_price",

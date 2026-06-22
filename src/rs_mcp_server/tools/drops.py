@@ -14,7 +14,7 @@ import httpx
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, WIKI_LABELS, http_get
 from ._wiki_parsing import TableScope, collapse_whitespace as _collapse
 
 _TTL_DROPS = 3600
@@ -40,7 +40,7 @@ async def get_item_drop_sources(item_name: str, game: str = "rs3") -> str:
 
 
 async def _fetch_and_format(item_name: str, game: str) -> str:
-    wiki_label = "RS3" if game == "rs3" else "OSRS"
+    wiki_label = WIKI_LABELS[game]
 
     page = await _fetch_page(item_name, game)
     if page is None:

@@ -3,7 +3,7 @@
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import WIKI_APIS, http_get
+from ._http import WIKI_APIS, WIKI_LABELS, http_get
 from ._wiki_parsing import (
     clean_wikitext as _clean,
     disambiguate,
@@ -72,7 +72,7 @@ async def get_monster_info(monster_name: str, game: str = "rs3") -> str:
     if cached:
         return cached
 
-    wiki_label = "RS3" if game == "rs3" else "OSRS"
+    wiki_label = WIKI_LABELS[game]
     fields_def = _FIELDS_BY_GAME[game]
 
     direct = await _fetch_page(monster_name, game, follow_redirects=True)

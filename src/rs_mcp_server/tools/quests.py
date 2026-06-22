@@ -4,7 +4,7 @@ import re
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, WIKI_LABELS, http_get
 from ._wiki_parsing import (
     disambiguate,
     fetch_page_params,
@@ -46,7 +46,7 @@ async def get_quest_info(quest_name: str, game: str = "rs3") -> str:
     if cached:
         return cached
 
-    wiki_label = "RS3" if game == "rs3" else "OSRS"
+    wiki_label = WIKI_LABELS[game]
 
     direct = await _fetch_page(quest_name, game, follow_redirects=True)
     if direct and _has_quest_template(direct["content"]):

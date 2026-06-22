@@ -21,6 +21,13 @@ WIKI_BASE_URLS = {
     "osrs": "https://oldschool.runescape.wiki/w/",
 }
 
+# Short display label per game (used in result headers). Callers validate game
+# against WIKI_APIS first, so a lookup here is always present.
+WIKI_LABELS = {
+    "rs3":  "RS3",
+    "osrs": "OSRS",
+}
+
 MW_BASE_PARAMS = {
     "format": "json",
     "formatversion": 2,

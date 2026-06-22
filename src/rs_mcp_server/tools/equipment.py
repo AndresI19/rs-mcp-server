@@ -7,7 +7,7 @@ import httpx
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import MW_BASE_PARAMS, WIKI_APIS, http_get
+from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_LABELS, http_get
 from ._wiki_parsing import (
     clean_wikitext as _clean,
     disambiguate,
@@ -88,7 +88,7 @@ async def get_equipment_stats(item_name: str, game: str = "rs3") -> str:
     if cached:
         return cached
 
-    wiki_label = "RS3" if game == "rs3" else "OSRS"
+    wiki_label = WIKI_LABELS[game]
 
     result = (
         await _stats_from_direct(item_name, game, wiki_label)

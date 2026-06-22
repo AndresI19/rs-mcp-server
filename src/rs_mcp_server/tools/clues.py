@@ -13,7 +13,7 @@ from html.parser import HTMLParser
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, WIKI_LABELS, http_get
 from ._wiki_parsing import TableScope, collapse_whitespace as _collapse, join_text, match_by_name
 
 _TTL = 3600
@@ -59,7 +59,7 @@ async def solve_clue(
         if tier not in _TIERS:
             return f"Unknown tier '{tier}'. Use one of: {', '.join(_TIERS)}."
 
-    wiki_label = "RS3" if game == "rs3" else "OSRS"
+    wiki_label = WIKI_LABELS[game]
 
     if clue_format is not None:
         if _PAGES[game].get(clue_format) is None:

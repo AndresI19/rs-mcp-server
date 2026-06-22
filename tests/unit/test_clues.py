@@ -5,6 +5,7 @@ from rs_mcp_server.tools.clues import (
     _detect_visual,
     _match_clues,
     _parse_clue_html,
+    _render_visual,
     _resolve_coordinate,
     normalize_coordinate,
     solve_clue,
@@ -62,6 +63,15 @@ _CHALLENGE_HTML = """
 <tr><th>NPC</th><th>Question</th><th>Answer</th></tr>
 <tr><td>Ironman tutor</td><td>How many snakeskins are needed?</td><td>666</td></tr>
 <tr><td>Gnome ball referee</td><td>How many points is a goal worth?</td><td>10</td></tr>
+</table>
+"""
+
+# RS3 simple clues share the cryptic shape (clue | solution | location), tier in <h2>.
+_SIMPLE_HTML = """
+<h2 id="Easy_simple_clues">Easy simple clues</h2>
+<table class="wikitable">
+<tr><th>Cryptic</th><th>Solution</th><th>Location</th></tr>
+<tr><td>Search the chest in the Duke's bedroom.</td><td>In Lumbridge Castle, 1st floor</td><td>Lumbridge Castle</td></tr>
 </table>
 """
 
@@ -143,6 +153,17 @@ class TestParseChallengeHtml:
         # The matchable clue_text must be the question (col 1), not the NPC (col 0).
         rows = _parse_clue_html(_CHALLENGE_HTML, "challenge")
         assert all(r["clue_text"].startswith("How many") for r in rows)
+
+
+class TestParseSimpleHtml:
+    def test_simple_clue_extracted(self):
+        rows = _parse_clue_html(_SIMPLE_HTML, "simple")
+        assert len(rows) == 1
+        r = rows[0]
+        assert "chest" in r["clue_text"]
+        assert r["solution"] == "In Lumbridge Castle, 1st floor"
+        assert r["tier"] == "easy"
+        assert r["format"] == "simple"
 
 
 class TestParseSkipsTablesOutsideTier:
@@ -327,3 +348,11 @@ class TestDetectVisual:
 
     def test_plain_text_clue_not_visual(self):
         assert _detect_visual("Talk to the bartender of the Rusty Anchor", "osrs") is None
+
+    def test_compass_is_self_solved_no_link(self):
+        # Compass is genuinely not supported — solved in-game, so no guide link.
+        vtype, info = _detect_visual("compass clue", "rs3")
+        assert vtype == "compass" and info.get("in_game")
+        rendered = _render_visual(vtype, info, "RS3")
+        assert "http" not in rendered
+        assert "arrow" in rendered.lower()

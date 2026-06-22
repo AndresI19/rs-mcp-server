@@ -24,7 +24,7 @@ from ._constants import *
 from ._http import http_get
 from ._wiki_parsing import TableScope, collapse_whitespace as _collapse, join_text, match_by_name
 
-_FORMATS = ("anagram", "cryptic", "emote", "cipher", "challenge")
+_FORMATS = ("anagram", "cryptic", "emote", "cipher", "challenge", "simple")
 _TIERS = ("beginner", "easy", "medium", "hard", "elite", "master")
 
 # Formats whose wiki page is a single flat table with no per-tier <h3> sections.
@@ -38,6 +38,7 @@ _PAGES = {
         "emote":   "Treasure Trails/Guide/Emote clues",
         "cipher":  "Treasure Trails/Guide/Ciphers",
         "challenge": "Treasure Trails/Guide/Challenge scrolls",
+        "simple":  None,  # OSRS has no separate simple-clue dataset
     },
     "rs3": {
         "anagram": "Treasure Trails/Guide/Anagrams",
@@ -45,6 +46,7 @@ _PAGES = {
         "emote":   "Treasure Trails/Guide/Emotes",
         "cipher":  None,  # RS3 doesn't have ciphers as a clue format
         "challenge": "Treasure Trails/Guide/Challenge scrolls",
+        "simple":  "Treasure Trails/Guide/Simple clues",
     },
 }
 
@@ -368,12 +370,30 @@ def _row_challenge(cells: list[dict], tier: str) -> dict | None:
     }
 
 
+def _row_simple(cells: list[dict], tier: str) -> dict | None:
+    # RS3 "simple" clues share the cryptic shape: clue | solution | location.
+    clue = cells[_CLUE_COL]["text"]
+    solution = cells[_ANSWER_COL]["text"] if len(cells) > _ANSWER_COL else ""
+    location = cells[_LOCATION_COL]["text"] if len(cells) > _LOCATION_COL else ""
+    if not clue:
+        return None
+    return {
+        "format": "simple",
+        "tier": tier,
+        "clue_text": clue,
+        "clue_text_lower": clue.lower(),
+        "solution": solution,
+        "location": location,
+    }
+
+
 _ROW_BUILDERS = {
     "anagram": _row_anagram,
     "cryptic": _row_cryptic,
     "emote":   _row_emote,
     "cipher":  _row_cipher,
     "challenge": _row_challenge,
+    "simple":  _row_simple,
 }
 
 
@@ -405,6 +425,7 @@ _SOLUTION_FIELDS = {
     "emote":   (("Items required", "items"), ("Location", "location")),
     "cipher":  (("Decoded", "decoded"), ("Location", "location")),
     "challenge": (("Answer", "answer"), ("Asked by", "npc")),
+    "simple":  (("Solution", "solution"), ("Location", "location")),
 }
 
 
@@ -508,6 +529,10 @@ def _detect_visual(clue_text: str, game: str) -> tuple[str, dict] | None:
 
 
 def _render_visual(vtype: str, info: dict, wiki_label: str) -> str:
+    # Some types are trivially solved in-game, where a wiki lookup adds nothing
+    # (e.g. compass — just follow the arrow). Those carry "in_game" and no guide link.
+    if info.get("in_game"):
+        return f"**{vtype.capitalize()} clue** — {info['blurb']}"
     lines = [f"This looks like a **{vtype}** clue ({wiki_label} Wiki).", "", info["blurb"], info["guide_url"]]
     if info.get("image_url"):
         lines.append(info["image_url"])

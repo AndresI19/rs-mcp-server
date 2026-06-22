@@ -1,0 +1,646 @@
+{
+  "_generated": "2026-06-22",
+  "_source": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates",
+  "coordinates": {
+    "00.05S,01.13E": {
+      "shorthand": "00.05S,01.13E",
+      "degrees": "00 degrees 05 minutes south, 01 degrees 13 minutes east",
+      "tier": "medium",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#200",
+      "requirements": "None.",
+      "fight": "no"
+    },
+    "01.18S,14.15E": {
+      "shorthand": "01.18S,14.15E",
+      "degrees": "01 degrees 18 minutes south, 14 degrees 15 minutes east",
+      "tier": "medium",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#201",
+      "requirements": "None.",
+      "fight": "no"
+    },
+    "02.16N,12.07E": {
+      "shorthand": "02.16N,12.07E",
+      "degrees": "02 degrees 16 minutes north, 12 degrees 07 minutes east",
+      "tier": "medium",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#202",
+      "requirements": "Partial completion of Dragon Slayer I",
+      "fight": "no"
+    },
+    "03.07S,03.41W": {
+      "shorthand": "03.07S,03.41W",
+      "degrees": "03 degrees 07 minutes south, 03 degrees 41 minutes west",
+      "tier": "medium",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#203",
+      "requirements": "None.",
+      "fight": "no"
+    },
+    "04.00S,12.46E": {
+      "shorthand": "04.00S,12.46E",
+      "degrees": "04 degrees 00 minutes south, 12 degrees 46 minutes east",
+      "tier": "medium",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#204",
+      "requirements": "None.",
+      "fight": "no"
+    },
+    "05.20S,04.28E": {
+      "shorthand": "05.20S,04.28E",
+      "degrees": "05 degrees 20 minutes south, 04 degrees 28 minutes east",
+      "tier": "medium",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#205",
+      "requirements": "None.",
+      "fight": "no"
+    },
+    "06.31N,01.46W": {
+      "shorthand": "06.31N,01.46W",
+      "degrees": "06 degrees 31 minutes north, 01 degrees 46 minutes west",
+      "tier": "medium",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#206",
+      "requirements": "None.",
+      "fight": "no"
+    },
+    "07.05N,30.56E": {
+      "shorthand": "07.05N,30.56E",
+      "degrees": "07 degrees 05 minutes north, 30 degrees 56 minutes east",
+      "tier": "medium",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#207",
+      "requirements": "Priest in Peril (to enter Canifis)",
+      "fight": "no"
+    },
+    "08.11S,04.48E": {
+      "shorthand": "08.11S,04.48E",
+      "degrees": "08 degrees 11 minutes south, 04 degrees 48 minutes east",
+      "tier": "medium",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#208",
+      "requirements": "Spade",
+      "fight": "no"
+    },
+    "09.33N,02.15E": {
+      "shorthand": "09.33N,02.15E",
+      "degrees": "09 degrees 33 minutes north, 02 degrees 15 minutes east",
+      "tier": "medium",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#209",
+      "requirements": "Started Waterfall Quest Rope",
+      "fight": "no"
+    },
+    "10.45N,04.31E": {
+      "shorthand": "10.45N,04.31E",
+      "degrees": "10 degrees 45 minutes north, 04 degrees 31 minutes east",
+      "tier": "medium",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#210",
+      "requirements": "Recommended: 20 Agility for Shortcut",
+      "fight": "no"
+    },
+    "11.03N,31.20E": {
+      "shorthand": "11.03N,31.20E",
+      "degrees": "11 degrees 03 minutes north, 31 degrees 20 minutes east",
+      "tier": "medium",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#211",
+      "requirements": "Completion of Priest in Peril",
+      "fight": "no"
+    },
+    "12.28N,34.37E": {
+      "shorthand": "12.28N,34.37E",
+      "degrees": "12 degrees 28 minutes north, 34 degrees 37 minutes east",
+      "tier": "medium",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#212",
+      "requirements": "Priest in Peril",
+      "fight": "no"
+    },
+    "14.54N,09.13E": {
+      "shorthand": "14.54N,09.13E",
+      "degrees": "14 degrees 54 minutes north, 9 degrees 13 minutes east",
+      "tier": "medium",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#214",
+      "requirements": "None.",
+      "fight": "no"
+    },
+    "15.22N,07.31E": {
+      "shorthand": "15.22N,07.31E",
+      "degrees": "15 degrees 22 minutes north, 07 degrees 31 minutes east",
+      "tier": "medium",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#215",
+      "requirements": "None.",
+      "fight": "no"
+    },
+    "17.39N,37.16W": {
+      "shorthand": "17.39N,37.16W",
+      "degrees": "17 degrees 39 minutes north, 37 degrees 16 minutes west",
+      "tier": "medium",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#217",
+      "requirements": "45 Farming",
+      "fight": "no"
+    },
+    "22.07S,23.13E": {
+      "shorthand": "22.07S,23.13E",
+      "degrees": "22 degrees 07 minutes south, 23 degrees 13 minutes east",
+      "tier": "medium",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#222",
+      "requirements": "Partial Completion of the Troubled Tortugans quest",
+      "fight": "no"
+    },
+    "23.05N,41.22E": {
+      "shorthand": "23.05N,41.22E",
+      "degrees": "23 degrees 05 minutes north, 41 degrees 22 minutes east",
+      "tier": "medium",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#223",
+      "requirements": "Completion of Bone Voyage",
+      "fight": "no"
+    },
+    "00.00N,07.13W": {
+      "shorthand": "00.00N,07.13W",
+      "degrees": "00 degrees 00 minutes north, 07 degrees 13 minutes west",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#300",
+      "requirements": "Regicide",
+      "fight": "yes"
+    },
+    "01.24N,08.05W": {
+      "shorthand": "01.24N,08.05W",
+      "degrees": "01 degrees 24 minutes north, 08 degrees 05 minutes west",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#301",
+      "requirements": "Regicide",
+      "fight": "yes"
+    },
+    "02.39N,29.58E": {
+      "shorthand": "02.39N,29.58E",
+      "degrees": "02 degrees 39 minutes north, 29 degrees 58 minutes east",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#302",
+      "requirements": "None.",
+      "fight": "no"
+    },
+    "03.18N,12.31E": {
+      "shorthand": "03.18N,12.31E",
+      "degrees": "03 degrees 18 minutes north,12 degrees 31 minutes east",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#303",
+      "requirements": "Partial completion of Dragon Slayer I",
+      "fight": "yes"
+    },
+    "04.03S,03.11E": {
+      "shorthand": "04.03S,03.11E",
+      "degrees": "04 degrees 03 minutes south, 03 degrees 11 minutes east",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#304",
+      "requirements": "Partial completion of Watchtower 20 coins if Watchtower has not been completed, or if you have used the bridge to cross back[1] (if you used the bridge to cross back, but have 71 , you don't need the coins)",
+      "fight": "yes"
+    },
+    "05.03N,34.58W": {
+      "shorthand": "05.03N,34.58W",
+      "degrees": "05 degrees 03 minutes north, 34 degrees 58 minutes west",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#305",
+      "requirements": "Completion of Children of the Sun",
+      "fight": "yes"
+    },
+    "06.00S,21.48E": {
+      "shorthand": "06.00S,21.48E",
+      "degrees": "06 degrees 00 minutes south, 21 degrees 48 minutes east",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#306",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "07.43S,12.26E": {
+      "shorthand": "07.43S,12.26E",
+      "degrees": "07 degrees 43 minutes south, 12 degrees 26 minutes east",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#307",
+      "requirements": "Partial completion of Legends' Quest",
+      "fight": "yes"
+    },
+    "08.03N,31.16E": {
+      "shorthand": "08.03N,31.16E",
+      "degrees": "08 degrees 03 minutes north, 31 degrees 16 minutes east",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#308",
+      "requirements": "Started Priest in Peril",
+      "fight": "yes"
+    },
+    "10.03N,32.13W": {
+      "shorthand": "10.03N,32.13W",
+      "degrees": "10 degrees 03 minutes north, 32 degrees 13 minutes west",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#310",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "12.05S,38.58W": {
+      "shorthand": "12.05S,38.58W",
+      "degrees": "12 degrees 05 minutes south, 38 degrees 58 minutes west",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#312",
+      "requirements": "58",
+      "fight": "yes"
+    },
+    "13.46N,21.01E": {
+      "shorthand": "13.46N,21.01E",
+      "degrees": "13 degrees 46 minutes north, 21 degrees 01 minutes east",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#313",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "16.03N,14.07E": {
+      "shorthand": "16.03N,14.07E",
+      "degrees": "16 degrees 03 minutes north, 14 degrees 07 minutes east",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#316",
+      "requirements": "Start Troll Stronghold, bring climbing boots",
+      "fight": "yes"
+    },
+    "17.50N,08.30E": {
+      "shorthand": "17.50N,08.30E",
+      "degrees": "17 degrees 50 minutes north, 08 degrees 30 minutes east",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#317",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "18.22N,16.33E": {
+      "shorthand": "18.22N,16.33E",
+      "degrees": "18 degrees 22 minutes north, 16 degrees 33 minutes east",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#318",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "19.00N,27.13E": {
+      "shorthand": "19.00N,27.13E",
+      "degrees": "19 degrees 00 minutes north, 27 degrees 13 minutes east",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#319",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "20.05N,21.52E": {
+      "shorthand": "20.05N,21.52E",
+      "degrees": "20 degrees 05 minutes north, 21 degrees 52 minutes east",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#320",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "21.24N,17.54E": {
+      "shorthand": "21.24N,17.54E",
+      "degrees": "21 degrees 24 minutes north, 17 degrees 54 minutes east",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#321",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "22.35N,19.18E": {
+      "shorthand": "22.35N,19.18E",
+      "degrees": "22 degrees 35 minutes north, 19 degrees 18 minutes east",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#322",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "23.03N,41.24E": {
+      "shorthand": "23.03N,41.24E",
+      "degrees": "23 degrees 03 minutes north, 41 degrees 24 minutes east",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#323",
+      "requirements": "Completion of Bone Voyage",
+      "fight": "yes"
+    },
+    "23.30N,16.33E": {
+      "shorthand": "23.30N,16.33E",
+      "degrees": "23 degrees 30 minutes north, 16 degrees 33 minutes east",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#324",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "25.03N,17.05E": {
+      "shorthand": "25.03N,17.05E",
+      "degrees": "25 degrees 03 minutes north, 17 degrees 05 minutes east",
+      "tier": "hard",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#325",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "00.18S,02.35W": {
+      "shorthand": "00.18S,02.35W",
+      "degrees": "00 degrees 18 minutes south, 02 degrees 35 minutes west",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#400",
+      "requirements": "Started Mourning's End Part I",
+      "fight": "yes"
+    },
+    "02.35S,11.52E": {
+      "shorthand": "02.35S,11.52E",
+      "degrees": "02 degrees 35 minutes south, 11 degrees 52 minutes east",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#402",
+      "requirements": "Jungle Potion quest and 100 trading sticks are required to enter.",
+      "fight": "yes"
+    },
+    "03.09S,42.50E": {
+      "shorthand": "03.09S,42.50E",
+      "degrees": "03 degrees 09 minutes south, 42 degrees 50 minutes east",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#403",
+      "requirements": "Cabin Fever",
+      "fight": "yes"
+    },
+    "05.07S,13.26E": {
+      "shorthand": "05.07S,13.26E",
+      "degrees": "05 degrees 07 minutes south, 13 degrees 26 minutes east",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#405",
+      "requirements": "Completion of the Shilo Village quest",
+      "fight": "yes"
+    },
+    "06.28S,03.48W": {
+      "shorthand": "06.28S,03.48W",
+      "degrees": "06 degrees 28 minutes south, 03 degrees 48 minutes west",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#406",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "08.15N,35.24E": {
+      "shorthand": "08.15N,35.24E",
+      "degrees": "08 degrees 15 minutes north, 35 degrees 24 minutes east",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#408",
+      "requirements": "Priest in Peril",
+      "fight": "yes"
+    },
+    "09.46S,43.22E": {
+      "shorthand": "09.46S,43.22E",
+      "degrees": "09 degrees 46 minutes south, 43 degrees 22 minutes east",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#409",
+      "requirements": "Started The Great Brain Robbery",
+      "fight": "yes"
+    },
+    "10.05S,24.31E": {
+      "shorthand": "10.05S,24.31E",
+      "degrees": "10 degrees 05 minutes south, 24 degrees 31 minutes east",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#410",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "10.54N,20.50W": {
+      "shorthand": "10.54N,20.50W",
+      "degrees": "10 degrees 54 minutes north, 20 degrees 50 minutes west",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#411",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "12.31N,43.11E": {
+      "shorthand": "12.31N,43.11E",
+      "degrees": "12 degrees 31 minutes north, 43 degrees 11 minutes east",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#412",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "13.45S,15.30E": {
+      "shorthand": "13.45S,15.30E",
+      "degrees": "13 degrees 45 minutes south, 15 degrees 30 minutes east",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#413",
+      "requirements": "Partial completion of Monkey Madness I",
+      "fight": "yes"
+    },
+    "14.13S,27.26E": {
+      "shorthand": "14.13S,27.26E",
+      "degrees": "14 degrees 13 minutes south, 27 degrees 26 minutes east",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#414",
+      "requirements": "Partial completion of Beneath Cursed Sands",
+      "fight": "yes"
+    },
+    "16.09N,10.33E": {
+      "shorthand": "16.09N,10.33E",
+      "degrees": "16 degrees 09 minutes north, 10 degrees 33 minutes east",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#416",
+      "requirements": "A rope (if Mountain Daughter not completed)",
+      "fight": "yes"
+    },
+    "17.58N,19.05E": {
+      "shorthand": "17.58N,19.05E",
+      "degrees": "17 degrees 58 minutes north, 19 degrees 05 minutes east",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#417",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "18.05N,12.05E": {
+      "shorthand": "18.05N,12.05E",
+      "degrees": "18 degrees 05 minutes north, 12 degrees 05 minutes east",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#418",
+      "requirements": "Access to Trollheim, requires quests",
+      "fight": "yes"
+    },
+    "19.56N,02.31W": {
+      "shorthand": "19.56N,02.31W",
+      "degrees": "19 degrees 56 minutes north, 02 degrees 31 minutes west",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#419",
+      "requirements": "Partial completion of The Fremennik Isles",
+      "fight": "yes"
+    },
+    "20.11N,07.41W": {
+      "shorthand": "20.11N,07.41W",
+      "degrees": "20 degrees 11 minutes north, 07 degrees 41 minutes west",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#420",
+      "requirements": "Started Lunar Diplomacy to access Pirates' Cove",
+      "fight": "yes"
+    },
+    "21.03N,24.13E": {
+      "shorthand": "21.03N,24.13E",
+      "degrees": "21 degrees 03 minutes north, 24 degrees 13 minutes east",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#421",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "22.54N,29.01E": {
+      "shorthand": "22.54N,29.01E",
+      "degrees": "22 degrees 54 minutes north, 29 degrees 01 minutes east",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#422",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "23.48N,11.43W": {
+      "shorthand": "23.48N,11.43W",
+      "degrees": "23 degrees 48 minutes north, 11 degrees 43 minutes west",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#423",
+      "requirements": "Started Lunar Diplomacy to access Lunar Isle",
+      "fight": "yes"
+    },
+    "24.07N,23.22E": {
+      "shorthand": "24.07N,23.22E",
+      "degrees": "24 degrees 07 minutes north, 23 degrees 22 minutes east",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#424",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "25.03N,29.22E": {
+      "shorthand": "25.03N,29.22E",
+      "degrees": "25 degrees 03 minutes north, 29 degrees 22 minutes east",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#425",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "26.43N,01.22E": {
+      "shorthand": "26.43N,01.22E",
+      "degrees": "26 degrees 43 minutes north, 01 degrees 22 minutes east",
+      "tier": "elite",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#426",
+      "requirements": "Partial completion of The Fremennik Exiles",
+      "fight": "yes"
+    },
+    "01.30N,08.11W": {
+      "shorthand": "01.30N,08.11W",
+      "degrees": "01 degrees 30 minutes north, 08 degrees 11 minutes west",
+      "tier": "master",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#501",
+      "requirements": "Regicide",
+      "fight": "yes"
+    },
+    "02.09S,06.58W": {
+      "shorthand": "02.09S,06.58W",
+      "degrees": "02 degrees 09 minutes south,06 degrees 58 minutes west",
+      "tier": "master",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#502",
+      "requirements": "Partial completion of Fairytale II - Cure a Queen for access to fairy rings.",
+      "fight": "yes"
+    },
+    "03.09S,43.26E": {
+      "shorthand": "03.09S,43.26E",
+      "degrees": "03 degrees 09 minutes south, 43 degrees 26 minutes east",
+      "tier": "master",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#503",
+      "requirements": "Cabin Fever",
+      "fight": "yes"
+    },
+    "04.58N,36.56E": {
+      "shorthand": "04.58N,36.56E",
+      "degrees": "04 degrees 58 minutes north, 36 degrees 56 minutes east",
+      "tier": "master",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#504",
+      "requirements": "Partial completion of Darkness of Hallowvale",
+      "fight": "yes"
+    },
+    "05.13N,04.16W": {
+      "shorthand": "05.13N,04.16W",
+      "degrees": "05 degrees 13 minutes north, 04 degrees 16 minutes west",
+      "tier": "master",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#505",
+      "requirements": "Partial completion of Regicide",
+      "fight": "yes"
+    },
+    "07.37N,35.18E": {
+      "shorthand": "07.37N,35.18E",
+      "degrees": "07 degrees 37 minutes north, 35 degrees 18 minutes east",
+      "tier": "master",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#507",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "08.01N,20.58W": {
+      "shorthand": "08.01N,20.58W",
+      "degrees": "08 degrees 01 minutes north, 20 degrees 58 minutes west",
+      "tier": "master",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#508",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "12.35N,36.22E": {
+      "shorthand": "12.35N,36.22E",
+      "degrees": "12 degrees 35 minutes north, 36 degrees 22 minutes east",
+      "tier": "master",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#512",
+      "requirements": "25",
+      "fight": "yes"
+    },
+    "13.33S,15.26E": {
+      "shorthand": "13.33S,15.26E",
+      "degrees": "13 degrees 33 minutes south, 15 degrees 26 minutes east",
+      "tier": "master",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#513",
+      "requirements": "Partial completion of Monkey Madness I",
+      "fight": "yes"
+    },
+    "16.41N,30.54W": {
+      "shorthand": "16.41N,30.54W",
+      "degrees": "16 degrees 41 minutes north, 30 degrees 54 minutes west",
+      "tier": "master",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#516",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "18.03N,03.03E": {
+      "shorthand": "18.03N,03.03E",
+      "degrees": "18 degrees 03 minutes north, 03 degrees 03 minutes east",
+      "tier": "master",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#518",
+      "requirements": "1,000 coins (or completion of The Fremennik Trials)",
+      "fight": "yes"
+    },
+    "19.43N,23.11W": {
+      "shorthand": "19.43N,23.11W",
+      "degrees": "19 degrees 43 minutes north, 23 degrees 11 minutes west",
+      "tier": "master",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#519",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "20.35N,15.58E": {
+      "shorthand": "20.35N,15.58E",
+      "degrees": "20 degrees 35 minutes north, 15 degrees 58 minutes east",
+      "tier": "master",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#520",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "21.37N,21.13W": {
+      "shorthand": "21.37N,21.13W",
+      "degrees": "21 degrees 37 minutes north, 21 degrees 13 minutes west",
+      "tier": "master",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#521",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "22.24N,31.11W": {
+      "shorthand": "22.24N,31.11W",
+      "degrees": "22 degrees 24 minutes north, 31 degrees 11 minutes west",
+      "tier": "master",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#522",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "24.00N,29.22E": {
+      "shorthand": "24.00N,29.22E",
+      "degrees": "24 degrees 00 minutes north,29 degrees 22 minutes east",
+      "tier": "master",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#524",
+      "requirements": "None.",
+      "fight": "yes"
+    },
+    "23.58N,18.22E": {
+      "shorthand": "23.58N,18.22E",
+      "degrees": "23 degrees 58 minutes north, 18 degrees 22 minutes east",
+      "tier": "master",
+      "wiki_url": "https://oldschool.runescape.wiki/w/Treasure_Trails/Guide/Coordinates#525",
+      "requirements": "None.",
+      "fight": "yes"
+    }
+  }
+}

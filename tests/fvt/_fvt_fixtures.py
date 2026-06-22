@@ -69,6 +69,9 @@ CASES: list[tuple[str, dict, list[str]]] = [
     ("solve_clue",             {"clue_text": "lumbridge", "game": "osrs", "clue_format": "cryptic"},        ["Did you mean", "Lumbridge"]),
     ("solve_clue",             {"clue_text": "aris", "game": "osrs", "clue_format": "emote"},               ["Did you mean", "Aris"]),
     ("solve_clue",             {"clue_text": "BMJ UIF LFCBC TFMMFS", "game": "osrs", "clue_format": "cipher"}, ["**BMJ UIF LFCBC TFMMFS**", "Ali the Kebab", "Pollnivneach"]),
+    ("solve_clue",             {"clue_text": "animals are in the Ardougne Zoo", "game": "rs3", "clue_format": "challenge"}, ["Did you mean", "Ardougne Zoo", "challenge"]),
+    ("solve_clue",             {"clue_text": "00 degrees 05 minutes south, 01 degrees 13 minutes east", "game": "rs3"}, ["Medium coordinate", "Location"]),
+    ("solve_clue",             {"clue_text": "I have a hand drawn treasure map", "game": "osrs"},            ["This looks like", "Guide/Maps"]),
     ("solve_clue",             {"clue_text": "zzznotaclue", "game": "osrs"},                                ["No matching clue"]),
 ]
 

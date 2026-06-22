@@ -191,7 +191,7 @@ async def _search_monster(query: str, game: str) -> dict | None:
     return None
 
 
-def _format_monster(title: str, url: str, wiki_label: str, fields: dict, fields_def: list) -> str:
+def _format_monster(title: str, url: str, wiki_label: str, fields: dict[str, str], fields_def: list[tuple[str, str]]) -> str:
     lines = [f"**{title}** ({wiki_label} Wiki)", url, ""]
     for label, key in fields_def:
         val = fields.get(key) or fields.get(f"{key}1")

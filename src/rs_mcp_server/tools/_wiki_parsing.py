@@ -12,7 +12,7 @@ from collections.abc import Callable
 
 import roman
 
-from ._constants import MW_BASE_PARAMS, SEARCH_RESULT_LIMIT, WIKI_BASE_URLS
+from ._constants import *
 
 
 def titles_match(a: str, b: str) -> bool:

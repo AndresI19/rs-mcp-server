@@ -15,6 +15,7 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._wiki_parsing import collapse_whitespace as _collapse
 
 _TTL_DROPS = 3600
 _TOP_N = 3
@@ -192,10 +193,6 @@ def _level_from_attrs(attrs: dict) -> str | None:
     except ValueError:
         return None
     return str(val) if val != 0 else None
-
-
-def _collapse(s: str) -> str:
-    return " ".join(html.unescape(s).split())
 
 
 def _format_output(item_name: str, page_url: str, wiki_label: str, rows: list[dict]) -> str:

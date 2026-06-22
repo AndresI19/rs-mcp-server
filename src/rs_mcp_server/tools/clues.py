@@ -14,6 +14,7 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._wiki_parsing import collapse_whitespace as _collapse
 
 _TTL = 3600
 
@@ -225,10 +226,6 @@ def _extract_rows(table_body: str) -> list[list[dict]]:
     parser = _CluesRowParser()
     parser.feed(table_body)
     return parser.rows
-
-
-def _collapse(s: str) -> str:
-    return " ".join(html.unescape(s).split())
 
 
 # ---------------------------------------------------------------------------

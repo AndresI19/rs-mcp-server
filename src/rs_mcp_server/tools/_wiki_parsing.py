@@ -6,6 +6,7 @@ the parsing behavior has a single source of truth; the tool modules import them
 under their existing private names so call sites are unchanged. (HTTP-fetching
 helpers stay in each module so the test suite can monkeypatch ``http_get`` locally.)
 """
+import html
 import re
 
 
@@ -67,3 +68,24 @@ def clean_wikitext(s: str) -> str:
     s = re.sub(r"\{\{[^}]*\}\}", "", s)
     s = re.sub(r"<[^>]+>", "", s)
     return s.strip()
+
+
+def collapse_whitespace(s: str) -> str:
+    """Unescape HTML entities and collapse runs of whitespace to single spaces.
+
+    Used by the html.parser-based tools to normalize text extracted from cells.
+    """
+    return " ".join(html.unescape(s).split())
+
+
+def disambiguate(name: str, url: str, wiki_label: str, tool: str, param: str, noun: str) -> str:
+    """Render the shared "Did you mean …" message when a lookup lands on a near match.
+
+    ``tool``/``param``/``noun`` tailor the re-invoke hint per tool (e.g.
+    ``get_achievement``/``name``/``info``).
+    """
+    return (
+        f'Did you mean **"{name}"** ({wiki_label} Wiki)?\n'
+        f"{url}\n\n"
+        f'Re-invoke `{tool}` with {param}="{name}" to fetch the {noun}.'
+    )

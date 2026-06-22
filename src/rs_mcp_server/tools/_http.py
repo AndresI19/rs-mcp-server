@@ -34,7 +34,7 @@ _RETRY_STATUSES = {429, 502, 503, 504}
 _client: httpx.AsyncClient | None = None
 
 
-def _get_client() -> httpx.AsyncClient:
+def _ensure_client() -> httpx.AsyncClient:
     """Return the shared pooled client, recreating it if absent or closed."""
     global _client
     if _client is None or _client.is_closed:
@@ -47,7 +47,7 @@ async def _request(url: str, params: dict | None, timeout: float) -> httpx.Respo
     last_exc: Exception | None = None
     for attempt in range(_MAX_RETRIES + 1):
         try:
-            resp = await _get_client().get(url, params=params, timeout=timeout)
+            resp = await _ensure_client().get(url, params=params, timeout=timeout)
         except httpx.TransportError as exc:
             last_exc = exc
         else:

@@ -4,7 +4,7 @@ import re
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._http import MW_BASE_PARAMS, SEARCH_RESULT_LIMIT, WIKI_APIS, WIKI_BASE_URLS, http_get
 from ._wiki_parsing import parse_template_fields as _parse_fields, titles_match as _titles_match
 
 _TTL = 3600  # 1 hour — matches wiki lookup bucket
@@ -153,7 +153,7 @@ async def _search_quest(query: str, game: str) -> dict | None:
             "action": "query",
             "generator": "search",
             "gsrsearch": search_term,
-            "gsrlimit": 5,
+            "gsrlimit": SEARCH_RESULT_LIMIT,
             "prop": "revisions|info",
             "rvprop": "content",
             "rvslots": "main",

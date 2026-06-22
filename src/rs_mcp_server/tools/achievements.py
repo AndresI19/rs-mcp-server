@@ -1,10 +1,18 @@
 """get_achievement tool — RuneScape Wiki achievement infoboxes (OSRS + RS3)."""
-import re
 
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._wiki_parsing import (
+    clean_wikitext as _clean,
+    disambiguate,
+    find_template as _find_template,
+    first_matching_page,
+    parse_template_fields as _parse_fields,
+    search_params,
+    titles_match as _titles_match,
+)
 
 _TTL = 3600
 
@@ -122,7 +130,7 @@ async def get_achievement(name: str, game: str = "rs3") -> str:
     )
 
 
-def _dispatch(content: str) -> tuple[str, list, str] | None:
+def _dispatch(content: str) -> tuple[str, list[tuple[str, str]], str] | None:
     for template_name, fields_def, kind in _TEMPLATE_DISPATCH:
         body = _find_template(content, template_name)
         if body is not None:
@@ -130,16 +138,8 @@ def _dispatch(content: str) -> tuple[str, list, str] | None:
     return None
 
 
-def _titles_match(a: str, b: str) -> bool:
-    return a.strip().casefold() == b.strip().casefold()
-
-
 def _disambiguate(title: str, url: str, wiki_label: str) -> str:
-    return (
-        f'Did you mean **"{title}"** ({wiki_label} Wiki)?\n'
-        f"{url}\n\n"
-        f'Re-invoke `get_achievement` with name="{title}" to fetch the info.'
-    )
+    return disambiguate(title, url, wiki_label, "get_achievement", "name", "info")
 
 
 def _cache_and_return(value: str, cache_key: str) -> str:
@@ -186,80 +186,8 @@ async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | N
 async def _search_achievement(query: str, game: str) -> dict | None:
     # Fetch top candidates with content so we can type-filter: skip pages
     # that don't carry one of the achievement infobox templates.
-    params = {
-        "action": "query",
-        "generator": "search",
-        "gsrsearch": query,
-        "gsrlimit": 5,
-        "prop": "revisions|info",
-        "rvprop": "content",
-        "rvslots": "main",
-        "inprop": "url",
-        **MW_BASE_PARAMS,
-    }
-    data = await http_get(WIKI_APIS[game], params=params)
-    for page in data.get("query", {}).get("pages", []):
-        revisions = page.get("revisions") or []
-        if not revisions:
-            continue
-        content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
-        if _dispatch(content) is None:
-            continue
-        title = page.get("title", "")
-        return {
-            "title": title,
-            "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
-            "content": content,
-        }
-    return None
-
-
-# ---------------------------------------------------------------------------
-# Wikitext parsing
-# ---------------------------------------------------------------------------
-
-def _find_template(wikitext: str, name: str) -> str | None:
-    # Require a real template delimiter after the name (whitespace, |, or })
-    # so "Infobox Achievement" doesn't false-match "Infobox Achievement category".
-    pattern = r"\{\{" + re.escape(name) + r"(?=\s*[|}])"
-    match = re.search(pattern, wikitext, re.IGNORECASE)
-    if not match:
-        return None
-    i = match.end()
-    depth = 2
-    while i < len(wikitext) and depth > 0:
-        if wikitext[i:i + 2] == "{{":
-            depth += 2
-            i += 2
-        elif wikitext[i:i + 2] == "}}":
-            depth -= 2
-            i += 2
-        else:
-            i += 1
-    if depth != 0:
-        return None
-    return wikitext[match.end():i - 2]
-
-
-def _parse_fields(body: str) -> dict[str, str]:
-    fields: dict[str, str] = {}
-    parts = re.split(r"\n\s*\|", "\n|" + body)
-    for part in parts[1:]:
-        if "=" not in part:
-            continue
-        name, _, value = part.partition("=")
-        key = name.strip().lower()
-        value = value.strip()
-        if value:
-            fields[key] = value
-    return fields
-
-
-def _clean(s: str) -> str:
-    s = re.sub(r"\[\[(?:[^\]|]+\|)?([^\]]+)\]\]", r"\1", s)
-    s = re.sub(r"\{\{[^}]*\}\}", "", s)
-    s = re.sub(r"<[^>]+>", "", s)
-    return s.strip()
+    data = await http_get(WIKI_APIS[game], params=search_params(query))
+    return first_matching_page(data, game, lambda c: _dispatch(c) is not None)
 
 
 async def _enumerate_roman_variants(name: str, game: str) -> list[dict]:
@@ -305,7 +233,7 @@ def _render_variants(variants: list[dict], wiki_label: str, base_name: str) -> s
     return "\n".join(lines)
 
 
-def _format_achievement(title: str, url: str, wiki_label: str, kind: str, fields: dict, fields_def: list) -> str:
+def _format_achievement(title: str, url: str, wiki_label: str, kind: str, fields: dict[str, str], fields_def: list[tuple[str, str]]) -> str:
     lines = [f"**{title}** — {kind} ({wiki_label} Wiki)", url, ""]
     for label, key in fields_def:
         val = fields.get(key) or fields.get(f"{key}1")

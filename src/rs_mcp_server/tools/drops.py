@@ -2,15 +2,20 @@
 
 The wiki's {{Drop sources|<item>}} template is server-rendered into a sortable
 table; raw wikitext alone doesn't expose the source list. We fetch the rendered
-HTML via action=parse and parse the table by its `item-drops` class.
+HTML via action=parse and walk the `item-drops` table with html.parser — a
+depth-tracking state machine, so nested tables (which a regex scan mis-splits at
+the first </table> or </tr>) are handled correctly.
 """
 import html
-import re
+from html.parser import HTMLParser
+
+import httpx
 
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._wiki_parsing import collapse_whitespace as _collapse
 
 _TTL_DROPS = 3600
 _TOP_N = 3
@@ -44,14 +49,7 @@ async def _fetch_and_format(item_name: str, game: str) -> str:
     canonical_title = page["title"]
     page_url = f"{WIKI_BASE_URLS[game]}{canonical_title.replace(' ', '_')}"
 
-    table = _find_item_sources_table(page["html"])
-    if table is None:
-        return (
-            f"No drop sources recorded for '{canonical_title}' on the {wiki_label} Wiki.\n"
-            f"{page_url}"
-        )
-
-    rows = _parse_rows(table)
+    rows = _parse_drop_rows(page["html"])
     return _format_output(canonical_title, page_url, wiki_label, rows)
 
 
@@ -65,7 +63,7 @@ async def _fetch_page(item_name: str, game: str) -> dict | None:
     }
     try:
         data = await http_get(WIKI_APIS[game], params=params)
-    except Exception:
+    except httpx.HTTPError:
         return None
     if "error" in data:
         return None
@@ -78,68 +76,123 @@ async def _fetch_page(item_name: str, game: str) -> dict | None:
     }
 
 
-def _find_item_sources_table(html_text: str) -> str | None:
-    m = re.search(
-        r'<table[^>]*class="[^"]*\bitem-drops\b[^"]*"[^>]*>(.*?)</table>',
-        html_text,
-        re.DOTALL,
-    )
-    return m.group(1) if m else None
+# ---------------------------------------------------------------------------
+# HTML parsing — extract data rows from the `item-drops` table
+# ---------------------------------------------------------------------------
+
+class _DropsTableParser(HTMLParser):
+    """Collect data rows from the first `item-drops` table.
+
+    Per row it captures only what the formatter needs: the source name (anchor
+    ``title``), an optional beast version, the level (``data-sort-value`` on the
+    level cell), the quantity text, and the rarity (``data-drop-fraction``).
+    Table nesting is tracked by depth so the target table closes at its matching
+    ``</table>`` rather than the first one encountered.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.rows: list[dict] = []
+        self._table_depth = 0
+        self._in_target = False
+        self._target_depth = 0
+        self._row: dict | None = None
+        self._row_has_th = False
+        self._cell = -1
+        self._capture_version = False
+
+    def handle_starttag(self, tag, attrs):
+        ad = dict(attrs)
+        if tag == "table":
+            self._table_depth += 1
+            if not self._in_target and "item-drops" in (ad.get("class") or "").split():
+                self._in_target = True
+                self._target_depth = self._table_depth
+            return
+        if not self._in_target:
+            return
+        if self._table_depth != self._target_depth:
+            return  # inside a table nested in a cell — ignore its rows/cells
+        if tag == "tr":
+            self._row = {"source": "", "version": "", "level": None, "quantity": "",
+                         "rarity": "", "_src_title": None, "_rarity_fraction": None}
+            self._row_has_th = False
+            self._cell = -1
+        elif tag == "th":
+            self._row_has_th = True
+        elif tag == "td":
+            self._cell += 1
+            if self._row is not None and self._cell == 1:
+                self._row["level"] = _level_from_attrs(ad)
+        elif self._row is None or self._cell < 0:
+            return
+        elif self._cell == 0 and tag == "a" and self._row["_src_title"] is None:
+            self._row["_src_title"] = ad.get("title")
+        elif self._cell == 0 and tag == "span" and "beast-version" in (ad.get("class") or "").split():
+            self._capture_version = True
+        elif self._cell == 3 and "data-drop-fraction" in ad and self._row["_rarity_fraction"] is None:
+            self._row["_rarity_fraction"] = ad["data-drop-fraction"]
+
+    def handle_data(self, data):
+        if not self._in_target or self._row is None or self._cell < 0:
+            return
+        if self._table_depth != self._target_depth:
+            return  # text inside a nested table is not the cell's own content
+        if self._capture_version:
+            self._row["version"] += data
+        elif self._cell == 0:
+            self._row["source"] += data
+        elif self._cell == 2:
+            self._row["quantity"] += data
+        elif self._cell == 3:
+            self._row["rarity"] += data
+
+    def handle_endtag(self, tag):
+        if tag == "table":
+            if self._in_target and self._table_depth == self._target_depth:
+                self._in_target = False
+            self._table_depth -= 1
+            return
+        if not self._in_target:
+            return
+        if self._table_depth != self._target_depth:
+            return
+        if tag == "span":
+            self._capture_version = False
+        elif tag == "tr" and self._row is not None:
+            if not self._row_has_th and self._cell >= 3:
+                self.rows.append(_finalize_row(self._row))
+            self._row = None
 
 
-def _parse_rows(table_body: str) -> list[dict]:
-    rows: list[dict] = []
-    for tr_match in re.finditer(r"<tr[^>]*>(.*?)</tr>", table_body, re.DOTALL):
-        tr_body = tr_match.group(1)
-        if re.search(r"<th\b", tr_body):
-            continue
-        cells = re.findall(r"<td([^>]*)>(.*?)</td>", tr_body, re.DOTALL)
-        if len(cells) < 4:
-            continue
-
-        source_html = cells[0][1]
-        level_attrs = cells[1][0]
-        qty_html    = cells[2][1]
-        rarity_html = cells[3][1]
-
-        source, version = _extract_source(source_html)
-        if not source:
-            continue
-
-        rows.append({
-            "source":   source,
-            "version":  version,
-            "level":    _extract_level(level_attrs),
-            "quantity": _strip_tags(qty_html) or "?",
-            "rarity":   _extract_rarity(rarity_html),
-        })
-    return rows
+def _parse_drop_rows(html_text: str) -> list[dict]:
+    parser = _DropsTableParser()
+    parser.feed(html_text)
+    return parser.rows
 
 
-def _extract_source(cell_html: str) -> tuple[str, str]:
-    anchor = re.search(r'<a[^>]*title="([^"]+)"[^>]*>(.*?)</a>', cell_html, re.DOTALL)
-    if not anchor:
-        return _strip_tags(cell_html), ""
-    title = html.unescape(anchor.group(1)).strip()
-    version_match = re.search(r'<span class="beast-version">([^<]+)</span>', anchor.group(2))
-    version = html.unescape(version_match.group(1)).strip() if version_match else ""
-    return title, version
+def _finalize_row(row: dict) -> dict:
+    source = html.unescape(row["_src_title"] or _collapse(row["source"])).strip()
+    return {
+        "source":   source,
+        "version":  _collapse(row["version"]),
+        "level":    row["level"],
+        "quantity": _collapse(row["quantity"]) or "?",
+        "rarity":   row["_rarity_fraction"] or _collapse(row["rarity"]) or "?",
+    }
 
 
-def _extract_level(attrs: str) -> str | None:
-    if "table-na" in attrs:
+def _level_from_attrs(attrs: dict) -> str | None:
+    if "table-na" in (attrs.get("class") or "").split():
         return None
-    val = _extract_sort_value(attrs)
-    if val is None or val == 0:
+    raw = attrs.get("data-sort-value")
+    if raw is None:
         return None
-    return str(val)
-
-
-def _extract_rarity(cell_html: str) -> str:
-    m = re.search(r'data-drop-fraction="([^"]+)"', cell_html)
-    if m:
-        return m.group(1)
-    return _strip_tags(cell_html) or "?"
+    try:
+        val = int(float(raw))
+    except ValueError:
+        return None
+    return str(val) if val != 0 else None
 
 
 def _format_output(item_name: str, page_url: str, wiki_label: str, rows: list[dict]) -> str:
@@ -170,19 +223,3 @@ def _format_row(r: dict) -> str:
     if r["level"]:
         return f"{name} — {r['rarity']} from a level-{r['level']} monster, qty {r['quantity']}"
     return f"{name} — {r['rarity']} drop, qty {r['quantity']}"
-
-
-def _strip_tags(s: str) -> str:
-    s = re.sub(r"<[^>]+>", " ", s)
-    s = html.unescape(s)
-    return re.sub(r"\s+", " ", s).strip()
-
-
-def _extract_sort_value(attrs: str) -> int | None:
-    m = re.search(r'data-sort-value="([^"]+)"', attrs)
-    if not m:
-        return None
-    try:
-        return int(float(m.group(1)))
-    except ValueError:
-        return None

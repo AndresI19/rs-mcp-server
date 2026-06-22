@@ -145,3 +145,37 @@ class TestGetItemDropSources:
     async def test_unknown_game_rejected(self, monkeypatch):
         result = await get_item_drop_sources("Abyssal whip", "rs2")
         assert "Unknown game 'rs2'" in result
+
+    @pytest.mark.anyio
+    async def test_non_http_error_is_not_masked(self, monkeypatch):
+        # The fetch only swallows httpx errors now — a programming bug (e.g. a
+        # ValueError) must surface, not be hidden behind a misleading "not found".
+        async def boom(url, params=None, timeout=10.0):
+            raise ValueError("parsing bug")
+
+        monkeypatch.setattr("rs_mcp_server.tools.drops.http_get", boom)
+        with pytest.raises(ValueError):
+            await get_item_drop_sources("Abyssal whip", "rs3")
+
+    @pytest.mark.anyio
+    async def test_nested_table_in_cell_does_not_corrupt_rows(self, monkeypatch):
+        # A table nested inside a cell must not be mis-parsed as extra rows — the
+        # old regex scan split on the nested </tr>/</table>; the depth-tracking
+        # parser ignores everything below the target table's own depth.
+        nested_row = (
+            '<tr><td><a href="/w/Nightmare" title="Nightmare">Nightmare'
+            '<table class="x"><tr><td>junk-a</td><td>junk-b</td></tr></table></a></td>'
+            '<td data-sort-value="50">50</td><td data-sort-value="1">1</td>'
+            '<td data-sort-value="1"><span data-drop-fraction="1/100">1/100</span></td></tr>'
+        )
+        rows = _drops_row("Imp", "7", "1", "1/8") + nested_row
+
+        async def fake_http_get(url, params=None, timeout=10.0):
+            return _wiki_parse("Bones", _table_html(rows))
+
+        monkeypatch.setattr("rs_mcp_server.tools.drops.http_get", fake_http_get)
+        result = await get_item_drop_sources("Bones", "rs3")
+        assert "1. Imp — 1/8 from a level-7 monster, qty 1" in result
+        assert "2. Nightmare — 1/100 from a level-50 monster, qty 1" in result
+        assert "junk" not in result          # nested-table text ignored
+        assert "more source" not in result   # nested <tr> did not become a 3rd row

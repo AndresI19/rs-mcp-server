@@ -8,11 +8,13 @@ queries (gauntlets→melee gloves, helm→helmet) when the initial search misses
 import html
 import re
 
+import httpx
+
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._aliases import expand_aliases
-from ._http import http_get, WIKI_APIS, WIKI_BASE_URLS, MW_BASE_PARAMS
+from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
 
 _TTL = 3600  # 1 hour
 _MAX_EXTRACT_CHARS = 1500
@@ -84,15 +86,15 @@ async def _fetch_rendered_body(title: str, game: str) -> str:
     }
     try:
         data = await http_get(WIKI_APIS[game], params=params)
-    except Exception:
+    except httpx.HTTPError:
         return ""
     if "error" in data:
         return ""
     html_text = data.get("parse", {}).get("text") or ""
-    return _extract_prose(html_text)
+    return _extract_prose_from_html(html_text)
 
 
-def _extract_prose(html_text: str) -> str:
+def _extract_prose_from_html(html_text: str) -> str:
     """Extract section headings + paragraph prose from rendered HTML, skipping chrome.
 
     Pulls text from <h2>/<h3> and <p> tags only, preserving page order. Drops

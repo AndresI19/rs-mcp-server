@@ -1,10 +1,12 @@
 """get_item_recipe tool — RuneScape Wiki recipe templates (Infobox Recipe on RS3, Recipe on OSRS)."""
 import re
+from collections.abc import Iterator
 
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._wiki_parsing import parse_template_fields as _parse_fields
 
 _TTL = 3600
 
@@ -23,7 +25,7 @@ async def get_item_recipe(item_name: str, game: str = "rs3") -> str:
         return cached
 
     wiki_label = "RS3" if game == "rs3" else "OSRS"
-    canonical = item_name[:1].upper() + item_name[1:] if item_name else item_name
+    canonical = item_name[:1].upper() + item_name[1:]
 
     params = {
         "action": "query",
@@ -81,21 +83,6 @@ def _find_recipe_template(wikitext: str) -> str | None:
     if depth != 0:
         return None
     return wikitext[match.end():i - 2]
-
-
-def _parse_fields(body: str) -> dict[str, str]:
-    """Split on `\\n|` (not bare `|`) so nested-template separators don't fragment values."""
-    fields: dict[str, str] = {}
-    parts = re.split(r"\n\s*\|", "\n|" + body)
-    for part in parts[1:]:
-        if "=" not in part:
-            continue
-        name, _, value = part.partition("=")
-        key = name.strip().lower()
-        value = value.strip()
-        if value:
-            fields[key] = value
-    return fields
 
 
 def _clean(s: str) -> str:
@@ -159,14 +146,14 @@ def _format_recipe(title: str, url: str, wiki_label: str, fields: dict) -> str:
     return "\n".join(lines)
 
 
-def _enumerate_index(prefix: str, fields: dict):
+def _enumerate_index(prefix: str, fields: dict[str, str]) -> Iterator[int]:
     i = 1
     while f"{prefix}{i}" in fields:
         yield i
         i += 1
 
 
-def _enumerate_skills(fields: dict):
+def _enumerate_skills(fields: dict[str, str]) -> Iterator[tuple[str, str, str, str]]:
     for i in _enumerate_index("skill", fields):
         name = _clean(fields[f"skill{i}"])
         level = fields.get(f"skill{i}lvl", "")
@@ -175,14 +162,14 @@ def _enumerate_skills(fields: dict):
         yield level, name, exp, boostable
 
 
-def _enumerate_materials(fields: dict):
+def _enumerate_materials(fields: dict[str, str]) -> Iterator[tuple[str, str]]:
     for i in _enumerate_index("mat", fields):
         name = _clean(fields[f"mat{i}"])
         qty = fields.get(f"mat{i}quantity", "")
         yield name, qty
 
 
-def _enumerate_outputs(fields: dict):
+def _enumerate_outputs(fields: dict[str, str]) -> Iterator[tuple[str, str]]:
     for i in _enumerate_index("output", fields):
         name = _clean(fields[f"output{i}"])
         qty = fields.get(f"output{i}quantity", "")

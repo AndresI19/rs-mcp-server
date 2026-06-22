@@ -12,7 +12,6 @@ from rs_mcp_server.tools.quests import (
     get_quest_info,
 )
 
-
 # ── _find_template ────────────────────────────────────────────────────────────
 
 class TestFindTemplate:

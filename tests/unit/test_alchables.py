@@ -3,7 +3,6 @@ import pytest
 
 from rs_mcp_server.tools.alchables import get_best_alchables
 
-
 # ---------------------------------------------------------------------------
 # OSRS fixtures
 # ---------------------------------------------------------------------------

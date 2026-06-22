@@ -1,8 +1,17 @@
 """get_quest_info tool — RuneScape Wiki quest data via MediaWiki API."""
 import re
+
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
-from ._http import http_get, WIKI_APIS, WIKI_BASE_URLS, MW_BASE_PARAMS
+
+from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._wiki_parsing import (
+    disambiguate,
+    first_matching_page,
+    parse_template_fields as _parse_fields,
+    search_params,
+    titles_match as _titles_match,
+)
 
 _TTL = 3600  # 1 hour — matches wiki lookup bucket
 
@@ -88,16 +97,8 @@ async def get_quest_info(quest_name: str, game: str = "rs3") -> str:
     )
 
 
-def _titles_match(a: str, b: str) -> bool:
-    return a.strip().casefold() == b.strip().casefold()
-
-
 def _disambiguate(title: str, url: str, wiki_label: str) -> str:
-    return (
-        f'Did you mean **"{title}"** ({wiki_label} Wiki)?\n'
-        f"{url}\n\n"
-        f'Re-invoke `get_quest_info` with quest_name="{title}" to fetch the details.'
-    )
+    return disambiguate(title, url, wiki_label, "get_quest_info", "quest_name", "details")
 
 
 def _cache_and_return(value: str, cache_key: str) -> str:
@@ -150,31 +151,10 @@ async def _search_quest(query: str, game: str) -> dict | None:
     a quest's name) get skipped instead of confidently returned.
     """
     for search_term in (f'{query} incategory:"Quests"', query):
-        params = {
-            "action": "query",
-            "generator": "search",
-            "gsrsearch": search_term,
-            "gsrlimit": 5,
-            "prop": "revisions|info",
-            "rvprop": "content",
-            "rvslots": "main",
-            "inprop": "url",
-            **MW_BASE_PARAMS,
-        }
-        data = await http_get(WIKI_APIS[game], params=params)
-        for page in data.get("query", {}).get("pages", []):
-            revisions = page.get("revisions") or []
-            if not revisions:
-                continue
-            content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
-            if not _has_quest_template(content):
-                continue
-            title = page.get("title", "")
-            return {
-                "title": title,
-                "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
-                "content": content,
-            }
+        data = await http_get(WIKI_APIS[game], params=search_params(search_term))
+        match = first_matching_page(data, game, _has_quest_template)
+        if match:
+            return match
     return None
 
 
@@ -249,21 +229,6 @@ def _find_template(wikitext: str, name: str) -> str | None:
     if depth != 0:
         return None
     return wikitext[match.end():i-2]
-
-
-def _parse_fields(template_body: str) -> dict[str, str]:
-    """Split on `\n|` (not bare `|`) so nested template separators don't fragment values."""
-    fields: dict[str, str] = {}
-    parts = re.split(r"\n\s*\|", "\n|" + template_body)
-    for part in parts[1:]:
-        if "=" not in part:
-            continue
-        name, _, value = part.partition("=")
-        key = name.strip().lower()
-        value = value.strip()
-        if value:
-            fields[key] = value
-    return fields
 
 
 def _merged_fields(wikitext: str) -> dict[str, str]:

@@ -1,7 +1,9 @@
 """get_player_stats tool — Jagex Hiscores JSON API."""
 import httpx
+
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
+
 from ._http import http_get
 
 _HISCORES_JSON_APIS = {
@@ -32,6 +34,11 @@ async def get_player_stats(username: str, game: str = "rs3") -> str:
                 f"the account may not exist, or its hiscores are hidden in privacy settings."
             )
         raise
+    except httpx.RequestError:
+        return (
+            f"Couldn't reach the {game.upper()} Hiscores right now — "
+            f"the service may be temporarily unavailable. Try again shortly."
+        )
 
     result = _format_stats(username, game, data)
     cache.set(cache_key, result, _TTL_STATS)

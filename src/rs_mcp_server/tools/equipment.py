@@ -1,11 +1,22 @@
 """get_equipment_stats tool — RuneScape Wiki Infobox Bonuses (OSRS + RS3)."""
 import html
-import re
+from html.parser import HTMLParser
+
+import httpx
 
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._wiki_parsing import (
+    clean_wikitext as _clean,
+    disambiguate,
+    find_template as _find_template,
+    first_matching_page,
+    parse_template_fields as _parse_fields,
+    search_params,
+    titles_match as _titles_match,
+)
 
 _TTL = 3600
 
@@ -93,7 +104,7 @@ async def get_equipment_stats(item_name: str, game: str = "rs3") -> str:
                 cache_key,
             )
 
-    candidate = await _search_item(item_name, game)
+    candidate = await _search_equipment(item_name, game)
     if candidate is None:
         return f"No equipment found for '{item_name}' on the {wiki_label} wiki."
 
@@ -103,7 +114,7 @@ async def get_equipment_stats(item_name: str, game: str = "rs3") -> str:
             cache_key,
         )
 
-    # _search_item guarantees candidate["content"] contains an Infobox Bonuses template.
+    # _search_equipment guarantees candidate["content"] contains an Infobox Bonuses template.
     body = _find_template(candidate["content"], "Infobox Bonuses")
     sections = await _fetch_named_sections(candidate["title"], game)
     return _cache_and_return(
@@ -112,16 +123,8 @@ async def get_equipment_stats(item_name: str, game: str = "rs3") -> str:
     )
 
 
-def _titles_match(a: str, b: str) -> bool:
-    return a.strip().casefold() == b.strip().casefold()
-
-
 def _disambiguate(title: str, url: str, wiki_label: str) -> str:
-    return (
-        f'Did you mean **"{title}"** ({wiki_label} Wiki)?\n'
-        f"{url}\n\n"
-        f'Re-invoke `get_equipment_stats` with item_name="{title}" to fetch the stats.'
-    )
+    return disambiguate(title, url, wiki_label, "get_equipment_stats", "item_name", "stats")
 
 
 def _cache_and_return(value: str, cache_key: str) -> str:
@@ -165,82 +168,12 @@ async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | N
     }
 
 
-async def _search_item(query: str, game: str) -> dict | None:
-    params = {
-        "action": "query",
-        "generator": "search",
-        "gsrsearch": query,
-        "gsrlimit": 5,
-        "prop": "revisions|info",
-        "rvprop": "content",
-        "rvslots": "main",
-        "inprop": "url",
-        **MW_BASE_PARAMS,
-    }
-    data = await http_get(WIKI_APIS[game], params=params)
-    for page in data.get("query", {}).get("pages", []):
-        revisions = page.get("revisions") or []
-        if not revisions:
-            continue
-        content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
-        if _find_template(content, "Infobox Bonuses") is None:
-            continue
-        title = page.get("title", "")
-        return {
-            "title": title,
-            "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
-            "content": content,
-        }
-    return None
+async def _search_equipment(query: str, game: str) -> dict | None:
+    data = await http_get(WIKI_APIS[game], params=search_params(query))
+    return first_matching_page(data, game, lambda c: _find_template(c, "Infobox Bonuses") is not None)
 
 
-# ---------------------------------------------------------------------------
-# Wikitext parsing
-# ---------------------------------------------------------------------------
-
-def _find_template(wikitext: str, name: str) -> str | None:
-    pattern = r"\{\{" + re.escape(name) + r"(?=\s*[|}])"
-    match = re.search(pattern, wikitext, re.IGNORECASE)
-    if not match:
-        return None
-    i = match.end()
-    depth = 2
-    while i < len(wikitext) and depth > 0:
-        if wikitext[i:i + 2] == "{{":
-            depth += 2
-            i += 2
-        elif wikitext[i:i + 2] == "}}":
-            depth -= 2
-            i += 2
-        else:
-            i += 1
-    if depth != 0:
-        return None
-    return wikitext[match.end():i - 2]
-
-
-def _parse_fields(body: str) -> dict[str, str]:
-    fields: dict[str, str] = {}
-    parts = re.split(r"\n\s*\|", "\n|" + body)
-    for part in parts[1:]:
-        if "=" not in part:
-            continue
-        name, _, value = part.partition("=")
-        key = name.strip().lower()
-        value = value.strip()
-        if value:
-            fields[key] = value
-    return fields
-
-
-def _clean(s: str) -> str:
-    s = re.sub(r"\[\[(?:[^\]|]+\|)?([^\]]+)\]\]", r"\1", s)
-    s = re.sub(r"\{\{[^}]*\}\}", "", s)
-    s = re.sub(r"<[^>]+>", "", s)
-    return s.strip()
-
-
-def _format_stats(title: str, url: str, wiki_label: str, fields: dict, stats_def: list, sections: dict[str, str]) -> str:
+def _format_stats(title: str, url: str, wiki_label: str, fields: dict[str, str], stats_def: list[tuple[str, str]], sections: dict[str, str]) -> str:
     lines = [f"**{title}** ({wiki_label} Wiki)", url, ""]
     for label, key in stats_def:
         val = fields.get(key)
@@ -278,7 +211,7 @@ async def _fetch_named_sections(title: str, game: str) -> dict[str, str]:
     }
     try:
         data = await http_get(WIKI_APIS[game], params=params)
-    except Exception:
+    except httpx.HTTPError:
         return {}
     if "error" in data:
         return {}
@@ -286,33 +219,69 @@ async def _fetch_named_sections(title: str, game: str) -> dict[str, str]:
     return _extract_named_sections(html_text)
 
 
-def _extract_named_sections(html_text: str) -> dict[str, str]:
-    """Slice the rendered HTML on <h2> boundaries; pull prose from sections we recognise."""
-    chunks = re.split(r"(<h2\b[^>]*>.*?</h2>)", html_text, flags=re.DOTALL)
-    # chunks alternates: [body_before_first_h2, h2, body, h2, body, ...]
-    sections: dict[str, str] = {}
-    for i in range(1, len(chunks), 2):
-        heading_html = chunks[i]
-        body_html = chunks[i + 1] if i + 1 < len(chunks) else ""
-        heading_text = re.sub(r"<[^>]+>", "", heading_html).strip().lower()
+class _SectionsParser(HTMLParser):
+    """Collect paragraph prose for recognised <h2> sections (set bonus, etc.).
+
+    Walks the rendered page: each <h2> opens a section; if its heading matches a
+    target alias (and that label isn't already filled), the following <p> text is
+    collected until the next <h2>. Replaces an <h2>-split + <p> regex scan.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.sections: dict[str, str] = {}
+        self._label: str | None = None
+        self._paragraphs: list[str] = []
+        self._in_heading = False
+        self._heading = ""
+        self._in_p = False
+        self._p = ""
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "h2":
+            self._flush()
+            self._in_heading = True
+            self._heading = ""
+        elif tag == "p" and self._label is not None:
+            self._in_p = True
+            self._p = ""
+
+    def handle_data(self, data):
+        if self._in_heading:
+            self._heading += data
+        elif self._in_p:
+            self._p += data
+
+    def handle_endtag(self, tag):
+        if tag == "h2" and self._in_heading:
+            self._in_heading = False
+            self._label = self._match(self._heading)
+            self._paragraphs = []
+        elif tag == "p" and self._in_p:
+            self._in_p = False
+            text = " ".join(html.unescape(self._p).split())
+            if text:
+                self._paragraphs.append(text)
+
+    def _match(self, heading: str) -> str | None:
+        ht = heading.strip().lower()
         for label, aliases in _SECTION_TARGETS:
-            if heading_text in aliases and label not in sections:
-                prose = _extract_paragraphs(body_html)
-                if prose:
-                    sections[label] = _truncate(prose, _SECTION_PROSE_LIMIT)
-                break
-    return sections
+            if ht in aliases and label not in self.sections:
+                return label
+        return None
+
+    def _flush(self) -> None:
+        if self._label is not None and self._paragraphs:
+            self.sections[self._label] = _truncate("\n\n".join(self._paragraphs), _SECTION_PROSE_LIMIT)
+        self._label = None
+        self._paragraphs = []
 
 
-def _extract_paragraphs(html_text: str) -> str:
-    paragraphs: list[str] = []
-    for raw in re.findall(r"<p\b[^>]*>(.*?)</p>", html_text, re.DOTALL):
-        text = re.sub(r"<[^>]+>", " ", raw)
-        text = html.unescape(text)
-        text = re.sub(r"\s+", " ", text).strip()
-        if text:
-            paragraphs.append(text)
-    return "\n\n".join(paragraphs)
+def _extract_named_sections(html_text: str) -> dict[str, str]:
+    parser = _SectionsParser()
+    parser.feed(html_text)
+    parser._flush()  # finalize the trailing section
+    return parser.sections
 
 
 def _truncate(s: str, limit: int) -> str:

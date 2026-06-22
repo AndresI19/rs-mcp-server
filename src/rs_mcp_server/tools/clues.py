@@ -8,11 +8,13 @@ exact / fuzzy / no-match lookup.
 """
 import html
 import re
+from html.parser import HTMLParser
 
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._wiki_parsing import collapse_whitespace as _collapse
 
 _TTL = 3600
 
@@ -144,11 +146,7 @@ def _parse_clue_html(html_text: str, fmt: str) -> list[dict]:
         else:
             if not current_tier:
                 continue
-            for tr_match in re.finditer(r"<tr[^>]*>(.*?)</tr>", table_body, re.DOTALL):
-                tr_html = tr_match.group(1)
-                if "<th" in tr_html:
-                    continue
-                cells = re.findall(r"<td[^>]*>(.*?)</td>", tr_html, re.DOTALL)
+            for cells in _extract_rows(table_body):
                 if len(cells) < 2:
                     continue
                 entry = _row_to_entry(cells, fmt, current_tier)
@@ -163,6 +161,71 @@ def _tier_from_heading(text: str) -> str:
         if tier in t:
             return tier
     return ""
+
+
+class _CluesRowParser(HTMLParser):
+    """Extract a wikitable body's data rows as per-cell ``{text, items}`` dicts.
+
+    Tracks table depth so a table nested inside a cell is ignored rather than
+    mis-split — the previous regex scan stopped at the first ``</tr>``/``</td>``.
+    Image ``alt`` text is captured per cell so emote item icons survive.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.rows: list[list[dict]] = []
+        self._table_depth = 0
+        self._row: list[dict] | None = None
+        self._row_has_th = False
+        self._cell: dict | None = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "table":
+            self._table_depth += 1
+            return
+        if self._table_depth != 0:
+            return
+        if tag == "tr":
+            self._row = []
+            self._row_has_th = False
+        elif tag == "th":
+            self._row_has_th = True
+        elif tag == "td" and self._row is not None:
+            self._cell = {"text": "", "alts": []}
+        elif tag == "img" and self._cell is not None:
+            alt = dict(attrs).get("alt")
+            if alt:
+                self._cell["alts"].append(alt)
+
+    def handle_data(self, data):
+        if self._table_depth == 0 and self._cell is not None:
+            self._cell["text"] += data
+
+    def handle_endtag(self, tag):
+        if tag == "table":
+            self._table_depth -= 1
+            return
+        if self._table_depth != 0:
+            return
+        if tag == "td" and self._cell is not None and self._row is not None:
+            self._row.append(_finalize_cell(self._cell))
+            self._cell = None
+        elif tag == "tr" and self._row is not None:
+            if not self._row_has_th:
+                self.rows.append(self._row)
+            self._row = None
+
+
+def _finalize_cell(cell: dict) -> dict:
+    text = _collapse(cell["text"])
+    items = ", ".join(_clean_alt(a) for a in cell["alts"]) if cell["alts"] else text
+    return {"text": text, "items": items}
+
+
+def _extract_rows(table_body: str) -> list[list[dict]]:
+    parser = _CluesRowParser()
+    parser.feed(table_body)
+    return parser.rows
 
 
 # ---------------------------------------------------------------------------
@@ -185,10 +248,10 @@ def _row_to_entry(cells: list[str], fmt: str, tier: str) -> dict | None:
     return None
 
 
-def _row_anagram(cells: list[str], tier: str) -> dict | None:
-    clue = _ANAGRAM_PREFIX.sub("", _strip_tags(cells[0])).strip()
-    solution = _strip_tags(cells[1]).strip() if len(cells) > 1 else ""
-    location = _strip_tags(cells[2]).strip() if len(cells) > 2 else ""
+def _row_anagram(cells: list[dict], tier: str) -> dict | None:
+    clue = _ANAGRAM_PREFIX.sub("", cells[0]["text"]).strip()
+    solution = cells[1]["text"] if len(cells) > 1 else ""
+    location = cells[2]["text"] if len(cells) > 2 else ""
     if not clue:
         return None
     return {
@@ -201,10 +264,10 @@ def _row_anagram(cells: list[str], tier: str) -> dict | None:
     }
 
 
-def _row_cryptic(cells: list[str], tier: str) -> dict | None:
-    clue = _strip_tags(cells[0]).strip()
-    solution = _strip_tags(cells[1]).strip() if len(cells) > 1 else ""
-    location = _strip_tags(cells[2]).strip() if len(cells) > 2 else ""
+def _row_cryptic(cells: list[dict], tier: str) -> dict | None:
+    clue = cells[0]["text"]
+    solution = cells[1]["text"] if len(cells) > 1 else ""
+    location = cells[2]["text"] if len(cells) > 2 else ""
     if not clue:
         return None
     return {
@@ -217,10 +280,10 @@ def _row_cryptic(cells: list[str], tier: str) -> dict | None:
     }
 
 
-def _row_emote(cells: list[str], tier: str) -> dict | None:
-    clue = _strip_tags(cells[0]).strip()
-    items = _extract_items(cells[1]) if len(cells) > 1 else ""
-    location = _strip_tags(cells[2]).strip() if len(cells) > 2 else ""
+def _row_emote(cells: list[dict], tier: str) -> dict | None:
+    clue = cells[0]["text"]
+    items = cells[1]["items"] if len(cells) > 1 else ""
+    location = cells[2]["text"] if len(cells) > 2 else ""
     if not clue:
         return None
     return {
@@ -233,10 +296,10 @@ def _row_emote(cells: list[str], tier: str) -> dict | None:
     }
 
 
-def _row_cipher(cells: list[str], tier: str) -> dict | None:
-    cipher = _strip_tags(cells[0]).strip()
-    decoded = _strip_tags(cells[1]).strip() if len(cells) > 1 else ""
-    location = _strip_tags(cells[2]).strip() if len(cells) > 2 else ""
+def _row_cipher(cells: list[dict], tier: str) -> dict | None:
+    cipher = cells[0]["text"]
+    decoded = cells[1]["text"] if len(cells) > 1 else ""
+    location = cells[2]["text"] if len(cells) > 2 else ""
     if not cipher:
         return None
     return {
@@ -247,14 +310,6 @@ def _row_cipher(cells: list[str], tier: str) -> dict | None:
         "decoded": decoded,
         "location": location,
     }
-
-
-def _extract_items(cell_html: str) -> str:
-    """Emote cells embed icons via <img alt="ItemName">; surface alt text as a comma list."""
-    alts = re.findall(r'<img[^>]+alt="([^"]+)"', cell_html)
-    if alts:
-        return ", ".join(_clean_alt(a) for a in alts)
-    return _strip_tags(cell_html).strip()
 
 
 def _clean_alt(s: str) -> str:

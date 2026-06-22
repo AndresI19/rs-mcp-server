@@ -152,3 +152,15 @@ class TestGetPlayerStats:
         assert "OSRS" in result
         assert "may not exist" in result
         assert "hidden in privacy settings" in result
+
+    @pytest.mark.anyio
+    async def test_request_error_degrades_gracefully(self, monkeypatch):
+        # A transient network error (timeout/connection) should return a friendly
+        # message rather than crashing the tool.
+        async def fake_http_get(url, params=None, timeout=10.0):
+            raise httpx.ConnectTimeout("timed out", request=httpx.Request("GET", url))
+
+        monkeypatch.setattr("rs_mcp_server.tools.hiscores.http_get", fake_http_get)
+        result = await get_player_stats("anyone", "rs3")
+        assert "temporarily unavailable" in result
+        assert "RS3" in result

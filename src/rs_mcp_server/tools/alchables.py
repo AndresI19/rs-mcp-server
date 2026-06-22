@@ -31,7 +31,7 @@ Daily volume sources:
 - RS3  — Trade volume column on the Alchemiser mk. II wiki page.
 """
 import html
-import re
+from html.parser import HTMLParser
 
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
@@ -278,25 +278,116 @@ async def _fetch_rs3_alchemiser_rows() -> list[dict] | None:
     return rows
 
 
+class _AlchTableParser(HTMLParser):
+    """Collect wikitables as {headers, rows}. Each cell exposes its
+    ``data-sort-value`` (for numeric columns), first-anchor text (item name),
+    and stripped text. Depth-tracking so a nested table can't corrupt rows.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.tables: list[dict] = []
+        self._depth = 0
+        self._wt_depth: int | None = None
+        self._headers: list[str] | None = None
+        self._rows: list[list[dict]] | None = None
+        self._row: list[dict] | None = None
+        self._cell: dict | None = None
+        self._in_th = False
+        self._th = ""
+        self._in_a = False
+
+    def handle_starttag(self, tag, attrs):
+        ad = dict(attrs)
+        if tag == "table":
+            self._depth += 1
+            if self._wt_depth is None and "wikitable" in (ad.get("class") or "").split():
+                self._wt_depth = self._depth
+                self._headers = []
+                self._rows = []
+            return
+        if self._wt_depth is None or self._depth != self._wt_depth:
+            return
+        if tag == "tr":
+            self._row = []
+        elif tag == "th":
+            self._in_th = True
+            self._th = ""
+        elif tag == "td":
+            self._cell = {"sort": ad.get("data-sort-value"), "link": None, "text": ""}
+            self._in_a = False
+        elif tag == "a" and self._cell is not None and self._cell["link"] is None:
+            self._in_a = True
+
+    def handle_data(self, data):
+        if self._wt_depth is None or self._depth != self._wt_depth:
+            return
+        if self._in_th:
+            self._th += data
+        elif self._cell is not None:
+            self._cell["text"] += data
+            if self._in_a:
+                self._cell["link"] = (self._cell["link"] or "") + data
+
+    def handle_endtag(self, tag):
+        if tag == "table":
+            if self._wt_depth is not None and self._depth == self._wt_depth:
+                self.tables.append({"headers": self._headers, "rows": self._rows})
+                self._wt_depth = None
+                self._headers = None
+                self._rows = None
+            self._depth -= 1
+            return
+        if self._wt_depth is None or self._depth != self._wt_depth:
+            return
+        if tag == "th" and self._in_th:
+            self._in_th = False
+            self._headers.append(_collapse(self._th).lower())
+        elif tag == "a":
+            self._in_a = False
+        elif tag == "td" and self._cell is not None and self._row is not None:
+            self._cell["text"] = _collapse(self._cell["text"])
+            self._cell["link"] = _collapse(self._cell["link"]) if self._cell["link"] else None
+            self._row.append(self._cell)
+            self._cell = None
+        elif tag == "tr" and self._row is not None:
+            self._rows.append(self._row)
+            self._row = None
+
+
+def _collapse(s: str) -> str:
+    return " ".join(html.unescape(s).split())
+
+
+def _sv_float(value: str | None) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        return None
+
+
+def _sv_int(value: str | None) -> int | None:
+    f = _sv_float(value)
+    return int(f) if f is not None else None
+
+
 def _parse_rs3_table(html_text: str) -> list[dict] | None:
     """Parse the per-item alchables table on the Alchemiser mk. II wiki page."""
-    tables = re.findall(
-        r'<table[^>]*class="[^"]*wikitable[^"]*"[^>]*>(.*?)</table>',
-        html_text,
-        re.DOTALL,
-    )
+    parser = _AlchTableParser()
+    parser.feed(html_text)
+
     target = None
-    for body in tables:
-        ths = re.findall(r"<th[^>]*>(.*?)</th>", body, re.DOTALL)
-        headers = [_strip_tags(h).strip().lower() for h in ths]
+    for table in parser.tables:
+        headers = table["headers"]
         if "item" in headers and "high alch" in headers and "max daily profit" in headers:
-            target = (body, headers)
+            target = table
             break
     if target is None:
         return None
 
-    body, headers = target
-
+    headers = target["headers"]
     canonicals = ("item", "ge price", "high alch", "profit", "roi%", "limit", "trade volume", "max daily profit")
     col_index: dict[str, int] = {}
     for i, h in enumerate(headers):
@@ -310,27 +401,27 @@ def _parse_rs3_table(html_text: str) -> list[dict] | None:
         return None
 
     rows: list[dict] = []
-    for tr in re.finditer(r"<tr[^>]*>(.*?)</tr>", body, re.DOTALL):
-        cells = re.findall(r"<td([^>]*)>(.*?)</td>", tr.group(1), re.DOTALL)
+    for cells in target["rows"]:
         if not cells:
             continue
         if any(col_index[k] >= len(cells) for k in required):
             continue
 
-        name = _extract_link_text(cells[col_index["item"]][1]) or _strip_tags(cells[col_index["item"]][1])
+        item = cells[col_index["item"]]
+        name = item["link"] or item["text"]
         if not name:
             continue
 
-        profit = _sort_value_float(cells[col_index["profit"]][0])
+        profit = _sv_float(cells[col_index["profit"]]["sort"])
         if profit is None or profit <= 0:
             continue
 
-        ge_price = _sort_value_int(cells[col_index["ge price"]][0]) if "ge price" in col_index else None
-        high_alch = _sort_value_int(cells[col_index["high alch"]][0])
-        roi = _sort_value_float(cells[col_index["roi%"]][0]) if "roi%" in col_index else None
-        buy_limit = _sort_value_int(cells[col_index["limit"]][0]) if "limit" in col_index else None
-        volume = _sort_value_int(cells[col_index["trade volume"]][0])
-        max_daily = _sort_value_int(cells[col_index["max daily profit"]][0])
+        ge_price = _sv_int(cells[col_index["ge price"]]["sort"]) if "ge price" in col_index else None
+        high_alch = _sv_int(cells[col_index["high alch"]]["sort"])
+        roi = _sv_float(cells[col_index["roi%"]]["sort"]) if "roi%" in col_index else None
+        buy_limit = _sv_int(cells[col_index["limit"]]["sort"]) if "limit" in col_index else None
+        volume = _sv_int(cells[col_index["trade volume"]]["sort"])
+        max_daily = _sv_int(cells[col_index["max daily profit"]]["sort"])
 
         if volume is None or max_daily is None or high_alch is None:
             continue
@@ -504,35 +595,3 @@ def _render_mixed(
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
-# HTML helpers
-# ---------------------------------------------------------------------------
-
-def _strip_tags(s: str) -> str:
-    s = re.sub(r"<[^>]+>", " ", s)
-    s = html.unescape(s)
-    return re.sub(r"\s+", " ", s).strip()
-
-
-def _extract_link_text(cell_html: str) -> str:
-    m = re.search(r'<a[^>]*>([^<]+)</a>', cell_html)
-    if m:
-        return html.unescape(m.group(1)).strip()
-    return ""
-
-
-def _sort_value_float(attrs: str) -> float | None:
-    m = re.search(r'data-sort-value="([^"]+)"', attrs)
-    if not m:
-        return None
-    try:
-        return float(m.group(1))
-    except ValueError:
-        return None
-
-
-def _sort_value_int(attrs: str) -> int | None:
-    v = _sort_value_float(attrs)
-    if v is None:
-        return None
-    return int(v)

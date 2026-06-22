@@ -3,6 +3,7 @@ import re
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 from ._http import http_get, WIKI_APIS, WIKI_BASE_URLS, MW_BASE_PARAMS
+from ._wiki_parsing import parse_template_fields as _parse_fields, titles_match as _titles_match
 
 _TTL = 3600  # 1 hour — matches wiki lookup bucket
 
@@ -86,10 +87,6 @@ async def get_quest_info(quest_name: str, game: str = "rs3") -> str:
         _format_from_content(candidate["title"], candidate["url"], wiki_label, candidate["content"]),
         cache_key,
     )
-
-
-def _titles_match(a: str, b: str) -> bool:
-    return a.strip().casefold() == b.strip().casefold()
 
 
 def _disambiguate(title: str, url: str, wiki_label: str) -> str:
@@ -249,21 +246,6 @@ def _find_template(wikitext: str, name: str) -> str | None:
     if depth != 0:
         return None
     return wikitext[match.end():i-2]
-
-
-def _parse_fields(template_body: str) -> dict[str, str]:
-    """Split on `\n|` (not bare `|`) so nested template separators don't fragment values."""
-    fields: dict[str, str] = {}
-    parts = re.split(r"\n\s*\|", "\n|" + template_body)
-    for part in parts[1:]:
-        if "=" not in part:
-            continue
-        name, _, value = part.partition("=")
-        key = name.strip().lower()
-        value = value.strip()
-        if value:
-            fields[key] = value
-    return fields
 
 
 def _merged_fields(wikitext: str) -> dict[str, str]:

@@ -1,10 +1,15 @@
 """get_achievement tool — RuneScape Wiki achievement infoboxes (OSRS + RS3)."""
-import re
 
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._wiki_parsing import (
+    clean_wikitext as _clean,
+    find_template as _find_template,
+    parse_template_fields as _parse_fields,
+    titles_match as _titles_match,
+)
 
 _TTL = 3600
 
@@ -130,10 +135,6 @@ def _dispatch(content: str) -> tuple[str, list, str] | None:
     return None
 
 
-def _titles_match(a: str, b: str) -> bool:
-    return a.strip().casefold() == b.strip().casefold()
-
-
 def _disambiguate(title: str, url: str, wiki_label: str) -> str:
     return (
         f'Did you mean **"{title}"** ({wiki_label} Wiki)?\n'
@@ -212,54 +213,6 @@ async def _search_achievement(query: str, game: str) -> dict | None:
             "content": content,
         }
     return None
-
-
-# ---------------------------------------------------------------------------
-# Wikitext parsing
-# ---------------------------------------------------------------------------
-
-def _find_template(wikitext: str, name: str) -> str | None:
-    # Require a real template delimiter after the name (whitespace, |, or })
-    # so "Infobox Achievement" doesn't false-match "Infobox Achievement category".
-    pattern = r"\{\{" + re.escape(name) + r"(?=\s*[|}])"
-    match = re.search(pattern, wikitext, re.IGNORECASE)
-    if not match:
-        return None
-    i = match.end()
-    depth = 2
-    while i < len(wikitext) and depth > 0:
-        if wikitext[i:i + 2] == "{{":
-            depth += 2
-            i += 2
-        elif wikitext[i:i + 2] == "}}":
-            depth -= 2
-            i += 2
-        else:
-            i += 1
-    if depth != 0:
-        return None
-    return wikitext[match.end():i - 2]
-
-
-def _parse_fields(body: str) -> dict[str, str]:
-    fields: dict[str, str] = {}
-    parts = re.split(r"\n\s*\|", "\n|" + body)
-    for part in parts[1:]:
-        if "=" not in part:
-            continue
-        name, _, value = part.partition("=")
-        key = name.strip().lower()
-        value = value.strip()
-        if value:
-            fields[key] = value
-    return fields
-
-
-def _clean(s: str) -> str:
-    s = re.sub(r"\[\[(?:[^\]|]+\|)?([^\]]+)\]\]", r"\1", s)
-    s = re.sub(r"\{\{[^}]*\}\}", "", s)
-    s = re.sub(r"<[^>]+>", "", s)
-    return s.strip()
 
 
 async def _enumerate_roman_variants(name: str, game: str) -> list[dict]:

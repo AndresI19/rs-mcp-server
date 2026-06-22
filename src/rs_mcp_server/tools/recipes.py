@@ -5,6 +5,7 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._wiki_parsing import parse_template_fields as _parse_fields
 
 _TTL = 3600
 
@@ -81,21 +82,6 @@ def _find_recipe_template(wikitext: str) -> str | None:
     if depth != 0:
         return None
     return wikitext[match.end():i - 2]
-
-
-def _parse_fields(body: str) -> dict[str, str]:
-    """Split on `\\n|` (not bare `|`) so nested-template separators don't fragment values."""
-    fields: dict[str, str] = {}
-    parts = re.split(r"\n\s*\|", "\n|" + body)
-    for part in parts[1:]:
-        if "=" not in part:
-            continue
-        name, _, value = part.partition("=")
-        key = name.strip().lower()
-        value = value.strip()
-        if value:
-            fields[key] = value
-    return fields
 
 
 def _clean(s: str) -> str:

@@ -327,7 +327,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="solve_celtic_knot",
-            description="Solve a RuneScape (RS3) Celtic knot clue puzzle. The agent reads the screenshot and encodes each ring as an array of tokens — one per rune slot, where identical runes share an identical token, consistent across ALL rings; it need not recognise what a rune depicts, only group equal ones. Runes hidden under crossing paths are passed as null (wildcards). 'intersections' lists each crossing as [ring_a, slot_a, ring_b, slot_b], meaning slot_a of ring_a must equal slot_b of ring_b. Returns the per-ring rotation (steps forward/backward) that makes every intersection match, or a short candidate list if too many runes were hidden to pin one answer.",
+            description="Solve a RuneScape (RS3) Celtic knot clue puzzle. TWO-PHASE: call this tool with NO arguments first to receive step-by-step instructions for reading the puzzle screenshot into the required format; then call it again with 'rings' and 'intersections' to get the solution. 'rings' is one token array per loop, where identical runes share an identical token consistent across ALL rings (hidden runes are null); 'intersections' lists each crossing as [ring_a, slot_a, ring_b, slot_b], meaning slot_a of ring_a must equal slot_b of ring_b. Returns the per-ring rotation (steps forward/backward) that makes every crossing match, or a short candidate list if too many runes were hidden to pin one answer.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -342,7 +342,6 @@ async def list_tools() -> list[Tool]:
                         "items": {"type": "array", "items": {"type": "integer"}, "minItems": 4, "maxItems": 4},
                     },
                 },
-                "required": ["rings", "intersections"],
             },
         ),
     ]
@@ -397,7 +396,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             arguments.get("tier"),
         )
     elif name == "solve_celtic_knot":
-        result = await solve_celtic_knot(arguments["rings"], arguments["intersections"])
+        result = await solve_celtic_knot(arguments.get("rings"), arguments.get("intersections"))
     else:
         raise ValueError(f"Unknown tool: {name}")
     return [TextContent(type="text", text=result)]

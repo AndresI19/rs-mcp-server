@@ -1,7 +1,7 @@
 """End-to-end tests for the get_item_recipe MCP tool (issue #40)."""
 import pytest
 
-from rs_mcp_server.tools.recipes import _enumerate_index, _enumerate_materials, get_item_recipe
+from rs_mcp_server.tools.recipes import _enumerate_index, _enumerate_pairs, get_item_recipe
 
 
 def _wiki_page(title: str, content: str) -> dict:
@@ -111,7 +111,7 @@ class TestRecipeEdgeCases:
     def test_sparse_indices_not_truncated_at_gap(self):
         # mat2 removed by an editor: mat3 must still be enumerated, not dropped at the gap.
         fields = {"mat1": "Iron bar", "mat1quantity": "5", "mat3": "Coal", "mat3quantity": "2"}
-        assert [n for n, _ in _enumerate_materials(fields)] == ["Iron bar", "Coal"]
+        assert [n for n, _ in _enumerate_pairs("mat", fields)] == ["Iron bar", "Coal"]
 
     def test_index_scan_ignores_suffixed_keys(self):
         # 'mat1quantity' must not be mistaken for an index of its own.

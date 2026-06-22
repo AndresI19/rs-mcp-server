@@ -11,6 +11,13 @@ from ._wiki_parsing import find_template, parse_template_fields as _parse_fields
 
 _TEMPLATES = ("Infobox Recipe", "Recipe")
 
+# Single-value fields rendered as "**Label:** <cleaned value>" when present.
+_SIMPLE_FIELDS = (
+    ("tools", "Tools"),
+    ("facilities", "Facilities"),
+    ("members", "Members"),
+)
+
 
 @instrument("get_item_recipe")
 async def get_item_recipe(item_name: str, game: str = "rs3") -> str:
@@ -67,7 +74,7 @@ async def get_item_recipe(item_name: str, game: str = "rs3") -> str:
 
 def _find_recipe_template(wikitext: str) -> str | None:
     """Return the body of the first {{Infobox Recipe}} or {{Recipe}} template, or None."""
-    for name in ("Infobox Recipe", "Recipe"):
+    for name in _TEMPLATES:
         body = find_template(wikitext, name)
         if body is not None:
             return body
@@ -99,7 +106,7 @@ def _format_recipe(title: str, url: str, wiki_label: str, fields: dict) -> str:
             lines.append(" ".join(parts))
         lines.append("")
 
-    mats = list(_enumerate_materials(fields))
+    mats = list(_enumerate_pairs("mat", fields))
     if mats:
         lines.append("**Materials:**")
         for name, qty in mats:
@@ -111,16 +118,13 @@ def _format_recipe(title: str, url: str, wiki_label: str, fields: dict) -> str:
     if achievements:
         lines.append(f"**Achievement:** {', '.join(achievements)}")
 
-    if "tools" in fields:
-        lines.append(f"**Tools:** {_clean(fields['tools'])}")
-    if "facilities" in fields:
-        lines.append(f"**Facilities:** {_clean(fields['facilities'])}")
-    if "members" in fields:
-        lines.append(f"**Members:** {_clean(fields['members'])}")
+    for key, label in _SIMPLE_FIELDS:
+        if key in fields:
+            lines.append(f"**{label}:** {_clean(fields[key])}")
     if "ticks" in fields:
         lines.append(f"**Time:** {fields['ticks']} ticks")
 
-    outputs = list(_enumerate_outputs(fields))
+    outputs = list(_enumerate_pairs("output", fields))
     if outputs:
         if len(outputs) == 1 and not outputs[0][1]:
             lines.append("")
@@ -158,15 +162,12 @@ def _enumerate_skills(fields: dict[str, str]) -> Iterator[tuple[str, str, str, s
         yield level, name, exp, boostable
 
 
-def _enumerate_materials(fields: dict[str, str]) -> Iterator[tuple[str, str]]:
-    for i in _enumerate_index("mat", fields):
-        name = _clean(fields[f"mat{i}"])
-        qty = fields.get(f"mat{i}quantity", "")
-        yield name, qty
+def _enumerate_pairs(prefix: str, fields: dict[str, str]) -> Iterator[tuple[str, str]]:
+    """Yield (name, quantity) for each indexed `prefix` field (mat1 + mat1quantity, …).
 
-
-def _enumerate_outputs(fields: dict[str, str]) -> Iterator[tuple[str, str]]:
-    for i in _enumerate_index("output", fields):
-        name = _clean(fields[f"output{i}"])
-        qty = fields.get(f"output{i}quantity", "")
+    Materials and outputs share this shape — only the field prefix differs.
+    """
+    for i in _enumerate_index(prefix, fields):
+        name = _clean(fields[f"{prefix}{i}"])
+        qty = fields.get(f"{prefix}{i}quantity", "")
         yield name, qty

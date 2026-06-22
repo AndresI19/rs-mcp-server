@@ -3,12 +3,14 @@
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._http import MW_BASE_PARAMS, SEARCH_RESULT_LIMIT, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
 from ._wiki_parsing import (
     clean_wikitext as _clean,
     disambiguate,
     find_template as _find_template,
+    first_matching_page,
     parse_template_fields as _parse_fields,
+    search_params,
     titles_match as _titles_match,
 )
 
@@ -160,32 +162,8 @@ async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | N
 
 
 async def _search_monster(query: str, game: str) -> dict | None:
-    params = {
-        "action": "query",
-        "generator": "search",
-        "gsrsearch": query,
-        "gsrlimit": SEARCH_RESULT_LIMIT,
-        "prop": "revisions|info",
-        "rvprop": "content",
-        "rvslots": "main",
-        "inprop": "url",
-        **MW_BASE_PARAMS,
-    }
-    data = await http_get(WIKI_APIS[game], params=params)
-    for page in data.get("query", {}).get("pages", []):
-        revisions = page.get("revisions") or []
-        if not revisions:
-            continue
-        content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
-        if _find_template(content, "Infobox Monster") is None:
-            continue
-        title = page.get("title", "")
-        return {
-            "title": title,
-            "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
-            "content": content,
-        }
-    return None
+    data = await http_get(WIKI_APIS[game], params=search_params(query))
+    return first_matching_page(data, game, lambda c: _find_template(c, "Infobox Monster") is not None)
 
 
 def _format_monster(title: str, url: str, wiki_label: str, fields: dict[str, str], fields_def: list[tuple[str, str]]) -> str:

@@ -3,9 +3,40 @@ from rs_mcp_server.tools._wiki_parsing import (
     TableScope,
     clean_wikitext,
     find_template,
+    match_by_name,
     parse_template_fields,
+    render_variants,
     titles_match,
 )
+
+
+class TestMatchByName:
+    _ITEMS = [{"k": "dragon dagger"}, {"k": "dragon scimitar"}, {"k": "rune scimitar"}]
+
+    def test_exact(self):
+        kind, payload = match_by_name("Dragon Dagger", self._ITEMS, "k")
+        assert kind == "exact" and payload == {"k": "dragon dagger"}
+
+    def test_substring_sorted_by_closeness(self):
+        kind, payload = match_by_name("scimitar", self._ITEMS, "k")
+        assert kind == "did_you_mean"
+        # both 'rune scimitar' and 'dragon scimitar' contain it; closer length first
+        assert payload[0]["k"] == "rune scimitar"
+
+    def test_none_and_empty(self):
+        assert match_by_name("zzz", self._ITEMS, "k") == ("none", None)
+        assert match_by_name("   ", self._ITEMS, "k") == ("none", None)
+
+
+class TestRenderVariants:
+    def test_renders_list_and_tool_hint(self):
+        out = render_variants(
+            [{"title": "Wuthering I", "url": "u1"}, {"title": "Wuthering II", "url": "u2"}],
+            "RS3", "Wuthering", "get_achievement",
+        )
+        assert 'Multiple tiered variants of **"Wuthering"**' in out
+        assert "- **Wuthering I** — u1" in out
+        assert "`get_achievement`" in out
 
 
 class TestTableScope:

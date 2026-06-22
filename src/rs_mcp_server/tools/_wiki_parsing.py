@@ -240,3 +240,34 @@ class TableScope:
     def at_target_level(self) -> bool:
         """True when inside the target table at its own nesting level (not a nested one)."""
         return self.in_target and self.depth == self._target_depth
+
+
+def match_by_name(query: str, items: list[dict], key: str) -> tuple[str, object]:
+    """Exact-then-substring match on ``items[key]`` (which must be pre-lowercased).
+
+    Returns ``(kind, payload)``: ``("exact", item)``, ``("did_you_mean", up to 5
+    substring hits sorted by length-closeness to the query)``, or ``("none", None)``.
+    Callers wanting fuzzy/secondary tiers layer them on a ``"none"`` result.
+    """
+    q = query.strip().lower()
+    if not q:
+        return ("none", None)
+    exact = [it for it in items if it[key] == q]
+    if exact:
+        return ("exact", exact[0])
+    contains = [it for it in items if q in it[key]]
+    if contains:
+        contains.sort(key=lambda it: abs(len(it[key]) - len(q)))
+        return ("did_you_mean", contains[:5])
+    return ("none", None)
+
+
+def render_variants(variants: list[dict], wiki_label: str, base_name: str, tool: str) -> str:
+    """Render the 'multiple tiered variants' list shared by the roman-numeral lookups
+    (e.g. achievements, quests). ``tool`` tailors the re-invoke hint."""
+    lines = [f'Multiple tiered variants of **"{base_name}"** found ({wiki_label} Wiki):', ""]
+    for v in variants:
+        lines.append(f"- **{v['title']}** — {v['url']}")
+    lines.append("")
+    lines.append(f"Re-invoke `{tool}` with the exact tier name to fetch full details.")
+    return "\n".join(lines)

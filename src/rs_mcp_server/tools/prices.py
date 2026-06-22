@@ -6,16 +6,7 @@ import httpx
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._constants import (
-    MW_BASE_PARAMS,
-    OSRS_PRICES_5M,
-    OSRS_PRICES_LATEST,
-    OSRS_PRICES_MAPPING,
-    TTL_5MIN,
-    TTL_DAY,
-    TTL_HOUR,
-    WIKI_APIS,
-)
+from ._constants import *
 from ._http import http_get
 
 _RS3_GE_DETAIL = "https://secure.runescape.com/m=itemdb_rs/api/catalogue/detail.json"

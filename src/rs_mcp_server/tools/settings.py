@@ -10,11 +10,11 @@ from html.parser import HTMLParser
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._constants import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, WIKI_LABELS
+from ._constants import MW_BASE_PARAMS, TTL_HOUR, WIKI_APIS, WIKI_BASE_URLS, WIKI_LABELS
 from ._http import http_get
 from ._wiki_parsing import TableScope, join_text, match_by_name
 
-_TTL = 3600
+_TTL = TTL_HOUR
 _PAGE = "Settings"
 
 _SKIP_SECTIONS = {

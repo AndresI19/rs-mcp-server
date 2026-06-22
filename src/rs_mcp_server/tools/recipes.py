@@ -5,11 +5,11 @@ from collections.abc import Iterator
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
-from ._constants import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, WIKI_LABELS
+from ._constants import MW_BASE_PARAMS, TTL_HOUR, WIKI_APIS, WIKI_BASE_URLS, WIKI_LABELS
 from ._http import http_get
 from ._wiki_parsing import find_template, parse_template_fields as _parse_fields
 
-_TTL = 3600
+_TTL = TTL_HOUR
 
 _TEMPLATES = ("Infobox Recipe", "Recipe")
 

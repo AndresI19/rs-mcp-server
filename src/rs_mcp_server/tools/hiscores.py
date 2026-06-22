@@ -6,6 +6,7 @@ import httpx
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
+from ._constants import TTL_10MIN
 from ._http import http_get
 
 _HISCORES_JSON_APIS = {
@@ -13,7 +14,7 @@ _HISCORES_JSON_APIS = {
     "osrs": "https://secure.runescape.com/m=hiscore_oldschool/index_lite.json",
 }
 
-_TTL_STATS = 600  # 10 minutes
+_TTL_STATS = TTL_10MIN
 
 # RuneScape display names are 1–12 chars: letters, digits, spaces, hyphens, underscores.
 # Validating up front gives a clear message and avoids a 403 from the hiscores API on

@@ -13,11 +13,11 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._aliases import expand_aliases
-from ._constants import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, WIKI_LABELS
+from ._constants import MW_BASE_PARAMS, TTL_HOUR, WIKI_APIS, WIKI_BASE_URLS, WIKI_LABELS
 from ._http import http_get
 from ._wiki_parsing import join_text
 
-_TTL = 3600  # 1 hour
+_TTL = TTL_HOUR
 _MAX_EXTRACT_CHARS = 1500
 
 

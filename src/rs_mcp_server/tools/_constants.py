@@ -28,3 +28,17 @@ MW_BASE_PARAMS = {
 
 # How many MediaWiki search candidates each typed tool fetches before type-filtering.
 SEARCH_RESULT_LIMIT = 5
+
+# Cache TTLs in seconds. Wiki lookups bucket at one hour; the live OSRS price
+# endpoints refresh every ~5 minutes; the GE item mapping changes only on updates.
+TTL_5MIN = 300
+TTL_10MIN = 600
+TTL_HOUR = 3600
+TTL_DAY = 86400
+
+# OSRS real-time prices API (prices.runescape.wiki), shared by the price and
+# alchables tools.
+OSRS_PRICES_MAPPING = "https://prices.runescape.wiki/api/v1/osrs/mapping"
+OSRS_PRICES_LATEST = "https://prices.runescape.wiki/api/v1/osrs/latest"
+OSRS_PRICES_1H = "https://prices.runescape.wiki/api/v1/osrs/1h"
+OSRS_PRICES_5M = "https://prices.runescape.wiki/api/v1/osrs/5m"

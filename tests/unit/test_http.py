@@ -10,7 +10,7 @@ async def _instant_sleep(*_args, **_kwargs):
 
 
 def _inject(monkeypatch, handler):
-    monkeypatch.setattr(_http, "_client", httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    monkeypatch.setattr(_http._CLIENT, "_client", httpx.AsyncClient(transport=httpx.MockTransport(handler)))
     monkeypatch.setattr(_http.asyncio, "sleep", _instant_sleep)  # skip real backoff
 
 
@@ -41,7 +41,7 @@ class TestRetry:
         _inject(monkeypatch, handler)
         with pytest.raises(httpx.HTTPStatusError):
             await _http.http_get("https://wiki/api")
-        assert len(calls) == _http._MAX_RETRIES + 1  # initial + retries
+        assert len(calls) == _http._CLIENT._max_retries + 1  # initial + retries
 
     @pytest.mark.anyio
     async def test_success_does_not_retry(self, monkeypatch):

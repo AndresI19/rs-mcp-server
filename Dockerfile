@@ -1,6 +1,9 @@
 # syntax=docker/dockerfile:1.6
 
+# Builder needs the full image (compilers, dev headers) to build the venv.
 ARG BASE_IMAGE=registry.access.redhat.com/ubi9/python-312:latest
+# Runtime only executes Python, so it uses the minimal UBI base (~1GB smaller).
+ARG RUNTIME_IMAGE=registry.access.redhat.com/ubi9/python-312-minimal:latest
 
 FROM ${BASE_IMAGE} AS builder
 
@@ -23,7 +26,7 @@ RUN --mount=type=bind,source=pyproject.toml,target=/src/pyproject.toml \
     && rm -rf /tmp/build
 
 
-FROM ${BASE_IMAGE} AS runtime
+FROM ${RUNTIME_IMAGE} AS runtime
 
 ARG VERSION
 ARG GIT_SHA
@@ -38,7 +41,11 @@ LABEL org.opencontainers.image.title="rs-mcp-server" \
       org.opencontainers.image.licenses="MIT"
 
 USER 0
-RUN useradd --uid 10001 --shell /sbin/nologin --no-create-home --user-group mcp-server \
+# The minimal base omits shadow-utils (useradd); install it and drop the dnf cache
+# in the same layer so the image stays slim.
+RUN microdnf install -y shadow-utils \
+ && microdnf clean all \
+ && useradd --uid 10001 --shell /sbin/nologin --no-create-home --user-group mcp-server \
  && mkdir -p /logs \
  && chown mcp-server:mcp-server /logs
 

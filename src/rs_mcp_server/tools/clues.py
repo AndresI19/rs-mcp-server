@@ -319,7 +319,7 @@ def _clean_alt(s: str) -> str:
 def _strip_tags(s: str) -> str:
     s = re.sub(r"<[^>]+>", " ", s)
     s = html.unescape(s)
-    return re.sub(r"\s+", " ", s).strip()
+    return " ".join(s.split())
 
 
 # ---------------------------------------------------------------------------

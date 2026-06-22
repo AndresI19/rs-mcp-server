@@ -154,8 +154,12 @@ def _enumerate_index(prefix: str, fields: dict[str, str]) -> Iterator[int]:
     Scans for all matching keys instead of counting up from 1, so a template with
     a gap (e.g. mat1, mat3 after an editor removed mat2) isn't truncated at the gap.
     """
-    pattern = re.compile(rf"{re.escape(prefix)}(\d+)")
-    yield from sorted(int(m.group(1)) for k in fields if (m := pattern.fullmatch(k)))
+    indices = [
+        int(key[len(prefix):])
+        for key in fields
+        if key.startswith(prefix) and key[len(prefix):].isdigit()
+    ]
+    yield from sorted(indices)
 
 
 def _enumerate_skills(fields: dict[str, str]) -> Iterator[tuple[str, str, str, str]]:

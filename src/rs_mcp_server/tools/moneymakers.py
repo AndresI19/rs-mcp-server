@@ -439,7 +439,7 @@ def _clean_wikitext(s: str) -> str:
 def _strip_tags(s: str) -> str:
     s = re.sub(r"<[^>]+>", " ", s)
     s = html.unescape(s)
-    return re.sub(r"\s+", " ", s).strip()
+    return " ".join(s.split())
 
 
 def _extract_sort_value(attrs: str) -> int | None:

@@ -11,6 +11,7 @@ from ._wiki_parsing import (
     first_matching_page,
     parse_page_response,
     parse_template_fields as _parse_fields,
+    render_variants,
     search_params,
     titles_match as _titles_match,
 )
@@ -78,7 +79,7 @@ async def get_quest_info(quest_name: str, game: str = "rs3") -> str:
         )
     if len(variants) >= 2:
         return _cache_and_return(
-            _render_variants(variants, wiki_label, quest_name),
+            render_variants(variants, wiki_label, quest_name, "get_quest_info"),
             cache_key,
         )
 
@@ -169,15 +170,6 @@ async def _enumerate_roman_variants(quest_name: str, game: str) -> list[dict]:
             "content": content,
         })
     return found
-
-
-def _render_variants(variants: list[dict], wiki_label: str, base_name: str) -> str:
-    lines = [f'Multiple tiered variants of **"{base_name}"** found ({wiki_label} Wiki):', ""]
-    for v in variants:
-        lines.append(f"- **{v['title']}** — {v['url']}")
-    lines.append("")
-    lines.append("Re-invoke `get_quest_info` with the exact tier name to fetch full details.")
-    return "\n".join(lines)
 
 
 def _has_quest_template(wikitext: str) -> bool:

@@ -11,7 +11,7 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
-from ._wiki_parsing import TableScope
+from ._wiki_parsing import TableScope, match_by_name
 
 _TTL = 3600
 _PAGE = "Settings"
@@ -179,14 +179,9 @@ def _match_setting(query: str, rows: list[dict]) -> tuple[str, object]:
     if not q:
         return ("none", None)
 
-    exact = [r for r in rows if r["name_lower"] == q]
-    if exact:
-        return ("exact", exact[0])
-
-    contains = [r for r in rows if q in r["name_lower"]]
-    if contains:
-        contains.sort(key=lambda r: abs(len(r["name_lower"]) - len(q)))
-        return ("did_you_mean", contains[:5])
+    kind, payload = match_by_name(query, rows, "name_lower")
+    if kind != "none":
+        return kind, payload
 
     # Fuzzy match — typo recovery before falling back to description text.
     names = [r["name"] for r in rows]

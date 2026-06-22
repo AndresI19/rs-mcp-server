@@ -12,6 +12,7 @@ from ._wiki_parsing import (
     first_matching_page,
     parse_page_response,
     parse_template_fields as _parse_fields,
+    render_variants,
     search_params,
     titles_match as _titles_match,
 )
@@ -118,7 +119,7 @@ async def _from_roman_variants(name: str, game: str, wiki_label: str) -> str | N
         v = variants[0]
         return _format_match(v["title"], v["url"], wiki_label, _dispatch(v["content"]))
     if len(variants) >= 2:
-        return _render_variants(variants, wiki_label, name)
+        return render_variants(variants, wiki_label, name, "get_achievement")
     return None
 
 
@@ -197,15 +198,6 @@ async def _enumerate_roman_variants(name: str, game: str) -> list[dict]:
             "content": content,
         })
     return found
-
-
-def _render_variants(variants: list[dict], wiki_label: str, base_name: str) -> str:
-    lines = [f'Multiple tiered variants of **"{base_name}"** found ({wiki_label} Wiki):', ""]
-    for v in variants:
-        lines.append(f"- **{v['title']}** — {v['url']}")
-    lines.append("")
-    lines.append("Re-invoke `get_achievement` with the exact tier name to fetch full details.")
-    return "\n".join(lines)
 
 
 def _format_achievement(title: str, url: str, wiki_label: str, kind: str, fields: dict[str, str], fields_def: list[tuple[str, str]]) -> str:

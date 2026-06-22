@@ -14,7 +14,7 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
-from ._wiki_parsing import TableScope, collapse_whitespace as _collapse
+from ._wiki_parsing import TableScope, collapse_whitespace as _collapse, match_by_name
 
 _TTL = 3600
 
@@ -315,20 +315,7 @@ def _clean_alt(s: str) -> str:
 # ---------------------------------------------------------------------------
 
 def _match_clues(query: str, entries: list[dict]) -> tuple[str, object]:
-    q = query.strip().lower()
-    if not q:
-        return ("none", None)
-
-    exact = [e for e in entries if e["clue_text_lower"] == q]
-    if exact:
-        return ("exact", exact[0])
-
-    contains = [e for e in entries if q in e["clue_text_lower"]]
-    if contains:
-        contains.sort(key=lambda e: abs(len(e["clue_text_lower"]) - len(q)))
-        return ("did_you_mean", contains[:5])
-
-    return ("none", None)
+    return match_by_name(query, entries, "clue_text_lower")
 
 
 # ---------------------------------------------------------------------------

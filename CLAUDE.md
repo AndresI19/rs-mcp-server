@@ -25,7 +25,7 @@ TLS is opt-in via a mounted cert directory — a preflight step in the container
 | Mounted, empty / no usable pair | HTTPS with a self-signed fallback cert |
 | Mounted with `tls.crt`+`tls.key` (or `fullchain.pem`+`privkey.pem`, or `cert.pem`+`key.pem`) | HTTPS with those certs |
 
-Run with TLS locally: `TLS_CERTS_DIR=/path/to/certs make start` (mounts the dir read-only at `/etc/tls_certs` and polls health over https). The same port `8000` carries HTTP or HTTPS — there is no second port. `make dev` (local venv, no container) is always plain HTTP, since the TLS preflight lives in the container entrypoint. Full rationale in [docs/security.md](docs/security.md#transport-security-tls).
+Run with TLS locally: `TLS_CERTS_DIR=/path/to/certs make start` (mounts the dir read-only at `/etc/tls_certs` and polls health over https). The same port `8000` carries HTTP or HTTPS — there is no second port. `make dev` (local venv, no container) is always plain HTTP, since the TLS preflight lives in the container entrypoint. Full rationale in the wiki [Security › Transport security (TLS)](https://github.com/AndresI19/rs-mcp-server/wiki/Security#transport-security-tls).
 
 ## Endpoints
 
@@ -90,4 +90,4 @@ python3 -m venv /tmp/lock-verify
 
 ## Security
 
-See [docs/security.md](docs/security.md) for the hardened runtime contract (read-only rootfs, dropped Linux capabilities, Trivy gate in CI) and the residual risks the container does not cover. The `image-scan` job in `.github/workflows/test.yml` enforces the vulnerability gate on every PR.
+See the wiki [Security](https://github.com/AndresI19/rs-mcp-server/wiki/Security) page for the hardened runtime contract (read-only rootfs, dropped Linux capabilities, Trivy gate in CI) and the residual risks the container does not cover. The `image-scan` job in `.github/workflows/test.yml` enforces the vulnerability gate on every PR.

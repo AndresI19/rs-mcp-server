@@ -78,7 +78,7 @@ async def _get_osrs_price(item_name: str) -> str:
         return f"Price data unavailable for '{canonical}' (OSRS)."
 
     high = info.get("high")
-    low  = info.get("low")
+    low = info.get("low")
 
     lines = [f"**{canonical}** (OSRS Grand Exchange)"]
     if high:
@@ -91,9 +91,9 @@ async def _get_osrs_price(item_name: str) -> str:
     five_min = await _osrs_5m_for(item_id)
     if five_min is not None:
         avg_high = five_min.get("avgHighPrice")
-        avg_low  = five_min.get("avgLowPrice")
+        avg_low = five_min.get("avgLowPrice")
         vol_high = five_min.get("highPriceVolume")
-        vol_low  = five_min.get("lowPriceVolume")
+        vol_low = five_min.get("lowPriceVolume")
         if avg_high:
             lines.append(f"5-min avg buy:  {avg_high:,} gp  (volume: {vol_high or 0})")
         if avg_low:

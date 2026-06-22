@@ -14,7 +14,7 @@ from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
-from ._wiki_parsing import TableScope, collapse_whitespace as _collapse, match_by_name
+from ._wiki_parsing import TableScope, collapse_whitespace as _collapse, join_text, match_by_name
 
 _TTL = 3600
 
@@ -201,7 +201,7 @@ class _CluesParser(HTMLParser):
                 self._row = None
 
     def _apply_heading(self) -> None:
-        text = " ".join("".join(self._heading_buf).split())
+        text = join_text(self._heading_buf)
         tier = _tier_from_heading(text)
         if tier:
             self.current_tier = tier

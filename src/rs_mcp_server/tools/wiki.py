@@ -14,6 +14,7 @@ from rs_mcp_server.logging import instrument
 
 from ._aliases import expand_aliases
 from ._http import MW_BASE_PARAMS, WIKI_APIS, WIKI_BASE_URLS, http_get
+from ._wiki_parsing import join_text
 
 _TTL = 3600  # 1 hour
 _MAX_EXTRACT_CHARS = 1500
@@ -133,7 +134,7 @@ class _ProseParser(HTMLParser):
     def _flush(self) -> None:
         if self._tag is None:
             return
-        text = " ".join("".join(self._buf).split())
+        text = join_text(self._buf)
         if text:
             prefix = self._PREFIX[self._tag]
             self.pieces.append(f"\n{prefix}{text}" if prefix else text)

@@ -17,6 +17,7 @@ from ._wiki_parsing import (
     disambiguate,
     fetch_page_params,
     find_template as _find_template,
+    join_text,
     parse_page_response,
     parse_template_fields as _parse_fields,
     titles_match as _titles_match,
@@ -30,6 +31,9 @@ _METHOD_PREFIX = "Money making guide/"
 _VALID_CATEGORIES = ("combat", "skilling")
 
 _METHOD_TEMPLATES = ("Mmgtable recurring", "Mmgtable")
+
+# Indices into a parsed cell's link list: [href, text-fragments].
+_LINK_HREF, _LINK_TEXT = 0, 1
 
 
 # ---------------------------------------------------------------------------
@@ -142,14 +146,14 @@ class _MasterTableParser(HTMLParser):
         if tag == "a":
             self._in_a = False
         elif tag == "th" and self._th is not None:
-            self.headers.append(" ".join("".join(self._th).split()))
+            self.headers.append(join_text(self._th))
             self._th = None
         elif tag == "td" and self._cell is not None:
             link = None
             if self._cell["link"] is not None:
-                link = (" ".join("".join(self._cell["link"][1]).split()), self._cell["link"][0])
+                link = (join_text(self._cell["link"][_LINK_TEXT]), self._cell["link"][_LINK_HREF])
             self._row.append({
-                "text": " ".join("".join(self._cell["text"]).split()),
+                "text": join_text(self._cell["text"]),
                 "sort_value": self._cell["sort_value"],
                 "link": link,
                 "members": self._cell["members"],

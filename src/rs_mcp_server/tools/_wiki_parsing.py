@@ -271,3 +271,12 @@ def render_variants(variants: list[dict], wiki_label: str, base_name: str, tool:
     lines.append("")
     lines.append(f"Re-invoke `{tool}` with the exact tier name to fetch full details.")
     return "\n".join(lines)
+
+
+def join_text(parts: list[str]) -> str:
+    """Join accumulated text fragments and collapse whitespace runs to single spaces.
+
+    The html.parser table/section walkers build up a cell's or heading's text as a
+    list of data chunks; this concatenates them and normalises spacing in one step.
+    """
+    return " ".join("".join(parts).split())

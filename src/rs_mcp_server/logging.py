@@ -6,6 +6,8 @@ import re
 import sys
 import time
 
+import httpx
+
 _TOOL_LOGGER = logging.getLogger("rs_mcp_server.tools")
 _MAX_ARG_VALUE = 200
 _LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
@@ -101,6 +103,21 @@ def instrument(tool_name: str):
             _TOOL_LOGGER.info(f"tool_call_start tool={tool_name} {args_str}")
             try:
                 result = await fn(*args, **kwargs)
+            except httpx.HTTPError as e:
+                # Systemic backstop: the upstream RuneScape APIs are unreliable, so any
+                # unhandled HTTP/network error from a tool degrades to a friendly message
+                # instead of crashing the client. Genuine bugs (KeyError, ValueError, …)
+                # are NOT caught here and still propagate below — see test_drops'
+                # "non_http_error_is_not_masked".
+                dt = int((time.monotonic() - t0) * 1000)
+                _TOOL_LOGGER.warning(
+                    f"tool_call_upstream_error tool={tool_name} {args_str} "
+                    f"error_type={type(e).__name__} error_msg={str(e)[:200]} duration_ms={dt}"
+                )
+                return (
+                    f"The {tool_name.replace('_', ' ')} request couldn't be completed right now — "
+                    f"an upstream RuneScape service appears to be unavailable. Please try again shortly."
+                )
             except Exception as e:
                 dt = int((time.monotonic() - t0) * 1000)
                 _TOOL_LOGGER.exception(

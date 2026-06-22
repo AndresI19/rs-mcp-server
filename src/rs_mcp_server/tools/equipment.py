@@ -1,6 +1,8 @@
 """get_equipment_stats tool — RuneScape Wiki Infobox Bonuses (OSRS + RS3)."""
 import html
-import re
+from html.parser import HTMLParser
+
+import httpx
 
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
@@ -236,7 +238,7 @@ async def _fetch_named_sections(title: str, game: str) -> dict[str, str]:
     }
     try:
         data = await http_get(WIKI_APIS[game], params=params)
-    except Exception:
+    except httpx.HTTPError:
         return {}
     if "error" in data:
         return {}
@@ -244,33 +246,69 @@ async def _fetch_named_sections(title: str, game: str) -> dict[str, str]:
     return _extract_named_sections(html_text)
 
 
-def _extract_named_sections(html_text: str) -> dict[str, str]:
-    """Slice the rendered HTML on <h2> boundaries; pull prose from sections we recognise."""
-    chunks = re.split(r"(<h2\b[^>]*>.*?</h2>)", html_text, flags=re.DOTALL)
-    # chunks alternates: [body_before_first_h2, h2, body, h2, body, ...]
-    sections: dict[str, str] = {}
-    for i in range(1, len(chunks), 2):
-        heading_html = chunks[i]
-        body_html = chunks[i + 1] if i + 1 < len(chunks) else ""
-        heading_text = re.sub(r"<[^>]+>", "", heading_html).strip().lower()
+class _SectionsParser(HTMLParser):
+    """Collect paragraph prose for recognised <h2> sections (set bonus, etc.).
+
+    Walks the rendered page: each <h2> opens a section; if its heading matches a
+    target alias (and that label isn't already filled), the following <p> text is
+    collected until the next <h2>. Replaces an <h2>-split + <p> regex scan.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.sections: dict[str, str] = {}
+        self._label: str | None = None
+        self._paragraphs: list[str] = []
+        self._in_heading = False
+        self._heading = ""
+        self._in_p = False
+        self._p = ""
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "h2":
+            self._flush()
+            self._in_heading = True
+            self._heading = ""
+        elif tag == "p" and self._label is not None:
+            self._in_p = True
+            self._p = ""
+
+    def handle_data(self, data):
+        if self._in_heading:
+            self._heading += data
+        elif self._in_p:
+            self._p += data
+
+    def handle_endtag(self, tag):
+        if tag == "h2" and self._in_heading:
+            self._in_heading = False
+            self._label = self._match(self._heading)
+            self._paragraphs = []
+        elif tag == "p" and self._in_p:
+            self._in_p = False
+            text = " ".join(html.unescape(self._p).split())
+            if text:
+                self._paragraphs.append(text)
+
+    def _match(self, heading: str) -> str | None:
+        ht = heading.strip().lower()
         for label, aliases in _SECTION_TARGETS:
-            if heading_text in aliases and label not in sections:
-                prose = _extract_paragraphs(body_html)
-                if prose:
-                    sections[label] = _truncate(prose, _SECTION_PROSE_LIMIT)
-                break
-    return sections
+            if ht in aliases and label not in self.sections:
+                return label
+        return None
+
+    def _flush(self) -> None:
+        if self._label is not None and self._paragraphs:
+            self.sections[self._label] = _truncate("\n\n".join(self._paragraphs), _SECTION_PROSE_LIMIT)
+        self._label = None
+        self._paragraphs = []
 
 
-def _extract_paragraphs(html_text: str) -> str:
-    paragraphs: list[str] = []
-    for raw in re.findall(r"<p\b[^>]*>(.*?)</p>", html_text, re.DOTALL):
-        text = re.sub(r"<[^>]+>", " ", raw)
-        text = html.unescape(text)
-        text = re.sub(r"\s+", " ", text).strip()
-        if text:
-            paragraphs.append(text)
-    return "\n\n".join(paragraphs)
+def _extract_named_sections(html_text: str) -> dict[str, str]:
+    parser = _SectionsParser()
+    parser.feed(html_text)
+    parser._flush()  # finalize the trailing section
+    return parser.sections
 
 
 def _truncate(s: str, limit: int) -> str:

@@ -1,4 +1,5 @@
 """End-to-end tests for the get_equipment_stats MCP tool (issues #44, #77)."""
+import httpx
 import pytest
 
 from rs_mcp_server import cache as _cache_mod
@@ -242,7 +243,7 @@ class TestGetEquipmentStatsNamedSections:
     async def test_parse_failure_swallowed_infobox_still_returns(self, monkeypatch):
         async def fake_http_get(url, params=None, timeout=10.0):
             if (params or {}).get("action") == "parse":
-                raise RuntimeError("transient parse-api outage")
+                raise httpx.ConnectError("transient parse-api outage")
             return _wiki_page("Trimmed masterwork melee helm", self._BONUSES)
 
         monkeypatch.setattr("rs_mcp_server.tools.equipment.http_get", fake_http_get)

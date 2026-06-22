@@ -18,6 +18,8 @@ async def get_item_recipe(item_name: str, game: str = "rs3") -> str:
     game = game.lower()
     if game not in WIKI_APIS:
         return f"Unknown game '{game}'. Use 'rs3' or 'osrs'."
+    if not item_name.strip():
+        return "No item name provided."
 
     cache_key = f"recipe:{game}:{item_name.lower()}"
     cached = cache.get(cache_key)
@@ -147,10 +149,13 @@ def _format_recipe(title: str, url: str, wiki_label: str, fields: dict) -> str:
 
 
 def _enumerate_index(prefix: str, fields: dict[str, str]) -> Iterator[int]:
-    i = 1
-    while f"{prefix}{i}" in fields:
-        yield i
-        i += 1
+    """Yield the present numeric indices for ``prefix`` (mat1, mat2, …) in order.
+
+    Scans for all matching keys instead of counting up from 1, so a template with
+    a gap (e.g. mat1, mat3 after an editor removed mat2) isn't truncated at the gap.
+    """
+    pattern = re.compile(rf"{re.escape(prefix)}(\d+)")
+    yield from sorted(int(m.group(1)) for k in fields if (m := pattern.fullmatch(k)))
 
 
 def _enumerate_skills(fields: dict[str, str]) -> Iterator[tuple[str, str, str, str]]:

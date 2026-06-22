@@ -1,6 +1,8 @@
 """get_item_price tool — OSRS and RS3 Grand Exchange APIs."""
 import re
 
+import httpx
+
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
 
@@ -201,7 +203,7 @@ async def _osrs_5m_bulk() -> dict | None:
         return cached
     try:
         data = await http_get(_OSRS_5M_URL)
-    except Exception:
+    except httpx.HTTPError:
         return None
     cache.set("osrs:5m:all", data, _TTL_OSRS_5M)
     return data
@@ -226,7 +228,7 @@ async def _geprice_catalog() -> list[dict] | None:
         return cached
     try:
         data = await http_get(_GEPRICE_CATALOG_URL)
-    except Exception:
+    except httpx.HTTPError:
         return None
     if not isinstance(data, list):
         return None

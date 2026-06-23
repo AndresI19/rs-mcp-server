@@ -17,6 +17,7 @@ from starlette.routing import Mount, Route
 from rs_mcp_server.logging import setup_logging
 from rs_mcp_server.tools.achievements import get_achievement
 from rs_mcp_server.tools.alchables import get_best_alchables
+from rs_mcp_server.tools.celtic_knot import solve_celtic_knot
 from rs_mcp_server.tools.clues import solve_clue
 from rs_mcp_server.tools.drops import get_item_drop_sources
 from rs_mcp_server.tools.equipment import get_equipment_stats
@@ -326,6 +327,25 @@ async def list_tools() -> list[Tool]:
             },
         ),
         Tool(
+            name="solve_celtic_knot",
+            description="Solve a RuneScape (RS3) Celtic knot clue puzzle. TWO-PHASE: call this tool with NO arguments first to receive step-by-step instructions for reading the puzzle screenshot into the required format; then call it again with 'rings' and 'intersections' to get the solution. 'rings' is one token array per loop, where identical runes share an identical token consistent across ALL rings (hidden runes are null); 'intersections' lists each crossing as [ring_a, slot_a, ring_b, slot_b], meaning slot_a of ring_a must equal slot_b of ring_b. Returns the per-ring rotation (steps forward/backward) that makes every crossing match, or a short candidate list if too many runes were hidden to pin one answer.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "rings": {
+                        "type": "array",
+                        "description": "One array per loop; each element is a rune token (integer or string) or null for a rune hidden in the screenshot. The same rune must use the same token across all rings.",
+                        "items": {"type": "array", "items": {"type": ["integer", "string", "null"]}},
+                    },
+                    "intersections": {
+                        "type": "array",
+                        "description": "Each crossing as [ring_a, slot_a, ring_b, slot_b]: slot_a of ring_a must equal slot_b of ring_b.",
+                        "items": {"type": "array", "items": {"type": "integer"}, "minItems": 4, "maxItems": 4},
+                    },
+                },
+            },
+        ),
+        Tool(
             name="solve_sliding_puzzle",
             description="Solve a RuneScape puzzle box (the sliding-tile picture clue). Two-phase: call with NO arguments first to get the instructions for reading the scrambled screenshot, then call again with the grid to get the click-by-click solution. The grid is the board read row-by-row (top-left to bottom-right) as a flat list whose length is a perfect square (9, 16, or 25); each cell holds the 0-based goal position of the fragment shown there, and the empty gap is null. Returns the ordered tiles to click — one click slides a whole row/column toward the gap. Reading the screenshot into the grid is your job; this tool only computes the moves.",
             inputSchema={
@@ -390,6 +410,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             arguments.get("clue_format"),
             arguments.get("tier"),
         )
+    elif name == "solve_celtic_knot":
+        result = await solve_celtic_knot(arguments.get("rings"), arguments.get("intersections"))
     elif name == "solve_sliding_puzzle":
         result = await solve_sliding_puzzle(arguments.get("grid"))
     else:

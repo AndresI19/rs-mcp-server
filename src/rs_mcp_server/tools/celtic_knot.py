@@ -8,9 +8,10 @@ ring rotations that make every intersection match.
 Key ideas:
 - Runes are *tokens*, not identities — the agent only needs equal runes to share a token
   (consistent across all rings); it never needs to know what a rune depicts.
-- Runes hidden under crossing paths are passed as ``None`` and treated as wildcards that
-  match anything, so partial information yields a unique answer or a short candidate list
-  rather than failing.
+- The puzzle's INVERT PATHS button reveals the runes hidden under crossings, so the agent
+  reads both views and supplies *complete* rings — and a complete reading has a single
+  rotation solution. ``None`` (wildcard) is still accepted for a genuinely unreadable rune,
+  but it is the fallback, not the norm.
 
 A knot is 3-4 loops of up to ~30 runes with 2-6 intersections, so the rotation space
 (product of ring lengths) is small enough to brute-force.
@@ -27,30 +28,29 @@ _MAX_CANDIDATES = 8
 # screenshot into the (rings, intersections) the solver needs, then call back to solve.
 _TOKENIZE_GUIDE = """**Reading a Celtic knot for solve_celtic_knot**
 
-Study the puzzle screenshot and build two arguments, then call this tool again with them.
+A Celtic knot is 3-4 coloured loops, each a cycle of up to ~30 runestones. You rotate the
+loops with their arrows until the two runes meeting at every crossing match (each junction
+turns green), then click UNLOCK. Read the screenshot into two arguments and call back.
 
-**1. `rings`** — one array per coloured loop (usually 3, sometimes 4; each loop has up to
-~30 rune slots). For each loop, in order:
-- Walk the slots around the loop from a consistent start (e.g. the top slot, clockwise).
-- Encode each rune as a TOKEN — give every distinct rune a number (1, 2, 3, …) and reuse
-  the SAME number for the same rune everywhere it appears, **including across different
-  rings**. You needn't know what a rune depicts; only "same rune → same token" matters.
-- If a rune is hidden under a crossing path, use `null` for that slot (see Occlusion below).
+**Reveal the hidden runes first — don't guess them.** At each crossing one path passes over
+the other and hides the under-path's rune. The puzzle has an **INVERT PATHS** button (lower
+-left) that flips which path is on top, exposing the runes that were hidden. Read the knot in
+BOTH views — normal and inverted — so you can see *every* runestone. This is the whole trick:
+with both views there is no missing information, so the solver returns one exact answer.
 
-**Occlusion is structural.** At every crossing the two paths interlace: one passes OVER
-and one UNDER, and the over path HIDES the under path's rune at that spot. So at each
-crossing you can read only ONE of the two runes — record `null` for the hidden (under) one.
-Expect about one `null` per crossing. Read every other slot you can: the more you leave
-`null`, the fewer constraints remain, and with heavy occlusion the solver may not be able
-to pin a single answer — it will say so rather than guess.
+**1. `rings`** — one array per coloured loop. Walk each loop from a consistent start (e.g.
+the top slot, clockwise) and encode each rune as a TOKEN: give every distinct rune a number
+and reuse the SAME number for that rune everywhere it appears, **including across loops**.
+You never need to know what a rune depicts — only "same rune → same token". Fill every slot
+from your two-view reading; use `null` only for a rune you genuinely cannot make out.
 
-**2. `intersections`** — one entry per crossing, as `[ring_a, slot_a, ring_b, slot_b]`,
+**2. `intersections`** — one entry per crossing as `[ring_a, slot_a, ring_b, slot_b]`,
 meaning the rune at slot_a of ring_a must equal the rune at slot_b of ring_b for that
-crossing to turn green. Slot indices are 0-based positions in the step-1 arrays.
+junction to turn green. Slot indices are 0-based positions in the step-1 arrays.
 
-Then call `solve_celtic_knot(rings, intersections)`; it returns how many steps to rotate
-each ring. Reveal as many runes as you can — every `null` weakens the constraints, and too
-many will return a candidate list instead of one answer (the tool will tell you)."""
+Then call `solve_celtic_knot(rings, intersections)` for the per-loop rotation. A complete
+reading resolves to a single solution; if you leave runes as `null` the answer may be
+ambiguous, and the tool will tell you to flip the paths and reveal more."""
 
 
 def _runes_match(a, b) -> bool:
@@ -137,20 +137,24 @@ async def solve_celtic_knot(
                 "correct, the puzzle is genuinely unsolvable.")
 
     if len(solutions) > _MAX_CANDIDATES:
-        return ("**Can't pin a single answer.** More than "
-                f"{_MAX_CANDIDATES} rotation sets fit the runes you could see — too many were hidden "
-                "at the crossings to determine the solution. Rotate the rings a few steps in-game to "
-                "expose different runes, screenshot again, and re-read the knot.")
+        return ("**Too many rotations fit to pin one answer.** More than "
+                f"{_MAX_CANDIDATES} rotation sets satisfy the runes as read — usually because runes were "
+                "left hidden (`null`). Click the puzzle's **INVERT PATHS** button to expose the runes "
+                "tucked under the crossings, re-read so every slot is filled, and call again; a complete "
+                "reading resolves to a single solution.")
 
     solutions.sort(key=lambda ks: _clicks(ks, lengths))
     best = solutions[0]
-    lines = ["**Celtic knot solution** (fewest clicks):", ""]
+    lines = ["**Celtic knot solution** — rotate each loop with its arrows:", ""]
     for r, k in enumerate(best):
         lines.append(f"- Ring {r}: {_describe_rotation(k, lengths[r])}")
-    if len(solutions) > 1:
+    if len(solutions) == 1:
+        lines += ["", "Every junction will turn green — then click UNLOCK."]
+    else:
         lines += [
             "",
-            f"{len(solutions)} rotation sets fit the visible runes; this is the shortest. If the "
-            "crossings don't all turn green, a hidden rune differed — reveal more and retry.",
+            f"{len(solutions)} rotation sets fit the runes read (some were `null`); this is the fewest "
+            "clicks. If a junction stays red, a hidden rune differed — use INVERT PATHS to read the "
+            "under-runes and retry.",
         ]
     return "\n".join(lines)

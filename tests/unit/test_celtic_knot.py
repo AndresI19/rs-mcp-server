@@ -55,10 +55,20 @@ class TestToolResponse:
         assert "unsolvable as read" in out
 
     @pytest.mark.anyio
-    async def test_cannot_determine_message(self):
-        # All-identical runes → every rotation matches → too many candidates to pin one.
+    async def test_too_many_rotations_message(self):
+        # All-identical runes → every rotation matches → can't pin one; point at INVERT PATHS.
         out = await solve_celtic_knot([[1, 1, 1, 1], [1, 1, 1, 1]], [[0, 0, 1, 0]])
-        assert "Can't pin a single answer" in out
+        assert "Too many rotations fit" in out
+        assert "INVERT PATHS" in out
+
+    @pytest.mark.anyio
+    async def test_complete_reading_gives_single_solution(self):
+        # No nulls + unique crossing tokens → exactly one rotation set → confident UNLOCK message.
+        solved = [[10, 11, 12, 13], [20, 11, 21, 22], [23, 24, 12, 20]]
+        ix = [[0, 1, 1, 1], [0, 2, 2, 2], [1, 0, 2, 3]]  # 11==11, 12==12, 20==20
+        current = [_rot_fwd(solved[r], k) for r, k in zip(range(3), [1, 2, 3])]
+        out = await solve_celtic_knot(current, ix)
+        assert "UNLOCK" in out
 
     @pytest.mark.anyio
     async def test_validation_rejects_bad_ring_index(self):
@@ -96,10 +106,10 @@ class TestRealisticScale:
         assert sols, "full-size knot should be solvable"
         assert all(_consistent(current, intersections, s) for s in sols)
 
-    def test_structural_occlusion_never_returns_a_wrong_guess(self):
-        # Real screenshots hide the under-path rune at every crossing. The solver may end up
-        # under-determined, but every candidate it returns must satisfy the visible runes —
-        # it must never invent an inconsistent answer.
+    def test_unreadable_runes_never_return_a_wrong_guess(self):
+        # null is the fallback for a rune the agent genuinely can't read — INVERT PATHS should
+        # normally avoid it. Even with every under-rune hidden, the solver must never invent an
+        # inconsistent answer: every candidate it returns must satisfy the runes that WERE read.
         n = 24
         rings = [[f"r{r}_{i}" for i in range(n)] for r in range(3)]
         intersections = [

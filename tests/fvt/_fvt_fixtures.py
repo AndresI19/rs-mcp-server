@@ -22,6 +22,7 @@ EXPECTED_TOOLS = {
     "get_best_alchables",
     "get_game_setting",
     "solve_clue",
+    "solve_sliding_puzzle",
 }
 
 # (tool_name, args, expected_substrings) — every substring must appear in the tool's text output.
@@ -75,6 +76,8 @@ CASES: list[tuple[str, dict, list[str]]] = [
     ("solve_clue",             {"clue_text": "chest in the Duke of Lumbridge", "game": "rs3", "clue_format": "simple"}, ["Did you mean", "Duke of Lumbridge", "simple"]),
     ("solve_clue",             {"clue_text": "compass clue", "game": "rs3"},                                ["Compass clue", "arrow"]),
     ("solve_clue",             {"clue_text": "zzznotaclue", "game": "osrs"},                                ["No matching clue"]),
+    ("solve_sliding_puzzle",   {},                                                                          ["Reading a puzzle box", "perfect square"]),
+    ("solve_sliding_puzzle",   {"grid": [0, 1, 2, None, 3, 4, 6, 7, 5]},                                    ["Puzzle box solution", "Click row"]),
 ]
 
 

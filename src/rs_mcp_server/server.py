@@ -28,6 +28,7 @@ from rs_mcp_server.tools.prices import get_item_price
 from rs_mcp_server.tools.quests import get_quest_info
 from rs_mcp_server.tools.recipes import get_item_recipe
 from rs_mcp_server.tools.settings import get_game_setting
+from rs_mcp_server.tools.sliding_puzzle import solve_sliding_puzzle
 from rs_mcp_server.tools.wiki import search_wiki
 from rs_mcp_server.version import VERSION_INFO
 
@@ -324,6 +325,20 @@ async def list_tools() -> list[Tool]:
                 "required": ["clue_text"],
             },
         ),
+        Tool(
+            name="solve_sliding_puzzle",
+            description="Solve a RuneScape puzzle box (the sliding-tile picture clue). Two-phase: call with NO arguments first to get the instructions for reading the scrambled screenshot, then call again with the grid to get the click-by-click solution. The grid is the board read row-by-row (top-left to bottom-right) as a flat list whose length is a perfect square (9, 16, or 25); each cell holds the 0-based goal position of the fragment shown there, and the empty gap is null. Returns the ordered tiles to click — one click slides a whole row/column toward the gap. Reading the screenshot into the grid is your job; this tool only computes the moves.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "grid": {
+                        "type": "array",
+                        "items": {"type": ["integer", "null"]},
+                        "description": "Flat row-major board: each cell is the 0-based goal position of the fragment there, null for the gap. Length must be 9, 16, or 25. Omit entirely to get the reading instructions.",
+                    },
+                },
+            },
+        ),
     ]
 
 
@@ -375,6 +390,8 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             arguments.get("clue_format"),
             arguments.get("tier"),
         )
+    elif name == "solve_sliding_puzzle":
+        result = await solve_sliding_puzzle(arguments.get("grid"))
     else:
         raise ValueError(f"Unknown tool: {name}")
     return [TextContent(type="text", text=result)]

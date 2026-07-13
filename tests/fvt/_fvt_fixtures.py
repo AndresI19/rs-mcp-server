@@ -1,10 +1,25 @@
-"""Fixtures and case data for function-verification tests against a live MCP server."""
+"""Fixtures and case data for function-verification tests against a live MCP server.
+
+The target is parameterised by environment, so the same suite runs against two things without
+changing a line of test code:
+
+| Target                          | FVT_BASE_URL           | FVT_MCP_PATH   | FVT_TRANSPORT     | FVT_BEARER |
+|---------------------------------|------------------------|----------------|-------------------|------------|
+| the container directly (default)| http://localhost:8000  | /sse           | sse               | —          |
+| through the open-vMCP gateway   | http://localhost:8001  | /mcp/rs-mcp    | streamable-http   | required   |
+
+The gateway's per-server route is a 1:1 passthrough, so the tool names and arguments are identical
+either way — only the connection changes. Running through the gateway is what makes the calls show
+up in its dashboard, since that is where the proxy records them.
+"""
+import os
 from collections.abc import AsyncIterator
 
 import httpx
 import pytest
 from mcp.client.session import ClientSession
 from mcp.client.sse import sse_client
+from mcp.client.streamable_http import streamable_http_client
 
 EXPECTED_TOOLS = {
     "search_wiki",
@@ -103,22 +118,74 @@ def case_id(case: tuple[str, dict, list[str]]) -> str:
 
 CASE_IDS = [case_id(c) for c in CASES]
 
+# Cases whose upstream is currently broken, keyed by case id. They still *run* — the call is made,
+# so the traffic runner exercises the tool and the gateway records it — they just do not fail the
+# build. strict=False on purpose: if the upstream comes back, the case XPASSes rather than erroring,
+# and the entry here can simply be deleted.
+KNOWN_BROKEN: dict[str, str] = {
+    "get_item_price-rs3-Mask_of_Tumeken's_Resplendence": (
+        "geprice.com/api/items returns 403 (bot-blocked), so the off-GE street-price fallback in "
+        "_geprice_lookup has no data source and every off-GE RS3 item reports 'not found'"
+    ),
+}
+
+
+def _params() -> list:
+    """CASES as pytest params, with the known-broken upstreams marked xfail rather than removed."""
+    out = []
+    for c in CASES:
+        cid = case_id(c)
+        marks = (
+            [pytest.mark.xfail(reason=KNOWN_BROKEN[cid], strict=False)] if cid in KNOWN_BROKEN else []
+        )
+        out.append(pytest.param(*c, id=cid, marks=marks))
+    return out
+
+
+CASE_PARAMS = _params()
+
+
+# Where to point the suite. Defaults reproduce the original behaviour exactly: SSE straight at the
+# container on localhost:8000, no auth.
+BASE_URL = os.environ.get("FVT_BASE_URL", "http://localhost:8000").rstrip("/")
+MCP_PATH = os.environ.get("FVT_MCP_PATH", "/sse")
+TRANSPORT = os.environ.get("FVT_TRANSPORT", "sse")
+BEARER = os.environ.get("FVT_BEARER", "")
+
+MCP_URL = f"{BASE_URL}{MCP_PATH}"
+HEADERS = {"Authorization": f"Bearer {BEARER}"} if BEARER else {}
+
 
 @pytest.fixture(scope="session")
 def live_server_url() -> str:
-    """Skip the entire FVT session unless an MCP server is reachable on localhost:8000."""
-    url = "http://localhost:8000"
+    """Skip the entire FVT session unless the target's /health answers.
+
+    Both the server and the gateway expose /health at the root, so one probe covers both targets.
+    """
     try:
-        httpx.get(f"{url}/health", timeout=2.0).raise_for_status()
+        httpx.get(f"{BASE_URL}/health", timeout=2.0).raise_for_status()
     except Exception as e:
-        pytest.skip(f"FVT requires a running rs-mcp-server on {url} ({type(e).__name__}: {e})")
-    return url
+        pytest.skip(f"FVT requires a live MCP endpoint at {BASE_URL} ({type(e).__name__}: {e})")
+    return BASE_URL
 
 
 @pytest.fixture(scope="session")
 async def mcp_session(live_server_url: str) -> AsyncIterator[ClientSession]:
     """Single MCP session reused across all FVT cases — one handshake per session."""
-    async with sse_client(f"{live_server_url}/sse") as streams:
-        async with ClientSession(*streams) as session:
-            await session.initialize()
-            yield session
+    if TRANSPORT == "streamable-http":
+        # Unlike sse_client, this one takes no `headers=`: auth is carried by a caller-supplied
+        # httpx client. That is where the gateway's bearer goes.
+        # It also yields a third element (a session-id getter) that ClientSession does not take,
+        # so the streams are unpacked rather than splatted.
+        async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True, timeout=30) as http:
+            async with streamable_http_client(MCP_URL, http_client=http) as (read, write, _sid):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    yield session
+    elif TRANSPORT == "sse":
+        async with sse_client(MCP_URL, headers=HEADERS) as streams:
+            async with ClientSession(*streams) as session:
+                await session.initialize()
+                yield session
+    else:
+        raise ValueError(f"FVT_TRANSPORT must be 'sse' or 'streamable-http', got {TRANSPORT!r}")

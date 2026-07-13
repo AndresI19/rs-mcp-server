@@ -1,0 +1,29 @@
+# BuildKit prefers `<dockerfile>.dockerignore` over the plain `.dockerignore`, so the traffic-runner
+# image gets its own exclusion list. The root .dockerignore strips tests/, scripts/ and README.md —
+# correct for the hardened runtime image, but those are exactly what this image is built to run.
+# Keeping them separate means the production image stays lean without a conditional in either file.
+.venv/
+.git/
+.github/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.idea/
+.vscode/
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.so
+
+CLAUDE.md
+LICENSE
+
+.env
+.env.*
+*.log
+
+Dockerfile
+.dockerignore
+docker-compose*.yml

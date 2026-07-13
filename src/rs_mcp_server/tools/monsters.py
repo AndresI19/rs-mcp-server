@@ -72,49 +72,52 @@ async def get_monster_info(monster_name: str, game: str = "rs3") -> str:
         return cached
 
     wiki_label = WIKI_LABELS[game]
-    fields_def = _FIELDS_BY_GAME[game]
 
+    # Resolve via the first strategy that lands — the same chain achievements.py, equipment.py and
+    # quests.py use. Monsters have no roman-numeral variants, so the chain is two links, not three.
+    result = (
+        await _from_direct(monster_name, game, wiki_label)
+        or await _from_search(monster_name, game, wiki_label)
+    )
+    if result is None:
+        return f"No monster found for '{monster_name}' on the {wiki_label} wiki."
+    return _cache_and_return(result, cache_key)
+
+
+def _format_page(page: dict, game: str, wiki_label: str) -> str:
+    """Render a page already known to carry an Infobox Monster template."""
+    body = _find_template(page["content"], "Infobox Monster")
+    fields = _parse_fields(body)
+    return _format_monster(page["title"], page["url"], wiki_label, fields, _FIELDS_BY_GAME[game])
+
+
+async def _from_direct(monster_name: str, game: str, wiki_label: str) -> str | None:
+    """Direct page lookup: format an exact hit, disambiguate a near-title, or — when the page exists
+    but is not a monster — retry the '(monster)' and '(NPC)' disambiguation suffixes."""
     direct = await _fetch_page(monster_name, game, follow_redirects=True)
-    if direct is not None:
-        body = _find_template(direct["content"], "Infobox Monster")
-        if body is not None:
-            if _titles_match(monster_name, direct["title"]):
-                return _cache_and_return(
-                    _format_monster(direct["title"], direct["url"], wiki_label, _parse_fields(body), fields_def),
-                    cache_key,
-                )
-            return _cache_and_return(
-                _disambiguate(direct["title"], direct["url"], wiki_label),
-                cache_key,
-            )
+    if direct is None:
+        return None
 
-        # Page exists but is the wrong type — try disambig suffix(es).
-        for suffix in ("monster", "NPC"):
-            suffixed = await _fetch_page(f"{monster_name} ({suffix})", game, follow_redirects=True)
-            if suffixed is not None:
-                body = _find_template(suffixed["content"], "Infobox Monster")
-                if body is not None:
-                    return _cache_and_return(
-                        _format_monster(suffixed["title"], suffixed["url"], wiki_label, _parse_fields(body), fields_def),
-                        cache_key,
-                    )
+    if _find_template(direct["content"], "Infobox Monster") is not None:
+        if _titles_match(monster_name, direct["title"]):
+            return _format_page(direct, game, wiki_label)
+        return _disambiguate(direct["title"], direct["url"], wiki_label)
 
+    for suffix in ("monster", "NPC"):
+        suffixed = await _fetch_page(f"{monster_name} ({suffix})", game, follow_redirects=True)
+        if suffixed and _find_template(suffixed["content"], "Infobox Monster") is not None:
+            return _format_page(suffixed, game, wiki_label)
+    return None
+
+
+async def _from_search(monster_name: str, game: str, wiki_label: str) -> str | None:
     candidate = await _search_monster(monster_name, game)
     if candidate is None:
-        return f"No monster found for '{monster_name}' on the {wiki_label} wiki."
-
+        return None
     if not _titles_match(monster_name, candidate["title"]):
-        return _cache_and_return(
-            _disambiguate(candidate["title"], candidate["url"], wiki_label),
-            cache_key,
-        )
-
+        return _disambiguate(candidate["title"], candidate["url"], wiki_label)
     # _search_monster guarantees candidate["content"] contains an Infobox Monster template.
-    body = _find_template(candidate["content"], "Infobox Monster")
-    return _cache_and_return(
-        _format_monster(candidate["title"], candidate["url"], wiki_label, _parse_fields(body), fields_def),
-        cache_key,
-    )
+    return _format_page(candidate, game, wiki_label)
 
 
 def _disambiguate(title: str, url: str, wiki_label: str) -> str:

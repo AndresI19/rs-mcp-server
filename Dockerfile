@@ -58,6 +58,12 @@ COPY --from=builder --chown=mcp-server:mcp-server ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 COPY --chmod=755 docker/bin/start-server /usr/local/bin/start-server
 
 USER mcp-server
+# The listen address is the IMAGE's decision, not the entrypoint's: a container exists to be reached
+# from outside itself, so it binds every interface. The library default stays 127.0.0.1, because a
+# dev server that opens itself to the network the moment you run it is a surprise, not a convenience.
+ENV MCP_HOST=0.0.0.0 \
+    MCP_PORT=8000
+
 EXPOSE 8000
 
 # Protocol-tolerant: the same port serves HTTP or (when /etc/tls_certs is mounted) HTTPS.

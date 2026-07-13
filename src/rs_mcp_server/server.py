@@ -14,6 +14,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Mount, Route
 
+from rs_mcp_server.config import MCP_HOST, MCP_PORT
 from rs_mcp_server.logging import setup_logging
 from rs_mcp_server.tools.achievements import get_achievement
 from rs_mcp_server.tools.alchables import get_best_alchables
@@ -461,8 +462,4 @@ web = Starlette(
 if __name__ == "__main__":
     # Local dev entrypoint (`make dev`) — plain HTTP. In the container, TLS is resolved
     # as a preflight step in docker/bin/start-server, which launches uvicorn directly.
-    uvicorn.run(
-        web,
-        host=os.environ.get("MCP_HOST", "127.0.0.1"),
-        port=int(os.environ.get("MCP_PORT", "8000")),
-    )
+    uvicorn.run(web, host=MCP_HOST, port=MCP_PORT)

@@ -4,15 +4,15 @@ import re
 import httpx
 
 from rs_mcp_server import cache
+from rs_mcp_server.config import HISCORES_URLS
 from rs_mcp_server.logging import instrument
 
 from ._constants import TTL_10MIN
 from ._http import http_get
 
-_HISCORES_JSON_APIS = {
-    "rs3":  "https://secure.runescape.com/m=hiscore/index_lite.json",
-    "osrs": "https://secure.runescape.com/m=hiscore_oldschool/index_lite.json",
-}
+# Endpoints resolved from the environment (see config.py) — the name is kept, the values are not
+# baked in any more.
+_HISCORES_JSON_APIS = HISCORES_URLS
 
 # RuneScape display names are 1–12 chars: letters, digits, spaces, hyphens, underscores.
 # Validating up front gives a clear message and avoids a 403 from the hiscores API on

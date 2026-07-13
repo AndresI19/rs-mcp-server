@@ -1,18 +1,17 @@
 """Static configuration constants shared across the RS MCP tools.
 
-Pure data only — no logic and no imports. Kept apart from _http (which owns the
-HTTP client) so the wiki/API configuration isn't coupled to the transport layer.
+Kept apart from _http (which owns the HTTP client) so the wiki/API configuration isn't coupled to
+the transport layer.
+
+The endpoints are re-exported from rs_mcp_server.config, which resolves them from the environment.
+They stay importable from here so every tool's `from ._constants import *` keeps working — but there
+is now exactly one place an endpoint can be *set*, and it is not this file.
 """
-
-WIKI_APIS = {
-    "rs3":  "https://runescape.wiki/api.php",
-    "osrs": "https://oldschool.runescape.wiki/api.php",
-}
-
-WIKI_BASE_URLS = {
-    "rs3":  "https://runescape.wiki/w/",
-    "osrs": "https://oldschool.runescape.wiki/w/",
-}
+from rs_mcp_server.config import (  # noqa: F401  (re-exported for the tools)
+    OSRS_PRICES_BASE,
+    WIKI_APIS,
+    WIKI_BASE_URLS,
+)
 
 # Short display label per game (used in result headers). Callers validate game
 # against WIKI_APIS first, so a lookup here is always present.
@@ -36,9 +35,8 @@ TTL_10MIN = 600
 TTL_HOUR = 3600
 TTL_DAY = 86400
 
-# OSRS real-time prices API (prices.runescape.wiki), shared by the price and
-# alchables tools. Endpoints hang off one base, so the host/version is single-sourced.
-OSRS_PRICES_BASE = "https://prices.runescape.wiki/api/v1/osrs"
+# OSRS real-time prices API, shared by the price and alchables tools. The base comes from config;
+# the endpoints hang off it, so the host/version is single-sourced.
 OSRS_PRICES_MAPPING = f"{OSRS_PRICES_BASE}/mapping"
 OSRS_PRICES_LATEST = f"{OSRS_PRICES_BASE}/latest"
 OSRS_PRICES_1H = f"{OSRS_PRICES_BASE}/1h"

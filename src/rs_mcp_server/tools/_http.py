@@ -9,7 +9,11 @@ import asyncio
 
 import httpx
 
-HEADERS = {"User-Agent": "RS-MCP-Server/1.0"}
+from rs_mcp_server.config import HTTP_MAX_RETRIES, HTTP_TIMEOUT, USER_AGENT
+
+# The wikis ask that tools identify themselves; USER_AGENT is overridable so a deployment can add a
+# contact address without editing source.
+HEADERS = {"User-Agent": USER_AGENT}
 
 class RetryingClient:
     """A pooled httpx.AsyncClient that retries transient failures.
@@ -22,7 +26,7 @@ class RetryingClient:
     def __init__(
         self,
         headers: dict[str, str],
-        max_retries: int = 2,
+        max_retries: int = HTTP_MAX_RETRIES,
         retry_statuses: frozenset[int] = frozenset({429, 502, 503, 504}),
     ) -> None:
         self._headers = headers
@@ -57,7 +61,7 @@ class RetryingClient:
 _CLIENT = RetryingClient(HEADERS)
 
 
-async def http_get(url: str, params: dict | None = None, timeout: float = 10.0) -> dict:
+async def http_get(url: str, params: dict | None = None, timeout: float = HTTP_TIMEOUT) -> dict:
     """GET JSON via the shared retrying client."""
     resp = await _CLIENT.request(url, params, timeout)
     return resp.json()

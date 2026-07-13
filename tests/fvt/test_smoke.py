@@ -1,11 +1,12 @@
-"""Function-verification smoke tests — exercises every MCP tool over SSE.
+"""Function-verification smoke tests — exercises every MCP tool against a live endpoint.
 
-Replaces the manual scripts/smoke_test_tools.py runner. Requires a running rs-mcp-server
-on localhost:8000; if absent, the entire suite skips with a clear message.
+Replaces the manual scripts/smoke_test_tools.py runner. Requires a live MCP endpoint — by default
+the container on localhost:8000, or the open-vMCP gateway when the FVT_* variables point there (see
+_fvt_fixtures). If nothing answers, the entire suite skips with a clear message.
 """
 import pytest
 
-from tests.fvt._fvt_fixtures import CASE_IDS, CASES, EXPECTED_TOOLS
+from tests.fvt._fvt_fixtures import CASE_PARAMS, EXPECTED_TOOLS
 
 pytestmark = pytest.mark.fvt
 
@@ -18,7 +19,7 @@ async def test_server_registers_expected_tools(mcp_session):
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize(("tool", "args", "expected_substrings"), CASES, ids=CASE_IDS)
+@pytest.mark.parametrize(("tool", "args", "expected_substrings"), CASE_PARAMS)
 async def test_tool_invocation(mcp_session, tool, args, expected_substrings):
     result = await mcp_session.call_tool(tool, args)
     text = "\n".join(c.text for c in result.content if getattr(c, "type", None) == "text")

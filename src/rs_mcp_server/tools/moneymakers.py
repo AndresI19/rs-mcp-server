@@ -204,7 +204,11 @@ def _parse_master_html(html_text: str, game: str) -> list[dict]:
         method_cell = cells[method_idx]
         if method_cell["link"] is not None:
             name, href = method_cell["link"]
-            url = WIKI_BASE_URLS[game].rstrip("/w/") + href if href.startswith("/") else href
+            # removesuffix, not rstrip: rstrip takes a CHARACTER SET, so "/w/" strips any trailing
+            # run of '/' and 'w'. It yields the right origin here only because the wiki hostnames
+            # happen to end in 'i' — one ending in 'w' would be silently truncated.
+            origin = WIKI_BASE_URLS[game].removesuffix("/w/")
+            url = origin + href if href.startswith("/") else href
         else:
             name, url = method_cell["text"], ""
         if not name:

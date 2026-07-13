@@ -290,71 +290,43 @@ _CLUE_COL, _ANSWER_COL, _LOCATION_COL = 0, 1, 2
 _CHALLENGE_NPC, _CHALLENGE_QUESTION, _CHALLENGE_ANSWER = 0, 1, 2
 
 
-def _row_anagram(cells: list[dict], tier: str) -> dict | None:
-    clue = _ANAGRAM_PREFIX.sub("", cells[_CLUE_COL]["text"]).strip()
-    solution = cells[_ANSWER_COL]["text"] if len(cells) > _ANSWER_COL else ""
-    location = cells[_LOCATION_COL]["text"] if len(cells) > _LOCATION_COL else ""
-    if not clue:
-        return None
-    return {
-        "format": "anagram",
-        "tier": tier,
-        "clue_text": clue,
-        "clue_text_lower": clue.lower(),
-        "solution": solution,
-        "location": location,
-    }
+# Every clue format except "challenge" is the SAME three-column row — clue | answer | location — and
+# differs only in what the answer is called, which field of the answer cell holds it, and (for
+# anagrams alone) a preamble to strip off the clue. Stating those three differences as data means a
+# new clue format is one line here, rather than a seventh near-copy of the same fifteen lines.
+#
+#   format → (key the answer is published under, cell field to read, prefix to strip from the clue)
+_STANDARD_ROWS: dict[str, tuple[str, str, re.Pattern[str] | None]] = {
+    "anagram": ("solution", "text", _ANAGRAM_PREFIX),
+    "cryptic": ("solution", "text", None),
+    "emote":   ("items",    "items", None),
+    "cipher":  ("decoded",  "text", None),
+    # RS3 "simple" clues share the cryptic shape exactly.
+    "simple":  ("solution", "text", None),
+}
 
 
-def _row_cryptic(cells: list[dict], tier: str) -> dict | None:
+def _row_standard(cells: list[dict], tier: str, fmt: str) -> dict | None:
+    answer_key, answer_field, strip_prefix = _STANDARD_ROWS[fmt]
+
     clue = cells[_CLUE_COL]["text"]
-    solution = cells[_ANSWER_COL]["text"] if len(cells) > _ANSWER_COL else ""
-    location = cells[_LOCATION_COL]["text"] if len(cells) > _LOCATION_COL else ""
+    if strip_prefix is not None:
+        clue = strip_prefix.sub("", clue).strip()
     if not clue:
         return None
+
     return {
-        "format": "cryptic",
+        "format": fmt,
         "tier": tier,
         "clue_text": clue,
         "clue_text_lower": clue.lower(),
-        "solution": solution,
-        "location": location,
-    }
-
-
-def _row_emote(cells: list[dict], tier: str) -> dict | None:
-    clue = cells[_CLUE_COL]["text"]
-    items = cells[_ANSWER_COL]["items"] if len(cells) > _ANSWER_COL else ""
-    location = cells[_LOCATION_COL]["text"] if len(cells) > _LOCATION_COL else ""
-    if not clue:
-        return None
-    return {
-        "format": "emote",
-        "tier": tier,
-        "clue_text": clue,
-        "clue_text_lower": clue.lower(),
-        "items": items,
-        "location": location,
-    }
-
-
-def _row_cipher(cells: list[dict], tier: str) -> dict | None:
-    cipher = cells[_CLUE_COL]["text"]
-    decoded = cells[_ANSWER_COL]["text"] if len(cells) > _ANSWER_COL else ""
-    location = cells[_LOCATION_COL]["text"] if len(cells) > _LOCATION_COL else ""
-    if not cipher:
-        return None
-    return {
-        "format": "cipher",
-        "tier": tier,
-        "clue_text": cipher,
-        "clue_text_lower": cipher.lower(),
-        "decoded": decoded,
-        "location": location,
+        answer_key: cells[_ANSWER_COL][answer_field] if len(cells) > _ANSWER_COL else "",
+        "location": cells[_LOCATION_COL]["text"] if len(cells) > _LOCATION_COL else "",
     }
 
 
 def _row_challenge(cells: list[dict], tier: str) -> dict | None:
+    """Challenge scrolls are the one format with a different layout: NPC | question | answer."""
     question = cells[_CHALLENGE_QUESTION]["text"] if len(cells) > _CHALLENGE_QUESTION else ""
     answer = cells[_CHALLENGE_ANSWER]["text"] if len(cells) > _CHALLENGE_ANSWER else ""
     npc = cells[_CHALLENGE_NPC]["text"]
@@ -370,36 +342,12 @@ def _row_challenge(cells: list[dict], tier: str) -> dict | None:
     }
 
 
-def _row_simple(cells: list[dict], tier: str) -> dict | None:
-    # RS3 "simple" clues share the cryptic shape: clue | solution | location.
-    clue = cells[_CLUE_COL]["text"]
-    solution = cells[_ANSWER_COL]["text"] if len(cells) > _ANSWER_COL else ""
-    location = cells[_LOCATION_COL]["text"] if len(cells) > _LOCATION_COL else ""
-    if not clue:
-        return None
-    return {
-        "format": "simple",
-        "tier": tier,
-        "clue_text": clue,
-        "clue_text_lower": clue.lower(),
-        "solution": solution,
-        "location": location,
-    }
-
-
-_ROW_BUILDERS = {
-    "anagram": _row_anagram,
-    "cryptic": _row_cryptic,
-    "emote":   _row_emote,
-    "cipher":  _row_cipher,
-    "challenge": _row_challenge,
-    "simple":  _row_simple,
-}
-
-
 def _row_to_entry(cells: list[dict], fmt: str, tier: str) -> dict | None:
-    builder = _ROW_BUILDERS.get(fmt)
-    return builder(cells, tier) if builder else None
+    if fmt == "challenge":
+        return _row_challenge(cells, tier)
+    if fmt in _STANDARD_ROWS:
+        return _row_standard(cells, tier, fmt)
+    return None
 
 
 def _clean_alt(s: str) -> str:

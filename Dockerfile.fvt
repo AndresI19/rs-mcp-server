@@ -1,0 +1,24 @@
+# The FVT traffic runner: the test suite, packaged to run on a loop against the open-vMCP gateway.
+#
+# Deliberately NOT the production image. That one is a hardened, minimal UBI9 runtime with no test
+# deps and no pytest — adding them to ship a demo traffic generator would widen the attack surface
+# of the thing that actually serves MCP. This is a separate, throwaway image with a separate job.
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# curl is the gateway's readiness probe in fvt_traffic.sh; bash is already present in debian-slim.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install deps against the package metadata first, so a change to a test case does not re-resolve
+# the dependency tree.
+COPY pyproject.toml README.md ./
+COPY src ./src
+RUN pip install --no-cache-dir -e ".[test]"
+
+COPY tests ./tests
+COPY scripts/fvt_traffic.sh ./scripts/fvt_traffic.sh
+
+CMD ["bash", "scripts/fvt_traffic.sh"]

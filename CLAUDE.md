@@ -27,6 +27,28 @@ TLS is opt-in via a mounted cert directory — a preflight step in the container
 
 Run with TLS locally: `TLS_CERTS_DIR=/path/to/certs make start` (mounts the dir read-only at `/etc/tls_certs` and polls health over https). The same port `8000` carries HTTP or HTTPS — there is no second port. `make dev` (local venv, no container) is always plain HTTP, since the TLS preflight lives in the container entrypoint. Full rationale in the wiki [Security › Transport security (TLS)](https://github.com/AndresI19/rs-mcp-server/wiki/Security#transport-security-tls).
 
+## Configuration
+
+Every variable is optional — the server runs with an empty environment — and all of them are
+resolved and validated once, on import, in `src/rs_mcp_server/config.py`. A value that is *set and
+wrong* fails at boot naming the variable, instead of surfacing later as a confusing timeout or a 404
+from an endpoint nobody realised was hardcoded.
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `MCP_HOST` | `127.0.0.1` | Listen address. The container sets `0.0.0.0` explicitly — a dev server that binds every interface the moment you run it is a surprise, not a convenience. |
+| `MCP_PORT` | `8000` | Listen port. |
+| `HTTP_TIMEOUT` | `10.0` | Per-request timeout, seconds, for outbound calls to the wikis/APIs. |
+| `HTTP_MAX_RETRIES` | `2` | Retries for transient upstream failures (429/502/503/504). `0` disables. |
+| `USER_AGENT` | `RS-MCP-Server/<version>` | The wikis ask that tools identify themselves. Override to add a contact: `RS-MCP-Server/1.2 (+https://example.com/contact)`. |
+| `RS3_WIKI_API` / `OSRS_WIKI_API` | the two `api.php` endpoints | MediaWiki API per game. |
+| `RS3_WIKI_BASE` / `OSRS_WIKI_BASE` | the two `/w/` prefixes | Used to build the article links in tool output. |
+| `OSRS_PRICES_BASE` | `https://prices.runescape.wiki/api/v1/osrs` | Live GE price API. |
+| `RS3_HISCORES_URL` / `OSRS_HISCORES_URL` | the two `index_lite.json` endpoints | Hiscores. Separate variables, not a shared base — they are different products behind different `m=` paths. |
+
+The upstream endpoints are overridable so the server can be pointed at a mirror, a caching proxy, or
+a fixture host without editing source.
+
 ## Endpoints
 
 | Path | Purpose |

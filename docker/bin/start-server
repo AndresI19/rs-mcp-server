@@ -6,6 +6,9 @@ set -euo pipefail
 
 PIDFILE="${PIDFILE:-/tmp/uvicorn.pid}"
 LOGFILE="${LOGFILE:-/tmp/uvicorn.log}"
+# Defaults mirror the image's ENV (see Dockerfile) — the image is what declares that a CONTAINER
+# binds every interface, so any process in it, not just uvicorn's parent shell, resolves the same
+# address through rs_mcp_server.config.
 MCP_HOST="${MCP_HOST:-0.0.0.0}"
 MCP_PORT="${MCP_PORT:-8000}"
 GRACE_SECONDS="${GRACE_SECONDS:-10}"

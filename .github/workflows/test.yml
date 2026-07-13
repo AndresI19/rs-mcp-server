@@ -40,8 +40,54 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[test]"
 
+      # tests/unit only. Pointing this at tests/ would sweep in tests/fvt, which has no server to
+      # talk to here and would skip silently — reporting green for tests that never ran. The FVT
+      # gets its own job below, with a real container in front of it.
       - name: Run unit tests
-        run: pytest tests/ -v
+        run: pytest tests/unit -v
+
+  # Function-verification against the actual built image: start the container, then drive every
+  # tool through it over SSE. This is the no-gateway target — FVT_* is left at its defaults, so
+  # the suite talks straight to localhost:8000. (The vMCP-fronted target is exercised by the
+  # traffic runner in the compose stack, not here; CI has no gateway or database.)
+  fvt-container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package + test extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test]"
+
+      - name: Build image
+        run: docker build --pull -t rs-mcp-server:fvt .
+
+      - name: Start container
+        run: |
+          docker run -d --name rs-mcp-server -p 8000:8000 rs-mcp-server:fvt
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/health >/dev/null; then
+              echo "server healthy after ${i}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "server never became healthy"; docker logs rs-mcp-server; exit 1
+
+      - name: Run FVT against the container
+        run: pytest tests/fvt -v -m fvt
+
+      - name: Server logs (on failure)
+        if: failure()
+        run: docker logs rs-mcp-server
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f rs-mcp-server
 
   image-scan:
     runs-on: ubuntu-latest

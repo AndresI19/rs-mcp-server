@@ -48,57 +48,61 @@ async def get_quest_info(quest_name: str, game: str = "rs3") -> str:
 
     wiki_label = WIKI_LABELS[game]
 
+    # Resolve via the first strategy that lands — the same chain achievements.py, equipment.py and
+    # moneymakers.py already use. Previously this was the cascade written out inline, which meant
+    # _cache_and_return(...) appeared at six separate exit points and the shape of the search was
+    # buried in the plumbing.
+    result = (
+        await _from_direct(quest_name, game, wiki_label)
+        or await _from_roman_variants(quest_name, game, wiki_label)
+        or await _from_search(quest_name, game, wiki_label)
+    )
+    if result is None:
+        return f"No quest found for '{quest_name}' on the {wiki_label} wiki."
+    return _cache_and_return(result, cache_key)
+
+
+def _format_page(page: dict, wiki_label: str) -> str:
+    return _format_from_content(page["title"], page["url"], wiki_label, page["content"])
+
+
+async def _from_direct(quest_name: str, game: str, wiki_label: str) -> str | None:
+    """Direct page lookup: format an exact hit, disambiguate a near-title, or — when the page exists
+    but is not a quest (a music track or NPC sharing the name) — retry the '(quest)' suffix."""
     direct = await _fetch_page(quest_name, game, follow_redirects=True)
-    if direct and _has_quest_template(direct["content"]):
+    if direct is None:
+        return None
+
+    if _has_quest_template(direct["content"]):
         if _titles_match(quest_name, direct["title"]):
-            return _cache_and_return(
-                _format_from_content(direct["title"], direct["url"], wiki_label, direct["content"]),
-                cache_key,
-            )
-        return _cache_and_return(
-            _disambiguate(direct["title"], direct["url"], wiki_label),
-            cache_key,
-        )
+            return _format_page(direct, wiki_label)
+        return _disambiguate(direct["title"], direct["url"], wiki_label)
 
-    # Page exists but is the wrong type — try disambig suffix(es).
-    if direct is not None:
-        for suffix in ("quest",):
-            suffixed = await _fetch_page(f"{quest_name} ({suffix})", game, follow_redirects=True)
-            if suffixed and _has_quest_template(suffixed["content"]):
-                return _cache_and_return(
-                    _format_from_content(suffixed["title"], suffixed["url"], wiki_label, suffixed["content"]),
-                    cache_key,
-                )
+    for suffix in ("quest",):
+        suffixed = await _fetch_page(f"{quest_name} ({suffix})", game, follow_redirects=True)
+        if suffixed and _has_quest_template(suffixed["content"]):
+            return _format_page(suffixed, wiki_label)
+    return None
 
-    # Roman-numeral variant enumeration (#78).
+
+async def _from_roman_variants(quest_name: str, game: str, wiki_label: str) -> str | None:
+    """Roman-numeral variant enumeration (#78): one variant formats, several disambiguate."""
     variants = await _enumerate_roman_variants(quest_name, game)
     if len(variants) == 1:
-        v = variants[0]
-        return _cache_and_return(
-            _format_from_content(v["title"], v["url"], wiki_label, v["content"]),
-            cache_key,
-        )
+        return _format_page(variants[0], wiki_label)
     if len(variants) >= 2:
-        return _cache_and_return(
-            render_variants(variants, wiki_label, quest_name, "get_quest_info"),
-            cache_key,
-        )
+        return render_variants(variants, wiki_label, quest_name, "get_quest_info")
+    return None
 
+
+async def _from_search(quest_name: str, game: str, wiki_label: str) -> str | None:
     candidate = await _search_quest(quest_name, game)
     if candidate is None:
-        return f"No quest found for '{quest_name}' on the {wiki_label} wiki."
-
+        return None
     if not _titles_match(quest_name, candidate["title"]):
-        return _cache_and_return(
-            _disambiguate(candidate["title"], candidate["url"], wiki_label),
-            cache_key,
-        )
-
+        return _disambiguate(candidate["title"], candidate["url"], wiki_label)
     # _search_quest guarantees candidate["content"] contains a quest template.
-    return _cache_and_return(
-        _format_from_content(candidate["title"], candidate["url"], wiki_label, candidate["content"]),
-        cache_key,
-    )
+    return _format_page(candidate, wiki_label)
 
 
 def _disambiguate(title: str, url: str, wiki_label: str) -> str:

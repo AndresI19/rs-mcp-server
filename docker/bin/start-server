@@ -92,19 +92,32 @@ cmd_start() {
         # It runs in this shell so SSL_ARGS/TLS_SCHEME persist; its output goes to the
         # container console (so the decision is visible via `docker logs`).
         resolve_tls
-        # uvicorn's stdout+stderr are piped through rotatelogs, which both (a) echoes
-        # every line to the console (-e) so `docker logs` works, and (b) writes a
-        # size-rotated file at ${LOGFILE} on the persistent volume (-n keeps the current
-        # log at that stable path plus ${LOG_BACKUPS} older generations). uvicorn is
-        # backgrounded directly so $! is its PID for the stop/restart logic; rotatelogs
-        # inherits the console fd and keeps feeding it after PID 1 execs tail below.
-        /opt/venv/bin/python -m uvicorn rs_mcp_server.server:web \
-            --host "${MCP_HOST}" \
-            --port "${MCP_PORT}" \
-            "${SSL_ARGS[@]}" \
-            > >(exec /usr/sbin/rotatelogs -e -n "${LOG_BACKUPS}" "${LOGFILE}" "${LOG_MAX_SIZE}") 2>&1 &
+        # uvicorn's stdout+stderr go through rotatelogs WHEN IT IS AVAILABLE: -e echoes every line to
+        # the console (so `docker logs` works) and it also writes a size-rotated file at ${LOGFILE}
+        # (${LOG_BACKUPS} generations at that stable path). But the hardened UBI9 runtime does not ship
+        # httpd-tools, so rotatelogs is absent — and piping UNCONDITIONALLY into a missing
+        # /usr/sbin/rotatelogs sent every uvicorn line into a broken pipe: the logs were lost, and a
+        # write could wedge on BrokenPipeError. So when rotatelogs is not present, fall back to the
+        # container console directly, which docker and Kubernetes collect natively (a rotated file on
+        # an ephemeral emptyDir would buy nothing there anyway). uvicorn is backgrounded so $! is its
+        # PID for the stop/restart logic, and it holds the console fd itself, so it keeps logging after
+        # PID 1 execs tail below.
+        if [[ -x /usr/sbin/rotatelogs ]]; then
+            /opt/venv/bin/python -m uvicorn rs_mcp_server.server:web \
+                --host "${MCP_HOST}" \
+                --port "${MCP_PORT}" \
+                "${SSL_ARGS[@]}" \
+                > >(exec /usr/sbin/rotatelogs -e -n "${LOG_BACKUPS}" "${LOGFILE}" "${LOG_MAX_SIZE}") 2>&1 &
+            LOG_NOTE="docker logs + ${LOGFILE}"
+        else
+            /opt/venv/bin/python -m uvicorn rs_mcp_server.server:web \
+                --host "${MCP_HOST}" \
+                --port "${MCP_PORT}" \
+                "${SSL_ARGS[@]}" &
+            LOG_NOTE="docker logs (rotatelogs not installed — no file rotation)"
+        fi
         echo "$!" >"${PIDFILE}"
-        echo "start: PID $(cat "${PIDFILE}") on ${TLS_SCHEME}://${MCP_HOST}:${MCP_PORT} (logs: docker logs + ${LOGFILE})"
+        echo "start: PID $(cat "${PIDFILE}") on ${TLS_SCHEME}://${MCP_HOST}:${MCP_PORT} (logs: ${LOG_NOTE})"
     fi
 
     # When invoked as PID 1 (container ENTRYPOINT), keep this script alive so the

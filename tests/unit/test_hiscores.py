@@ -1,4 +1,5 @@
 """Unit tests for tools/hiscores.py (issues #18, #28, #59)."""
+
 import httpx
 import pytest
 
@@ -19,13 +20,16 @@ def _activity(name: str, rank: int = -1, score: int = -1) -> dict:
 
 # ── _format_stats ─────────────────────────────────────────────────────────────
 
+
 class TestFormatStats:
     def test_basic_osrs(self):
-        data = _data([
-            _skill("Overall", rank=100, level=2277, xp=200_000_000),
-            _skill("Attack",  rank=10),
-            _skill("Defence", rank=20),
-        ])
+        data = _data(
+            [
+                _skill("Overall", rank=100, level=2277, xp=200_000_000),
+                _skill("Attack", rank=10),
+                _skill("Defence", rank=20),
+            ]
+        )
         result = _format_stats("Lynx Titan", "osrs", data)
         assert "**Lynx Titan** (OSRS Hiscores)" in result
         assert "Total level: 2,277" in result
@@ -43,11 +47,13 @@ class TestFormatStats:
         assert "Total level: 3,000" in result
 
     def test_sailing_renders_when_present(self):
-        data = _data([
-            _skill("Overall", rank=1, level=2278, xp=4_600_000_000),
-            _skill("Attack"),
-            _skill("Sailing", rank=-1, level=1, xp=0),
-        ])
+        data = _data(
+            [
+                _skill("Overall", rank=1, level=2278, xp=4_600_000_000),
+                _skill("Attack"),
+                _skill("Sailing", rank=-1, level=1, xp=0),
+            ]
+        )
         result = _format_stats("Lynx Titan", "osrs", data)
         assert "Sailing" in result
         assert "unranked" in result  # Sailing at rank=-1 renders the unranked marker
@@ -73,7 +79,7 @@ class TestFormatStats:
             skills=[_skill("Overall", rank=1, level=2277)],
             activities=[
                 _activity("Clue Scrolls (all)", rank=-1, score=-1),
-                _activity("League Points",      rank=-1, score=-1),
+                _activity("League Points", rank=-1, score=-1),
             ],
         )
         result = _format_stats("Test", "osrs", data)
@@ -93,6 +99,7 @@ class TestFormatStats:
 
 # ── _fmt_rank ─────────────────────────────────────────────────────────────────
 
+
 class TestFmtRank:
     def test_positive_rank_with_comma(self):
         assert _fmt_rank(1234) == "1,234"
@@ -108,15 +115,18 @@ class TestFmtRank:
 
 # ── get_player_stats end-to-end ───────────────────────────────────────────────
 
+
 class TestGetPlayerStats:
     @pytest.mark.anyio
     async def test_osrs_happy(self, monkeypatch):
         async def fake_http_get(url, params=None, timeout=10.0):
-            return _data([
-                _skill("Overall", rank=100, level=2277, xp=200_000_000),
-                _skill("Attack",  rank=10),
-                _skill("Defence", rank=20),
-            ])
+            return _data(
+                [
+                    _skill("Overall", rank=100, level=2277, xp=200_000_000),
+                    _skill("Attack", rank=10),
+                    _skill("Defence", rank=20),
+                ]
+            )
 
         monkeypatch.setattr("rs_mcp_server.tools.hiscores.http_get", fake_http_get)
         result = await get_player_stats("Lynx Titan", "osrs")

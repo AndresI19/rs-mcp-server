@@ -1,4 +1,5 @@
 """End-to-end tests for the search_wiki MCP tool (issues #28, #79)."""
+
 import pytest
 
 from rs_mcp_server import cache as _cache_mod
@@ -72,8 +73,8 @@ class TestSearchWiki:
         html_body = (
             '<div class="mw-parser-output">'
             '<h2><span id="Set_bonus">Set bonus</span></h2>'
-            '<p>Wearing the full set grants a 12% damage reduction against demons.</p>'
-            '</div>'
+            "<p>Wearing the full set grants a 12% damage reduction against demons.</p>"
+            "</div>"
         )
 
         async def fake_http_get(url, params=None, timeout=10.0):

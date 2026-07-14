@@ -5,6 +5,7 @@ again (e.g. a flood of unique player/item lookups), so the store is also capped
 at ``_MAX_ENTRIES``: on overflow the least-recently-used entry is evicted. Reads
 and writes mark an entry as most-recently-used.
 """
+
 import logging
 import time
 from collections import OrderedDict

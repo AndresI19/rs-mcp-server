@@ -4,6 +4,7 @@ instrument() is the single seam every tool passes through, so it is where the
 recurring "unhandled upstream HTTP error crashes the tool" class is closed — once,
 for all 14 tools — while genuine programming bugs still surface for fixing.
 """
+
 import httpx
 import pytest
 

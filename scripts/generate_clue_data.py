@@ -12,6 +12,7 @@ spot lives in a map image, so each entry resolves to the degrees/shorthand, the
 requirements, whether the spot is guarded, and a deep link to the wiki section (whose
 map shows precisely where to dig).
 """
+
 import json
 import re
 from datetime import date
@@ -39,6 +40,8 @@ _PAGE = "Treasure Trails/Guide/Coordinates"
 
 def _tier_of(game: str, anchor: str) -> str:
     return _TIER_BY_PREFIX.get(anchor[0], "") if game == "osrs" else anchor.split("-", 1)[0]
+
+
 _OUT = Path(__file__).resolve().parent.parent / "src/rs_mcp_server/resources/clues"
 
 
@@ -86,8 +89,13 @@ class _FirstDataRow(HTMLParser):
 def _fetch(base: str) -> str:
     r = httpx.get(
         f"{base}/api.php",
-        params={"action": "parse", "page": _PAGE, "prop": "text",
-                "format": "json", "formatversion": 2},
+        params={
+            "action": "parse",
+            "page": _PAGE,
+            "prop": "text",
+            "format": "json",
+            "formatversion": 2,
+        },
         headers={"User-Agent": "rs-mcp-clue-gen/1.0"},
         timeout=30,
     )
@@ -96,7 +104,7 @@ def _fetch(base: str) -> str:
 
 
 def _first_table(chunk: str) -> str | None:
-    m = re.search(r'<table[^>]*\bwikitable\b.*?</table>', chunk, re.S)
+    m = re.search(r"<table[^>]*\bwikitable\b.*?</table>", chunk, re.S)
     return m.group(0) if m else None
 
 

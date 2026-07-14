@@ -9,6 +9,7 @@ timeout, or identifying the client honestly to the wikis all meant editing sourc
 A value that IS set and is wrong fails here, at import, naming the variable — rather than surfacing
 later as a confusing timeout or a 404 from an endpoint nobody realised was hardcoded.
 """
+
 from __future__ import annotations
 
 import os
@@ -39,7 +40,9 @@ def _port(name: str, default: int) -> int:
     try:
         port = int(raw)
     except ValueError:
-        raise ConfigError(f"Invalid {name}={raw!r}: must be an integer between 1 and 65535") from None
+        raise ConfigError(
+            f"Invalid {name}={raw!r}: must be an integer between 1 and 65535"
+        ) from None
     if not 1 <= port <= 65535:
         raise ConfigError(f"Invalid {name}={raw!r}: must be an integer between 1 and 65535")
     return port

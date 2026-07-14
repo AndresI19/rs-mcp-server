@@ -6,6 +6,7 @@ the parsing behavior has a single source of truth; the tool modules import them
 under their existing private names so call sites are unchanged. (HTTP-fetching
 helpers stay in each module so the test suite can monkeypatch ``http_get`` locally.)
 """
+
 import html
 import re
 from collections.abc import Callable
@@ -35,17 +36,17 @@ def find_template(wikitext: str, name: str) -> str | None:
     i = match.end()
     depth = 2
     while i < len(wikitext) and depth > 0:
-        if wikitext[i:i + 2] == "{{":
+        if wikitext[i : i + 2] == "{{":
             depth += 2
             i += 2
-        elif wikitext[i:i + 2] == "}}":
+        elif wikitext[i : i + 2] == "}}":
             depth -= 2
             i += 2
         else:
             i += 1
     if depth != 0:
         return None
-    return wikitext[match.end():i - 2]
+    return wikitext[match.end() : i - 2]
 
 
 def parse_template_fields(body: str) -> dict[str, str]:
@@ -78,10 +79,10 @@ def _strip_templates(s: str) -> str:
     depth = 0
     i = 0
     while i < len(s):
-        if s[i:i + 2] == "{{":
+        if s[i : i + 2] == "{{":
             depth += 1
             i += 2
-        elif s[i:i + 2] == "}}" and depth > 0:
+        elif s[i : i + 2] == "}}" and depth > 0:
             depth -= 1
             i += 2
         else:
@@ -222,8 +223,11 @@ class TableScope:
     def open_table(self, attrs: dict) -> bool:
         """Register a <table> open; return True if it is the newly-entered target."""
         self.depth += 1
-        if (not self.in_target and not self._done
-                and self._is_target((attrs.get("class") or "").split())):
+        if (
+            not self.in_target
+            and not self._done
+            and self._is_target((attrs.get("class") or "").split())
+        ):
             self.in_target = True
             self._target_depth = self.depth
             return True

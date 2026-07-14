@@ -1,4 +1,5 @@
 """Common in-game ↔ wiki name aliases, applied when direct title lookups miss."""
+
 import re
 
 # (in-game keyword, wiki keyword) — case-insensitive whole-word substitution.

@@ -30,6 +30,7 @@ Daily volume sources:
 - OSRS — prices.runescape.wiki /1h projected to a day.
 - RS3  — Trade volume column on the Alchemiser mk. II wiki page.
 """
+
 from html.parser import HTMLParser
 
 from rs_mcp_server import cache
@@ -44,11 +45,11 @@ _NATURE_RUNE_ID_OSRS = 561
 _RS3_PAGE = "Money_making_guide/Operating_the_Alchemiser_mk._II"
 
 # Categorization thresholds (chosen with the user — see issue #42 thread).
-_EASY_BUY_LIMIT_MIN = 100   # easy only: buy_limit must be > this (bulk-flood-friendly)
-_EASY_VOLUME_MIN = 13_000   # > → easy buy
-_SLOW_VOLUME_MAX = 8_000    # slow upper bound
-_SLOW_VOLUME_MIN = 5_000    # slow lower bound — anything thinner can't be sourced reliably
-_MIRAGE_ROI_MAX = 20.0      # slow only: ROI% > this is treated as likely mispricing → excluded
+_EASY_BUY_LIMIT_MIN = 100  # easy only: buy_limit must be > this (bulk-flood-friendly)
+_EASY_VOLUME_MIN = 13_000  # > → easy buy
+_SLOW_VOLUME_MAX = 8_000  # slow upper bound
+_SLOW_VOLUME_MIN = 5_000  # slow lower bound — anything thinner can't be sourced reliably
+_MIRAGE_ROI_MAX = 20.0  # slow only: ROI% > this is treated as likely mispricing → excluded
 
 # Output sizes (per category).
 _EASY_TOP_N = 3
@@ -103,10 +104,7 @@ def _categorize(item: dict) -> tuple[bool, bool]:
     volume = item.get("volume", 0)
     roi = item.get("roi", 0.0)
     is_easy = volume > _EASY_VOLUME_MIN and buy_limit > _EASY_BUY_LIMIT_MIN
-    is_slow = (
-        _SLOW_VOLUME_MIN < volume < _SLOW_VOLUME_MAX
-        and roi <= _MIRAGE_ROI_MAX
-    )
+    is_slow = _SLOW_VOLUME_MIN < volume < _SLOW_VOLUME_MAX and roi <= _MIRAGE_ROI_MAX
     return is_easy, is_slow
 
 
@@ -136,6 +134,7 @@ def _category_tag(r: dict) -> str:
 # ---------------------------------------------------------------------------
 # OSRS — prices.runescape.wiki: mapping + bulk /latest + bulk /1h volumes
 # ---------------------------------------------------------------------------
+
 
 async def _osrs_latest_bulk() -> dict:
     cached = cache.get("osrs:latest:bulk")
@@ -193,20 +192,22 @@ async def _build_osrs_rows(members_only: bool) -> tuple[list[dict] | None, int |
         daily_volume = hourly_volume * 24
         roi = (profit / buy) * 100 if buy else 0.0
 
-        rows.append({
-            "name": item.get("name", "?"),
-            "buy": buy,
-            "highalch": highalch,
-            "profit": profit,
-            "volume": daily_volume,
-            "buy_limit": item.get("limit") or 0,
-            "roi": roi,
-            "members": bool(item.get("members")),
-            # OSRS has no Alchemiser; max_daily is meaningless here. Leave 0
-            # so the passive-on-OSRS fallback (which uses manual rendering)
-            # never surfaces it.
-            "max_daily": 0,
-        })
+        rows.append(
+            {
+                "name": item.get("name", "?"),
+                "buy": buy,
+                "highalch": highalch,
+                "profit": profit,
+                "volume": daily_volume,
+                "buy_limit": item.get("limit") or 0,
+                "roi": roi,
+                "members": bool(item.get("members")),
+                # OSRS has no Alchemiser; max_daily is meaningless here. Leave 0
+                # so the passive-on-OSRS fallback (which uses manual rendering)
+                # never surfaces it.
+                "max_daily": 0,
+            }
+        )
 
     return rows, nature_price
 
@@ -248,6 +249,7 @@ def _osrs_title(members_only: bool) -> str:
 # ---------------------------------------------------------------------------
 # RS3 — Alchemiser mk. II Money Making Guide page (table[1])
 # ---------------------------------------------------------------------------
+
 
 async def _fetch_rs3_alchemiser_rows() -> list[dict] | None:
     cached = cache.get("rs3:alchemiser:table")
@@ -381,7 +383,16 @@ def _parse_rs3_table(html_text: str) -> list[dict] | None:
         return None
 
     headers = target["headers"]
-    canonicals = ("item", "ge price", "high alch", "profit", "roi%", "limit", "trade volume", "max daily profit")
+    canonicals = (
+        "item",
+        "ge price",
+        "high alch",
+        "profit",
+        "roi%",
+        "limit",
+        "trade volume",
+        "max daily profit",
+    )
     col_index: dict[str, int] = {}
     for i, h in enumerate(headers):
         for canonical in canonicals:
@@ -419,17 +430,19 @@ def _parse_rs3_table(html_text: str) -> list[dict] | None:
         if volume is None or max_daily is None or high_alch is None:
             continue
 
-        rows.append({
-            "name": name,
-            "buy": ge_price or 0,           # alias used by the renderer
-            "ge_price": ge_price or 0,
-            "highalch": high_alch,
-            "profit": profit,
-            "roi": roi or 0.0,
-            "buy_limit": buy_limit or 0,
-            "volume": volume,
-            "max_daily": max_daily,
-        })
+        rows.append(
+            {
+                "name": name,
+                "buy": ge_price or 0,  # alias used by the renderer
+                "ge_price": ge_price or 0,
+                "highalch": high_alch,
+                "profit": profit,
+                "roi": roi or 0.0,
+                "buy_limit": buy_limit or 0,
+                "volume": volume,
+                "max_daily": max_daily,
+            }
+        )
 
     return rows
 
@@ -474,8 +487,17 @@ async def _get_best_alchables_rs3(mode: str) -> str:
 # Renderers
 # ---------------------------------------------------------------------------
 
-_PASSIVE_COLUMNS = ["#", "Item", "GE Price", "High Alch", "Profit/cast",
-                    "Max daily profit", "Volume", "Limit", "ROI%"]
+_PASSIVE_COLUMNS = [
+    "#",
+    "Item",
+    "GE Price",
+    "High Alch",
+    "Profit/cast",
+    "Max daily profit",
+    "Volume",
+    "Limit",
+    "ROI%",
+]
 
 
 def _render_alch_section(emoji: str, label: str, top_n: int, rows: list[dict]) -> list[str]:
@@ -485,9 +507,17 @@ def _render_alch_section(emoji: str, label: str, top_n: int, rows: list[dict]) -
         lines.append(f"_No items qualify as {label.lower()} buys right now._")
         return lines
     table_rows = [
-        [str(rank), r["name"], f"{r['ge_price']:,}", f"{r['highalch']:,}",
-         f"+{int(round(r['profit'])):,}", f"{r['max_daily']:,}",
-         f"{r['volume']:,}", f"{r['buy_limit']:,}", f"{r['roi']:.1f}%"]
+        [
+            str(rank),
+            r["name"],
+            f"{r['ge_price']:,}",
+            f"{r['highalch']:,}",
+            f"+{int(round(r['profit'])):,}",
+            f"{r['max_daily']:,}",
+            f"{r['volume']:,}",
+            f"{r['buy_limit']:,}",
+            f"{r['roi']:.1f}%",
+        ]
         for rank, r in enumerate(rows, start=1)
     ]
     lines += markdown_table(_PASSIVE_COLUMNS, table_rows)
@@ -501,6 +531,7 @@ def _render_passive_two_tables(easy: list[dict], slow: list[dict], page_url: str
     # Both tables: max_daily_profit primary, ROI tiebreaker.
     def sort_key(r):
         return (-r["max_daily"], -r["roi"])
+
     top_easy = sorted(easy, key=sort_key)[:_EASY_TOP_N]
     top_slow = sorted(slow, key=sort_key)[:_SLOW_TOP_N]
 
@@ -544,6 +575,7 @@ def _render_mixed(
 
     def sort_key(r):
         return (-r["profit"], -r["roi"])
+
     top_easy = sorted(easy_pool, key=sort_key)[:_EASY_TOP_N]
     top_slow = sorted(slow_pool, key=sort_key)[:_SLOW_TOP_N]
 
@@ -562,7 +594,17 @@ def _render_mixed(
         lines.append(footer)
         return "\n".join(lines)
 
-    header = ["#", "Item", columns[0], columns[1], "Profit/cast", "Volume", "Limit", "ROI%", "Category"]
+    header = [
+        "#",
+        "Item",
+        columns[0],
+        columns[1],
+        "Profit/cast",
+        "Volume",
+        "Limit",
+        "ROI%",
+        "Category",
+    ]
     if members_column:
         header.append("P2P")
     table_rows = []
@@ -585,5 +627,3 @@ def _render_mixed(
     lines.append("")
     lines.append(footer)
     return "\n".join(lines)
-
-

@@ -10,6 +10,7 @@ Coordinate and visual clue types (map, puzzle, compass, scan, hot/cold, …) are
 resolved from baked resources instead — see the coordinate resolver and visual-clue
 routing below.
 """
+
 import html
 import json
 import re
@@ -35,18 +36,18 @@ _PAGES = {
     "osrs": {
         "anagram": "Treasure Trails/Guide/Anagrams",
         "cryptic": "Treasure Trails/Guide/Cryptic clues",
-        "emote":   "Treasure Trails/Guide/Emote clues",
-        "cipher":  "Treasure Trails/Guide/Ciphers",
+        "emote": "Treasure Trails/Guide/Emote clues",
+        "cipher": "Treasure Trails/Guide/Ciphers",
         "challenge": "Treasure Trails/Guide/Challenge scrolls",
-        "simple":  None,  # OSRS has no separate simple-clue dataset
+        "simple": None,  # OSRS has no separate simple-clue dataset
     },
     "rs3": {
         "anagram": "Treasure Trails/Guide/Anagrams",
         "cryptic": "Treasure Trails/Guide/Cryptics",
-        "emote":   "Treasure Trails/Guide/Emotes",
-        "cipher":  None,  # RS3 doesn't have ciphers as a clue format
+        "emote": "Treasure Trails/Guide/Emotes",
+        "cipher": None,  # RS3 doesn't have ciphers as a clue format
         "challenge": "Treasure Trails/Guide/Challenge scrolls",
-        "simple":  "Treasure Trails/Guide/Simple clues",
+        "simple": "Treasure Trails/Guide/Simple clues",
     },
 }
 
@@ -103,8 +104,10 @@ async def solve_clue(
         if coord is not None:
             return coord
         if clue_format == "coordinate":
-            return (f"'{clue_text}' is not a recognizable coordinate. Expected e.g. "
-                    "'04 degrees 13 minutes south, 16 degrees 25 minutes east'.")
+            return (
+                f"'{clue_text}' is not a recognizable coordinate. Expected e.g. "
+                "'04 degrees 13 minutes south, 16 degrees 25 minutes east'."
+            )
 
     # 2) Live text formats (anagram / cryptic / emote / cipher / challenge).
     if clue_format is not None and clue_format != "coordinate":
@@ -144,6 +147,7 @@ async def solve_clue(
 # Loaders
 # ---------------------------------------------------------------------------
 
+
 async def _load_format(game: str, fmt: str) -> list[dict]:
     cache_key = f"clues:{game}:{fmt}"
     cached = cache.get(cache_key)
@@ -169,6 +173,7 @@ async def _load_format(game: str, fmt: str) -> list[dict]:
 # ---------------------------------------------------------------------------
 # HTML parser (one walker, format-aware row extraction)
 # ---------------------------------------------------------------------------
+
 
 def _parse_clue_html(html_text: str, fmt: str) -> list[dict]:
     """Walk h2/h3 headings + wikitable rows in document order into clue entries."""
@@ -299,10 +304,10 @@ _CHALLENGE_NPC, _CHALLENGE_QUESTION, _CHALLENGE_ANSWER = 0, 1, 2
 _STANDARD_ROWS: dict[str, tuple[str, str, re.Pattern[str] | None]] = {
     "anagram": ("solution", "text", _ANAGRAM_PREFIX),
     "cryptic": ("solution", "text", None),
-    "emote":   ("items",    "items", None),
-    "cipher":  ("decoded",  "text", None),
+    "emote": ("items", "items", None),
+    "cipher": ("decoded", "text", None),
     # RS3 "simple" clues share the cryptic shape exactly.
-    "simple":  ("solution", "text", None),
+    "simple": ("solution", "text", None),
 }
 
 
@@ -358,6 +363,7 @@ def _clean_alt(s: str) -> str:
 # Matching
 # ---------------------------------------------------------------------------
 
+
 def _match_clues(query: str, entries: list[dict]) -> tuple[str, object]:
     return match_by_name(query, entries, "clue_text_lower")
 
@@ -370,10 +376,10 @@ def _match_clues(query: str, entries: list[dict]) -> tuple[str, object]:
 _SOLUTION_FIELDS = {
     "anagram": (("Solution", "solution"), ("Location", "location")),
     "cryptic": (("Solution", "solution"), ("Location", "location")),
-    "emote":   (("Items required", "items"), ("Location", "location")),
-    "cipher":  (("Decoded", "decoded"), ("Location", "location")),
+    "emote": (("Items required", "items"), ("Location", "location")),
+    "cipher": (("Decoded", "decoded"), ("Location", "location")),
     "challenge": (("Answer", "answer"), ("Asked by", "npc")),
-    "simple":  (("Solution", "solution"), ("Location", "location")),
+    "simple": (("Solution", "solution"), ("Location", "location")),
 }
 
 
@@ -406,6 +412,7 @@ def _render_did_you_mean(candidates: list[dict], wiki_label: str) -> str:
 # Baked resources — coordinate datasets + visual-clue links (no network at runtime)
 # ---------------------------------------------------------------------------
 
+
 @lru_cache(maxsize=None)
 def _load_json_resource(name: str) -> dict:
     """Load and cache a committed JSON resource from rs_mcp_server/resources/clues/."""
@@ -423,8 +430,10 @@ def _resolve_coordinate(clue_text: str, game: str, wiki_label: str) -> str | Non
     entry = coords.get(key)
     if entry is None:
         guide = f"{WIKI_BASE_URLS[game]}Treasure_Trails/Guide/Coordinates"
-        return (f"Coordinate **{key}** is not in the {wiki_label} dataset "
-                f"(it may be a newer clue). Browse all coordinates: {guide}")
+        return (
+            f"Coordinate **{key}** is not in the {wiki_label} dataset "
+            f"(it may be a newer clue). Browse all coordinates: {guide}"
+        )
     return _render_coordinate(entry, wiki_label)
 
 
@@ -453,15 +462,15 @@ def _render_coordinate(entry: dict, wiki_label: str) -> str:
 # Order matters: specific named types are checked before the generic "puzzle" catch-all
 # so e.g. "lockbox" wins over "puzzle box" for a query mentioning both.
 _VISUAL_KEYWORDS = {
-    "light box":   ("light box", "lightbox"),
+    "light box": ("light box", "lightbox"),
     "celtic knot": ("celtic", "knot"),
-    "lockbox":     ("lockbox",),
-    "compass":     ("compass",),
-    "scan":        ("scan",),
-    "tower":       ("tower",),
-    "hot cold":    ("hot", "cold", "strange device"),
-    "map":         ("map",),
-    "puzzle box":  ("puzzle", "sliding"),
+    "lockbox": ("lockbox",),
+    "compass": ("compass",),
+    "scan": ("scan",),
+    "tower": ("tower",),
+    "hot cold": ("hot", "cold", "strange device"),
+    "map": ("map",),
+    "puzzle box": ("puzzle", "sliding"),
 }
 
 
@@ -481,7 +490,12 @@ def _render_visual(vtype: str, info: dict, wiki_label: str) -> str:
     # (e.g. compass — just follow the arrow). Those carry "in_game" and no guide link.
     if info.get("in_game"):
         return f"**{vtype.capitalize()} clue** — {info['blurb']}"
-    lines = [f"This looks like a **{vtype}** clue ({wiki_label} Wiki).", "", info["blurb"], info["guide_url"]]
+    lines = [
+        f"This looks like a **{vtype}** clue ({wiki_label} Wiki).",
+        "",
+        info["blurb"],
+        info["guide_url"],
+    ]
     if info.get("image_url"):
         lines.append(info["image_url"])
     return "\n".join(lines)

@@ -6,6 +6,7 @@ HTML via action=parse and walk the `item-drops` table with html.parser — a
 depth-tracking state machine, so nested tables (which a regex scan mis-splits at
 the first </table> or </tr>) are handled correctly.
 """
+
 import html
 from html.parser import HTMLParser
 
@@ -72,13 +73,14 @@ async def _fetch_page(item_name: str, game: str) -> dict | None:
         return None
     return {
         "title": parse.get("title", item_name),
-        "html":  parse.get("text", ""),
+        "html": parse.get("text", ""),
     }
 
 
 # ---------------------------------------------------------------------------
 # HTML parsing — extract data rows from the `item-drops` table
 # ---------------------------------------------------------------------------
+
 
 class _DropsTableParser(HTMLParser):
     """Collect data rows from the first `item-drops` table.
@@ -107,8 +109,15 @@ class _DropsTableParser(HTMLParser):
         if not self._scope.at_target_level():
             return  # outside the target table, or in a table nested in a cell
         if tag == "tr":
-            self._row = {"source": "", "version": "", "level": None, "quantity": "",
-                         "rarity": "", "_src_title": None, "_rarity_fraction": None}
+            self._row = {
+                "source": "",
+                "version": "",
+                "level": None,
+                "quantity": "",
+                "rarity": "",
+                "_src_title": None,
+                "_rarity_fraction": None,
+            }
             self._row_has_th = False
             self._cell = -1
         elif tag == "th":
@@ -121,9 +130,13 @@ class _DropsTableParser(HTMLParser):
             return
         elif self._cell == 0 and tag == "a" and self._row["_src_title"] is None:
             self._row["_src_title"] = ad.get("title")
-        elif self._cell == 0 and tag == "span" and "beast-version" in (ad.get("class") or "").split():
+        elif (
+            self._cell == 0 and tag == "span" and "beast-version" in (ad.get("class") or "").split()
+        ):
             self._capture_version = True
-        elif self._cell == 3 and "data-drop-fraction" in ad and self._row["_rarity_fraction"] is None:
+        elif (
+            self._cell == 3 and "data-drop-fraction" in ad and self._row["_rarity_fraction"] is None
+        ):
             self._row["_rarity_fraction"] = ad["data-drop-fraction"]
 
     def handle_data(self, data):
@@ -161,11 +174,11 @@ def _parse_drop_rows(html_text: str) -> list[dict]:
 def _finalize_row(row: dict) -> dict:
     source = html.unescape(row["_src_title"] or _collapse(row["source"])).strip()
     return {
-        "source":   source,
-        "version":  _collapse(row["version"]),
-        "level":    row["level"],
+        "source": source,
+        "version": _collapse(row["version"]),
+        "level": row["level"],
         "quantity": _collapse(row["quantity"]) or "?",
-        "rarity":   row["_rarity_fraction"] or _collapse(row["rarity"]) or "?",
+        "rarity": row["_rarity_fraction"] or _collapse(row["rarity"]) or "?",
     }
 
 
@@ -184,12 +197,14 @@ def _level_from_attrs(attrs: dict) -> str | None:
 
 def _format_output(item_name: str, page_url: str, wiki_label: str, rows: list[dict]) -> str:
     if not rows:
-        return (
-            f"No drop sources recorded for '{item_name}' on the {wiki_label} Wiki.\n"
-            f"{page_url}"
-        )
+        return f"No drop sources recorded for '{item_name}' on the {wiki_label} Wiki.\n{page_url}"
 
-    lines = [f"**Drop sources for {item_name}** ({wiki_label} Wiki)", page_url, "", "**Top sources:**"]
+    lines = [
+        f"**Drop sources for {item_name}** ({wiki_label} Wiki)",
+        page_url,
+        "",
+        "**Top sources:**",
+    ]
     shown = rows[:_TOP_N]
     for i, r in enumerate(shown, start=1):
         lines.append(f"  {i}. {_format_row(r)}")
@@ -198,7 +213,9 @@ def _format_output(item_name: str, page_url: str, wiki_label: str, rows: list[di
     if remaining > 0:
         plural = "source" if remaining == 1 else "sources"
         lines.append("")
-        lines.append(f"({remaining} more {plural} — common loot. Run `search_wiki` for the full list.)")
+        lines.append(
+            f"({remaining} more {plural} — common loot. Run `search_wiki` for the full list.)"
+        )
 
     return "\n".join(lines)
 

@@ -5,6 +5,7 @@ the rendered HTML body via action=parse so transcluded templates (set bonuses,
 passive effects, etc.) appear in results. Falls back to alias-substituted
 queries (gauntlets→melee gloves, helm→helmet) when the initial search misses.
 """
+
 from html.parser import HTMLParser
 
 import httpx

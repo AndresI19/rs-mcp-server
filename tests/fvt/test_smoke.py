@@ -4,6 +4,7 @@ Replaces the manual scripts/smoke_test_tools.py runner. Requires a live MCP endp
 the container on localhost:8000, or the open-vMCP gateway when the FVT_* variables point there (see
 _fvt_fixtures). If nothing answers, the entire suite skips with a clear message.
 """
+
 import pytest
 
 from tests.fvt._fvt_fixtures import CASE_PARAMS, EXPECTED_TOOLS

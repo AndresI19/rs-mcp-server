@@ -1,4 +1,5 @@
 """get_player_stats tool — Jagex Hiscores JSON API."""
+
 import re
 
 import httpx

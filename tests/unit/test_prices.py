@@ -1,4 +1,5 @@
 """End-to-end tests for the get_item_price MCP tool (issue #28, #41)."""
+
 import httpx
 import pytest
 
@@ -20,11 +21,7 @@ class TestGetItemPriceRs3:
                 return {
                     "query": {
                         "pages": [
-                            {
-                                "revisions": [
-                                    {"content": "itemId = 4151\nitem = 'Abyssal whip'"}
-                                ]
-                            }
+                            {"revisions": [{"content": "itemId = 4151\nitem = 'Abyssal whip'"}]}
                         ]
                     }
                 }
@@ -96,10 +93,16 @@ class TestGetItemPriceOsrs:
             if url.endswith("/latest"):
                 return {"data": {"4151": {"high": 1217964, "low": 1205009}}}
             if url.endswith("/5m"):
-                return {"data": {"4151": {
-                    "avgHighPrice": 1218000, "highPriceVolume": 715,
-                    "avgLowPrice": 1204500, "lowPriceVolume": 708,
-                }}}
+                return {
+                    "data": {
+                        "4151": {
+                            "avgHighPrice": 1218000,
+                            "highPriceVolume": 715,
+                            "avgLowPrice": 1204500,
+                            "lowPriceVolume": 708,
+                        }
+                    }
+                }
             raise AssertionError(f"unexpected URL: {url}")
 
         monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)
@@ -148,11 +151,24 @@ class TestGetItemPriceRs3StreetPrices:
     async def test_street_price_appended_when_geprice_has_item(self, monkeypatch):
         async def fake_http_get(url, params=None, timeout=10.0):
             if "runescape.wiki" in url:
-                return {"query": {"pages": [{"revisions": [{"content": "itemId = 4151\nitem = 'Abyssal whip'"}]}]}}
+                return {
+                    "query": {
+                        "pages": [
+                            {"revisions": [{"content": "itemId = 4151\nitem = 'Abyssal whip'"}]}
+                        ]
+                    }
+                }
             if "itemdb_rs" in url:
                 return {"item": {"current": {"price": "1m", "trend": "neutral"}}}
             if "geprice.com" in url:
-                return [{"id": 4151, "name": "Abyssal whip", "currentWeekAverage": 950000, "weeklyChangePercent": "-3.20%"}]
+                return [
+                    {
+                        "id": 4151,
+                        "name": "Abyssal whip",
+                        "currentWeekAverage": 950000,
+                        "weeklyChangePercent": "-3.20%",
+                    }
+                ]
             raise AssertionError(f"unexpected URL: {url}")
 
         monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)
@@ -165,11 +181,28 @@ class TestGetItemPriceRs3StreetPrices:
     async def test_no_street_price_when_geprice_zero(self, monkeypatch):
         async def fake_http_get(url, params=None, timeout=10.0):
             if "runescape.wiki" in url:
-                return {"query": {"pages": [{"revisions": [{"content": "itemId = 59350\nitem = \"Tumeken's Light\""}]}]}}
+                return {
+                    "query": {
+                        "pages": [
+                            {
+                                "revisions": [
+                                    {"content": 'itemId = 59350\nitem = "Tumeken\'s Light"'}
+                                ]
+                            }
+                        ]
+                    }
+                }
             if "itemdb_rs" in url:
                 return {"item": {"current": {"price": "2.2b", "trend": "neutral"}}}
             if "geprice.com" in url:
-                return [{"id": 59350, "name": "Tumeken's Light", "currentWeekAverage": 0, "weeklyChangePercent": "-"}]
+                return [
+                    {
+                        "id": 59350,
+                        "name": "Tumeken's Light",
+                        "currentWeekAverage": 0,
+                        "weeklyChangePercent": "-",
+                    }
+                ]
             raise AssertionError(f"unexpected URL: {url}")
 
         monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)
@@ -184,8 +217,14 @@ class TestGetItemPriceRs3StreetPrices:
             if "runescape.wiki" in url:
                 return {"query": {"pages": [{"missing": True}]}}
             if "geprice.com" in url:
-                return [{"id": 59344, "name": "Mask of Tumeken's Resplendence",
-                         "currentWeekAverage": 349000000, "weeklyChangePercent": "-5.48%"}]
+                return [
+                    {
+                        "id": 59344,
+                        "name": "Mask of Tumeken's Resplendence",
+                        "currentWeekAverage": 349000000,
+                        "weeklyChangePercent": "-5.48%",
+                    }
+                ]
             raise AssertionError(f"unexpected URL: {url}")
 
         monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)
@@ -210,7 +249,13 @@ class TestGetItemPriceRs3StreetPrices:
     async def test_geprice_failure_doesnt_break_ge_response(self, monkeypatch):
         async def fake_http_get(url, params=None, timeout=10.0):
             if "runescape.wiki" in url:
-                return {"query": {"pages": [{"revisions": [{"content": "itemId = 4151\nitem = 'Abyssal whip'"}]}]}}
+                return {
+                    "query": {
+                        "pages": [
+                            {"revisions": [{"content": "itemId = 4151\nitem = 'Abyssal whip'"}]}
+                        ]
+                    }
+                }
             if "itemdb_rs" in url:
                 return {"item": {"current": {"price": "1m", "trend": "neutral"}}}
             if "geprice.com" in url:
@@ -227,15 +272,30 @@ class TestGetItemPriceRs3StreetPrices:
     async def test_ge_item_renders_last_traded_when_week_avg_zero(self, monkeypatch):
         async def fake_http_get(url, params=None, timeout=10.0):
             if "runescape.wiki" in url:
-                return {"query": {"pages": [{"revisions": [{"content": "itemId = 59350\nitem = \"Tumeken's Light\""}]}]}}
+                return {
+                    "query": {
+                        "pages": [
+                            {
+                                "revisions": [
+                                    {"content": 'itemId = 59350\nitem = "Tumeken\'s Light"'}
+                                ]
+                            }
+                        ]
+                    }
+                }
             if "itemdb_rs" in url:
                 return {"item": {"current": {"price": "2.2b", "trend": "neutral"}}}
             if "geprice.com" in url:
-                return [{
-                    "id": 59350, "name": "Tumeken's Light",
-                    "currentWeekAverage": 0, "weeklyChangePercent": "-",
-                    "fallbackPrice": 2_200_000_000, "fallbackDate": "2026-04-08",
-                }]
+                return [
+                    {
+                        "id": 59350,
+                        "name": "Tumeken's Light",
+                        "currentWeekAverage": 0,
+                        "weeklyChangePercent": "-",
+                        "fallbackPrice": 2_200_000_000,
+                        "fallbackDate": "2026-04-08",
+                    }
+                ]
             raise AssertionError(f"unexpected URL: {url}")
 
         monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)
@@ -254,7 +314,9 @@ class TestPriceEdgeCases:
 
     def test_street_line_null_week_average_does_not_crash(self):
         # geprice can return currentWeekAverage: null — must not 'None > 0' crash.
-        line = _format_street_line({"currentWeekAverage": None, "fallbackPrice": 100, "fallbackDate": "2024"})
+        line = _format_street_line(
+            {"currentWeekAverage": None, "fallbackPrice": 100, "fallbackDate": "2024"}
+        )
         assert line == "Street: 100 gp  (last traded 2024)"
         assert _format_street_line({"currentWeekAverage": None}) is None
 
@@ -268,11 +330,16 @@ class TestPriceEdgeCases:
             if "runescape.wiki" in url:
                 return {"query": {"pages": [{"missing": True}]}}
             if "geprice.com" in url:
-                return [{
-                    "id": 59344, "name": "Mask of Tumeken's Resplendence",
-                    "currentWeekAverage": 0, "weeklyChangePercent": "-",
-                    "fallbackPrice": 224_256_000, "fallbackDate": "2026-04-08",
-                }]
+                return [
+                    {
+                        "id": 59344,
+                        "name": "Mask of Tumeken's Resplendence",
+                        "currentWeekAverage": 0,
+                        "weeklyChangePercent": "-",
+                        "fallbackPrice": 224_256_000,
+                        "fallbackDate": "2026-04-08",
+                    }
+                ]
             raise AssertionError(f"unexpected URL: {url}")
 
         monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)
@@ -286,10 +353,14 @@ class TestPriceEdgeCases:
             if "runescape.wiki" in url:
                 return {"query": {"pages": [{"missing": True}]}}
             if "geprice.com" in url:
-                return [{
-                    "id": 59344, "name": "Mask of Tumeken's Resplendence",
-                    "currentWeekAverage": 0, "weeklyChangePercent": "-",
-                }]
+                return [
+                    {
+                        "id": 59344,
+                        "name": "Mask of Tumeken's Resplendence",
+                        "currentWeekAverage": 0,
+                        "weeklyChangePercent": "-",
+                    }
+                ]
             raise AssertionError(f"unexpected URL: {url}")
 
         monkeypatch.setattr("rs_mcp_server.tools.prices.http_get", fake_http_get)

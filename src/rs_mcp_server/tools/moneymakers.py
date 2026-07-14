@@ -4,6 +4,7 @@ Two tools:
 - get_money_makers: ranks the master MMG page's hourly profit table.
 - get_money_maker_method: drill-down on a single method's subpage Mmgtable template.
 """
+
 import re
 from collections.abc import Iterator
 from html.parser import HTMLParser
@@ -39,6 +40,7 @@ _LINK_HREF, _LINK_TEXT = 0, 1
 # ---------------------------------------------------------------------------
 # Tool 1: get_money_makers (master page ranking)
 # ---------------------------------------------------------------------------
+
 
 @instrument("get_money_makers")
 async def get_money_makers(
@@ -102,7 +104,9 @@ class _MasterTableParser(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.headers: list[str] = []
         self.rows: list[list[dict]] = []
-        self._scope = TableScope(lambda cls: "wikitable" in cls and "sortable" in cls, first_only=True)
+        self._scope = TableScope(
+            lambda cls: "wikitable" in cls and "sortable" in cls, first_only=True
+        )
         self._row: list[dict] | None = None
         self._cell: dict | None = None
         self._th: list[str] | None = None
@@ -120,11 +124,15 @@ class _MasterTableParser(HTMLParser):
         elif tag == "th":
             self._th = []
         elif tag == "td":
-            self._cell = {"text": [], "sort_value": _sort_value(ad.get("data-sort-value")),
-                          "link": None, "members": False}
+            self._cell = {
+                "text": [],
+                "sort_value": _sort_value(ad.get("data-sort-value")),
+                "link": None,
+                "members": False,
+            }
         elif self._cell is not None:
             if tag == "a" and self._cell["link"] is None:
-                self._cell["link"] = [ad.get("href", ""), []]   # [href, text-parts]
+                self._cell["link"] = [ad.get("href", ""), []]  # [href, text-parts]
                 self._in_a = True
             elif tag == "img" and "member" in (ad.get("alt") or "").lower():
                 self._cell["members"] = True
@@ -152,12 +160,14 @@ class _MasterTableParser(HTMLParser):
             link = None
             if self._cell["link"] is not None:
                 link = (join_text(self._cell["link"][_LINK_TEXT]), self._cell["link"][_LINK_HREF])
-            self._row.append({
-                "text": join_text(self._cell["text"]),
-                "sort_value": self._cell["sort_value"],
-                "link": link,
-                "members": self._cell["members"],
-            })
+            self._row.append(
+                {
+                    "text": join_text(self._cell["text"]),
+                    "sort_value": self._cell["sort_value"],
+                    "link": link,
+                    "members": self._cell["members"],
+                }
+            )
             self._cell = None
         elif tag == "tr" and self._row is not None:
             if self._row:
@@ -186,7 +196,15 @@ def _parse_master_html(html_text: str, game: str) -> list[dict]:
     # (e.g. "Skills" vs "Skills required"); match on prefix.
     col_index: dict[str, int] = {}
     for i, h in enumerate(headers):
-        for canonical in ("method", "hourly profit", "profit", "skills", "category", "intensity", "members"):
+        for canonical in (
+            "method",
+            "hourly profit",
+            "profit",
+            "skills",
+            "category",
+            "intensity",
+            "members",
+        ):
             if h.startswith(canonical) and canonical not in col_index:
                 col_index[canonical] = i
                 break
@@ -219,16 +237,18 @@ def _parse_master_html(html_text: str, game: str) -> list[dict]:
         if profit_value is None:
             profit_value = _strip_commas_to_int(profit_cell["text"])
 
-        rows.append({
-            "name": name,
-            "url": url,
-            "profit_value": profit_value if profit_value is not None else 0,
-            "profit_text": profit_cell["text"] or "?",
-            "skills": _cell_field(cells, col_index, "skills", "text", ""),
-            "category": _cell_field(cells, col_index, "category", "text", ""),
-            "intensity": _cell_field(cells, col_index, "intensity", "text", ""),
-            "members": _cell_field(cells, col_index, "members", "members", None),
-        })
+        rows.append(
+            {
+                "name": name,
+                "url": url,
+                "profit_value": profit_value if profit_value is not None else 0,
+                "profit_text": profit_cell["text"] or "?",
+                "skills": _cell_field(cells, col_index, "skills", "text", ""),
+                "category": _cell_field(cells, col_index, "category", "text", ""),
+                "intensity": _cell_field(cells, col_index, "intensity", "text", ""),
+                "members": _cell_field(cells, col_index, "members", "members", None),
+            }
+        )
     return rows
 
 
@@ -241,7 +261,9 @@ def _cell_field(cells: list[dict], col_index: dict[str, int], key: str, attr: st
     return default
 
 
-def _render_master_table(rows: list[dict], game: str, category: str | None, members_only: bool, limit: int) -> str:
+def _render_master_table(
+    rows: list[dict], game: str, category: str | None, members_only: bool, limit: int
+) -> str:
     wiki_label = WIKI_LABELS[game]
     page_url = f"{WIKI_BASE_URLS[game]}{_MASTER_PAGE}"
     has_category = any(r["category"] for r in rows)
@@ -255,12 +277,16 @@ def _render_master_table(rows: list[dict], game: str, category: str | None, memb
         if has_members:
             filtered = [r for r in filtered if r["members"]]
         else:
-            notes.append("*Note: members-only flag not surfaced on this wiki's master page; filter ignored.*")
+            notes.append(
+                "*Note: members-only flag not surfaced on this wiki's master page; filter ignored.*"
+            )
 
     if category in ("combat", "skilling"):
         if has_category:
             want_combat = category == "combat"
-            filtered = [r for r in filtered if r["category"].lower().startswith("combat") == want_combat]
+            filtered = [
+                r for r in filtered if r["category"].lower().startswith("combat") == want_combat
+            ]
         else:
             notes.append(
                 f"*Note: category filtering not available on {wiki_label} master page; "
@@ -310,6 +336,7 @@ def _render_master_table(rows: list[dict], game: str, category: str | None, memb
 # Tool 2: get_money_maker_method (subpage drill-down)
 # ---------------------------------------------------------------------------
 
+
 @instrument("get_money_maker_method")
 async def get_money_maker_method(method_name: str, game: str = "rs3") -> str:
     game = game.lower()
@@ -325,9 +352,8 @@ async def get_money_maker_method(method_name: str, game: str = "rs3") -> str:
 
     wiki_label = WIKI_LABELS[game]
 
-    result = (
-        await _method_from_direct(method_name, game, wiki_label)
-        or await _method_from_search(method_name, game, wiki_label)
+    result = await _method_from_direct(method_name, game, wiki_label) or await _method_from_search(
+        method_name, game, wiki_label
     )
     if result is None:
         return f"No money-making method found for '{method_name}' on the {wiki_label} wiki."
@@ -344,7 +370,9 @@ async def _method_from_direct(method_name: str, game: str, wiki_label: str) -> s
         return None
     display_name = direct["title"].removeprefix(_METHOD_PREFIX)
     if _titles_match(method_name, display_name):
-        return _render_method(display_name, direct["url"], wiki_label, _parse_fields(body), template_name)
+        return _render_method(
+            display_name, direct["url"], wiki_label, _parse_fields(body), template_name
+        )
     return _disambiguate_method(display_name, direct["url"], wiki_label)
 
 
@@ -372,7 +400,9 @@ async def _method_from_search(method_name: str, game: str, wiki_label: str) -> s
 
 
 def _disambiguate_method(display_name: str, url: str, wiki_label: str) -> str:
-    return disambiguate(display_name, url, wiki_label, "get_money_maker_method", "method_name", "details")
+    return disambiguate(
+        display_name, url, wiki_label, "get_money_maker_method", "method_name", "details"
+    )
 
 
 def _render_method(name: str, url: str, wiki_label: str, fields: dict, template_name: str) -> str:
@@ -393,7 +423,12 @@ def _render_method(name: str, url: str, wiki_label: str, fields: dict, template_
         if val:
             lines.append(f"**{label}:** {_clean_wikitext(val)}")
 
-    for label, key in (("Skills", "skill"), ("Items", "item"), ("Quests", "quest"), ("Other", "other")):
+    for label, key in (
+        ("Skills", "skill"),
+        ("Items", "item"),
+        ("Quests", "quest"),
+        ("Other", "other"),
+    ):
         val = fields.get(key)
         if val:
             cleaned = _clean_wikitext(val)
@@ -423,7 +458,9 @@ def _render_method(name: str, url: str, wiki_label: str, fields: dict, template_
     if details:
         cleaned = _clean_wikitext(details)
         if cleaned:
-            truncated = cleaned[:400] + ("… (see wiki for full details)" if len(cleaned) > 400 else "")
+            truncated = cleaned[:400] + (
+                "… (see wiki for full details)" if len(cleaned) > 400 else ""
+            )
             lines.append("")
             lines.append("**Details:**")
             lines.append(f"  {truncated}")
@@ -457,6 +494,7 @@ def _find_method_template(wikitext: str) -> tuple[str | None, str]:
 # ---------------------------------------------------------------------------
 # Shared helpers (parse, fetch, search, cache)
 # ---------------------------------------------------------------------------
+
 
 def _cache_and_return(value: str, cache_key: str) -> str:
     cache.set(cache_key, value, TTL_HOUR)
@@ -494,7 +532,12 @@ async def _search_method(query: str, game: str) -> dict | None:
 
 
 def _clean_wikitext(s: str) -> str:
-    s = re.sub(r"\{\{(?:Skillreq|SCP|mmgreq)\|([^|}]+)\|(\d+)[^}]*\}\}", r"Level \2 \1", s, flags=re.IGNORECASE)
+    s = re.sub(
+        r"\{\{(?:Skillreq|SCP|mmgreq)\|([^|}]+)\|(\d+)[^}]*\}\}",
+        r"Level \2 \1",
+        s,
+        flags=re.IGNORECASE,
+    )
     s = re.sub(r"\{\{plinkp?\|([^|}]+)[^}]*\}\}", r"\1", s, flags=re.IGNORECASE)
     s = re.sub(r"\{\{[^}]*\}\}", "", s)
     s = re.sub(r"\[\[(?:[^\]|]+\|)?([^\]]+)\]\]", r"\1", s)

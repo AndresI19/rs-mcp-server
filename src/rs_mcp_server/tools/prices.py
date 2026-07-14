@@ -1,4 +1,5 @@
 """get_item_price tool — OSRS and RS3 Grand Exchange APIs."""
+
 import re
 
 import httpx
@@ -36,6 +37,7 @@ async def get_item_price(item_name: str, game: str = "rs3") -> str:
 # ---------------------------------------------------------------------------
 # OSRS — prices.runescape.wiki
 # ---------------------------------------------------------------------------
+
 
 async def osrs_mapping() -> list[dict]:
     cached = cache.get("osrs:mapping")
@@ -99,6 +101,7 @@ async def _get_osrs_price(item_name: str) -> str:
 # RS3 — wiki Module:Exchange for item ID, then GE detail API for price
 # ---------------------------------------------------------------------------
 
+
 async def _rs3_item_id(item_name: str) -> tuple[int, str] | None:
     """Return (item_id, canonical_name) via RS3 wiki Exchange module, or None."""
     # Module:Exchange/<name> is case-sensitive; canonicalize first letter only (str.capitalize would clobber inner caps like "TzHaar-Ket-Om").
@@ -117,7 +120,7 @@ async def _rs3_item_id(item_name: str) -> tuple[int, str] | None:
         return None
 
     content = pages[0].get("revisions", [{}])[0].get("content", "")
-    id_match   = re.search(r"itemId\s*=\s*(\d+)", content)
+    id_match = re.search(r"itemId\s*=\s*(\d+)", content)
     name_match = re.search(r"item\s*=\s*'([^']+)'", content)
     if not id_match:
         return None
@@ -174,7 +177,7 @@ def _format_street_line(entry: dict) -> str | None:
         return f"Street avg (this week): {week_avg:,} gp{suffix}"
 
     fb_price = entry.get("fallbackPrice")
-    fb_date  = entry.get("fallbackDate")
+    fb_date = entry.get("fallbackDate")
     if fb_price and fb_date:
         return f"Street: {fb_price:,} gp  (last traded {fb_date})"
 
@@ -192,6 +195,7 @@ def _format_geprice_only(entry: dict) -> str | None:
 # OSRS 5-minute aggregates — best-effort enrichment, swallows fetch errors so a
 # transient outage on the /5m endpoint doesn't break the primary GE response.
 # ---------------------------------------------------------------------------
+
 
 async def _osrs_5m_bulk() -> dict | None:
     cached = cache.get("osrs:5m:all")
@@ -217,6 +221,7 @@ async def _osrs_5m_for(item_id: int) -> dict | None:
 # high-end items. Returned blob is small; we cache the full catalog and look
 # up by case-insensitive name.
 # ---------------------------------------------------------------------------
+
 
 async def _geprice_catalog() -> list[dict] | None:
     cached = cache.get("geprice:catalog")

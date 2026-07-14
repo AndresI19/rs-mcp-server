@@ -7,6 +7,7 @@ and returns the moves, compressed into RuneScape's row/column slides — one cli
 every tile between the clicked tile and the gap, so a run of same-direction single moves
 collapses into one click.
 """
+
 import math
 from collections import deque
 
@@ -37,6 +38,7 @@ solvable."""
 # Parsing / validation
 # ---------------------------------------------------------------------------
 
+
 def _parse(grid: list) -> tuple[int, tuple[int, ...], int]:
     """Validate the grid and return (n, state, blank_value).
 
@@ -64,11 +66,11 @@ def _parse(grid: list) -> tuple[int, tuple[int, ...], int]:
 # Heuristic + solvability
 # ---------------------------------------------------------------------------
 
+
 def _is_solvable(state, n: int, blank: int) -> bool:
     """A board is reachable from the goal iff its permutation parity matches the gap's
     Manhattan-from-home parity (each move flips both)."""
-    inv = sum(1 for i in range(len(state)) for j in range(i + 1, len(state))
-              if state[i] > state[j])
+    inv = sum(1 for i in range(len(state)) for j in range(i + 1, len(state)) if state[i] > state[j])
     gap = state.index(blank)
     gap_dist = abs(gap // n - blank // n) + abs(gap % n - blank % n)
     return inv % 2 == gap_dist % 2
@@ -115,8 +117,8 @@ def _solve(state: tuple[int, ...], n: int, blank: int) -> list[str] | None:
     elif bc != n - 1:
         return None
     moves: list[str] = []
-    _layered(board, n, n * n - 1, moves)             # gap now homes bottom-right
-    for f in flips:                                  # disjoint axes → order-independent
+    _layered(board, n, n * n - 1, moves)  # gap now homes bottom-right
+    for f in flips:  # disjoint axes → order-independent
         table = _VFLIP if f == "v" else _HFLIP
         moves = [table[m] for m in moves]
     return moves
@@ -244,6 +246,7 @@ def _solve_small(board, n, blank, k, frozen, moves):
 # Click compression + formatting
 # ---------------------------------------------------------------------------
 
+
 def _to_clicks(moves: list[str], gap: int, n: int) -> list[tuple[int, int]]:
     """Collapse runs of same-direction gap moves into clicks. One click in RuneScape slides
     every tile between the clicked tile and the gap, so K same-direction moves = one click on
@@ -258,9 +261,9 @@ def _to_clicks(moves: list[str], gap: int, n: int) -> list[tuple[int, int]]:
             run += 1
             i += 1
         dr, dc = _MOVES[d]
-        click_r, click_c = gr + dr * run, gc + dc * run   # the tile that triggers the slide
+        click_r, click_c = gr + dr * run, gc + dc * run  # the tile that triggers the slide
         clicks.append((click_r + 1, click_c + 1))
-        gr, gc = click_r, click_c                          # gap ends where the clicked tile was
+        gr, gc = click_r, click_c  # gap ends where the clicked tile was
     return clicks
 
 
@@ -274,21 +277,28 @@ async def solve_sliding_puzzle(grid: list | None = None) -> str:
         return str(exc)
 
     if not _is_solvable(state, n, blank):
-        return ("This arrangement can't be reached from a solved board, so it's unsolvable as "
-                "read. A real puzzle box is always solvable — recheck the tile you read for each "
-                "cell (two fragments are probably swapped).")
+        return (
+            "This arrangement can't be reached from a solved board, so it's unsolvable as "
+            "read. A real puzzle box is always solvable — recheck the tile you read for each "
+            "cell (two fragments are probably swapped)."
+        )
 
     moves = _solve(state, n, blank)
     if moves is None:
-        return ("I can only solve a puzzle box whose gap sits in a **corner** of the solved picture "
-                "(the usual case). This board's gap belongs on an edge or in the middle — double-check "
-                "which cell is the gap in the completed image.")
+        return (
+            "I can only solve a puzzle box whose gap sits in a **corner** of the solved picture "
+            "(the usual case). This board's gap belongs on an edge or in the middle — double-check "
+            "which cell is the gap in the completed image."
+        )
     if not moves:
         return "The board is already solved — nothing to click."
 
     clicks = _to_clicks(moves, state.index(blank), n)
     lines = [f"**Puzzle box solution** — {len(clicks)} clicks ({len(moves)} tile moves):", ""]
     lines += [f"{i}. Click row {r}, col {c}" for i, (r, c) in enumerate(clicks, 1)]
-    lines += ["", "Each click slides the whole row/column between that tile and the gap. Cells are "
-              "1-based from the top-left."]
+    lines += [
+        "",
+        "Each click slides the whole row/column between that tile and the gap. Cells are "
+        "1-based from the top-left.",
+    ]
     return "\n".join(lines)

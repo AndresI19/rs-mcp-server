@@ -5,6 +5,7 @@ handshakes) are pooled instead of re-established per request. Transient failures
 network/transport errors and retryable status codes (429/502/503/504) — are retried
 with a short linear backoff before the error is surfaced to the caller.
 """
+
 import asyncio
 
 import httpx
@@ -14,6 +15,7 @@ from rs_mcp_server.config import HTTP_MAX_RETRIES, HTTP_TIMEOUT, USER_AGENT
 # The wikis ask that tools identify themselves; USER_AGENT is overridable so a deployment can add a
 # contact address without editing source.
 HEADERS = {"User-Agent": USER_AGENT}
+
 
 class RetryingClient:
     """A pooled httpx.AsyncClient that retries transient failures.

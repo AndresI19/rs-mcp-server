@@ -1,4 +1,5 @@
 """get_item_recipe tool — RuneScape Wiki recipe templates (Infobox Recipe on RS3, Recipe on OSRS)."""
+
 import re
 from collections.abc import Iterator
 
@@ -114,7 +115,9 @@ def _format_recipe(title: str, url: str, wiki_label: str, fields: dict) -> str:
             lines.append(f"  {prefix}{name}")
         lines.append("")
 
-    achievements = [_clean(fields[f"achievement{i}"]) for i in _enumerate_index("achievement", fields)]
+    achievements = [
+        _clean(fields[f"achievement{i}"]) for i in _enumerate_index("achievement", fields)
+    ]
     if achievements:
         lines.append(f"**Achievement:** {', '.join(achievements)}")
 
@@ -146,9 +149,9 @@ def _enumerate_index(prefix: str, fields: dict[str, str]) -> Iterator[int]:
     a gap (e.g. mat1, mat3 after an editor removed mat2) isn't truncated at the gap.
     """
     indices = [
-        int(key[len(prefix):])
+        int(key[len(prefix) :])
         for key in fields
-        if key.startswith(prefix) and key[len(prefix):].isdigit()
+        if key.startswith(prefix) and key[len(prefix) :].isdigit()
     ]
     yield from sorted(indices)
 

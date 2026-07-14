@@ -5,6 +5,7 @@ exercise only the deterministic solver — see the image-puzzle vision-boundary 
 solver's contract is reliability, so the round-trip tests assert that replaying the returned
 moves (and the compressed clicks) actually reaches the solved board, across every board size
 and every corner the gap can call home."""
+
 import random
 
 import pytest
@@ -28,8 +29,11 @@ def _scramble(n, blank, steps, seed):
     last = None
     for _ in range(steps):
         gr, gc = divmod(gap, n)
-        opts = [(m, d) for m, d in _MOVES.items()
-                if m != _OPPOSITE.get(last) and 0 <= gr + d[0] < n and 0 <= gc + d[1] < n]
+        opts = [
+            (m, d)
+            for m, d in _MOVES.items()
+            if m != _OPPOSITE.get(last) and 0 <= gr + d[0] < n and 0 <= gc + d[1] < n
+        ]
         m, (dr, dc) = rng.choice(opts)
         swap = (gr + dr) * n + (gc + dc)
         board[gap], board[swap] = board[swap], board[gap]
@@ -79,8 +83,8 @@ class TestParse:
     def test_derives_blank_home_from_missing_index(self):
         n, state, blank = _parse([0, 1, 2, 3, None, 5, 6, 7, 8])
         assert n == 3
-        assert blank == 4              # the index absent from the tiles is the gap's home
-        assert state[4] == 4           # null is filled with the gap's home value
+        assert blank == 4  # the index absent from the tiles is the gap's home
+        assert state[4] == 4  # null is filled with the gap's home value
 
     def test_non_square_length_rejected(self):
         with pytest.raises(ValueError, match="square board"):

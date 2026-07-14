@@ -1,4 +1,5 @@
 """Tests for the get_game_setting MCP tool (issue #47)."""
+
 import pytest
 
 from rs_mcp_server.tools.settings import (
@@ -36,6 +37,7 @@ def _parse_response(html_text: str) -> dict:
 # ---------------------------------------------------------------------------
 # Parser tests
 # ---------------------------------------------------------------------------
+
 
 class TestParseSettingsHtml:
     def test_extracts_all_data_rows(self):
@@ -82,6 +84,7 @@ class TestParseSettingsHtml:
 # ---------------------------------------------------------------------------
 # Matcher tests
 # ---------------------------------------------------------------------------
+
 
 class TestMatchSetting:
     def test_exact_match(self):
@@ -135,6 +138,7 @@ class TestMatchSetting:
 # ---------------------------------------------------------------------------
 # End-to-end tests
 # ---------------------------------------------------------------------------
+
 
 class TestGetGameSetting:
     @pytest.mark.anyio
@@ -192,9 +196,13 @@ class TestGetGameSetting:
         async def fake_http_get(url, params=None, timeout=10.0):
             if (params or {}).get("action") == "parse":
                 return _parse_response(_FIXTURE_HTML)
-            return {"query": {"pages": [
-                {"title": "Familiar", "extract": "Familiars are summoned creatures."},
-            ]}}
+            return {
+                "query": {
+                    "pages": [
+                        {"title": "Familiar", "extract": "Familiars are summoned creatures."},
+                    ]
+                }
+            }
 
         monkeypatch.setattr("rs_mcp_server.tools.settings.http_get", fake_http_get)
         result = await get_game_setting("follower", "rs3")

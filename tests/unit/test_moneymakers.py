@@ -1,4 +1,5 @@
 """End-to-end tests for the money-maker MCP tools (issue #43)."""
+
 import pytest
 
 from rs_mcp_server.tools.moneymakers import (
@@ -121,6 +122,7 @@ def _missing() -> dict:
 # Tool 1 tests
 # ---------------------------------------------------------------------------
 
+
 class TestGetMoneyMakers:
     @pytest.mark.anyio
     async def test_returns_top_n_ranked(self, monkeypatch):
@@ -208,6 +210,7 @@ class TestGetMoneyMakers:
 # ---------------------------------------------------------------------------
 # Tool 2 tests
 # ---------------------------------------------------------------------------
+
 
 class TestGetMoneyMakerMethod:
     @pytest.mark.anyio

@@ -1,4 +1,5 @@
 """End-to-end tests for the get_equipment_stats MCP tool (issues #44, #77)."""
+
 import httpx
 import pytest
 
@@ -170,23 +171,16 @@ class TestGetEquipmentStatsRs3Armour:
 class TestGetEquipmentStatsNamedSections:
     """Issue #77 — surface Set bonus / Passive / Special properties prose alongside infobox."""
 
-    _BONUSES = (
-        "{{Infobox Bonuses\n"
-        "|class = melee\n"
-        "|slot = head\n"
-        "|tier = 92\n"
-        "|armour = 700\n"
-        "}}"
-    )
+    _BONUSES = "{{Infobox Bonuses\n|class = melee\n|slot = head\n|tier = 92\n|armour = 700\n}}"
 
     @pytest.mark.anyio
     async def test_set_bonus_section_appended_when_present(self, monkeypatch):
         parse_html = (
             '<div class="mw-parser-output">'
-            '<p>Lead paragraph about the helm.</p>'
+            "<p>Lead paragraph about the helm.</p>"
             '<h2 id="Set_bonus">Set bonus</h2>'
-            '<p>Wearing the full set grants 50% incoming damage delayed as bleed.</p>'
-            '</div>'
+            "<p>Wearing the full set grants 50% incoming damage delayed as bleed.</p>"
+            "</div>"
         )
 
         async def fake_http_get(url, params=None, timeout=10.0):
@@ -204,10 +198,10 @@ class TestGetEquipmentStatsNamedSections:
     async def test_passive_alias_renders_as_canonical_label(self, monkeypatch):
         # Wiki uses "Passive effect" as the heading; output should use canonical "Passive".
         parse_html = (
-            '<div>'
+            "<div>"
             '<h2 id="Passive_effect">Passive effect</h2>'
-            '<p>Herald of Chaos: adrenaline regen, Berserk extension, +20% adren cap.</p>'
-            '</div>'
+            "<p>Herald of Chaos: adrenaline regen, Berserk extension, +20% adren cap.</p>"
+            "</div>"
         )
 
         async def fake_http_get(url, params=None, timeout=10.0):
@@ -271,9 +265,14 @@ class TestSearchTypeFilter:
             return {
                 "query": {
                     "pages": [
-                        page_revision("Damage bonus", "{{Infobox Skill|name=Damage bonus}}"),  # game-mechanic page, not equipment
-                        page_revision("Life points",  "{{Infobox Skill|name=Life points}}"),
-                        page_revision("Some helm", "{{Infobox Bonuses\n|slot = head\n|tier = 92\n|armour = 457\n|prayer = 2\n}}"),
+                        page_revision(
+                            "Damage bonus", "{{Infobox Skill|name=Damage bonus}}"
+                        ),  # game-mechanic page, not equipment
+                        page_revision("Life points", "{{Infobox Skill|name=Life points}}"),
+                        page_revision(
+                            "Some helm",
+                            "{{Infobox Bonuses\n|slot = head\n|tier = 92\n|armour = 457\n|prayer = 2\n}}",
+                        ),
                     ]
                 }
             }

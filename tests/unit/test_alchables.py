@@ -1,4 +1,5 @@
 """End-to-end tests for the get_best_alchables MCP tool (issue #42)."""
+
 import pytest
 
 from rs_mcp_server.tools.alchables import get_best_alchables
@@ -34,52 +35,52 @@ from rs_mcp_server.tools.alchables import get_best_alchables
 # Loss              200      833     19,992     600    700     -100         filtered (negative profit)
 
 _OSRS_MAPPING = [
-    {"id": 561, "name": "Nature rune",    "highalch": 108,  "members": False, "limit": 25000},
-    {"id": 1,   "name": "Easy A",         "highalch": 2800, "members": True,  "limit": 200},
-    {"id": 2,   "name": "Easy B",         "highalch": 2100, "members": True,  "limit": 150},
-    {"id": 3,   "name": "Easy C",         "highalch": 2050, "members": True,  "limit": 120},
-    {"id": 4,   "name": "Slow plain",     "highalch": 1900, "members": True,  "limit": 50},
-    {"id": 5,   "name": "Slow mirage",    "highalch": 20200,"members": True,  "limit": 5},
-    {"id": 6,   "name": "Mid item",       "highalch": 1500, "members": True,  "limit": 50},
-    {"id": 7,   "name": "Bulk staple",    "highalch": 9700, "members": True,  "limit": 18000},
-    {"id": 8,   "name": "Untradeable",    "highalch": 4600, "members": True,  "limit": 0},
-    {"id": 9,   "name": "Loss",           "highalch": 700,  "members": False, "limit": 200},
-    {"id": 10,  "name": "Slow mid-roi",   "highalch": 2560, "members": True,  "limit": 70},
-    {"id": 11,  "name": "Slow too thin",  "highalch": 1900, "members": True,  "limit": 50},
-    {"id": 12,  "name": "Capped",         "highalch": 3700, "members": True,  "limit": 70},
+    {"id": 561, "name": "Nature rune", "highalch": 108, "members": False, "limit": 25000},
+    {"id": 1, "name": "Easy A", "highalch": 2800, "members": True, "limit": 200},
+    {"id": 2, "name": "Easy B", "highalch": 2100, "members": True, "limit": 150},
+    {"id": 3, "name": "Easy C", "highalch": 2050, "members": True, "limit": 120},
+    {"id": 4, "name": "Slow plain", "highalch": 1900, "members": True, "limit": 50},
+    {"id": 5, "name": "Slow mirage", "highalch": 20200, "members": True, "limit": 5},
+    {"id": 6, "name": "Mid item", "highalch": 1500, "members": True, "limit": 50},
+    {"id": 7, "name": "Bulk staple", "highalch": 9700, "members": True, "limit": 18000},
+    {"id": 8, "name": "Untradeable", "highalch": 4600, "members": True, "limit": 0},
+    {"id": 9, "name": "Loss", "highalch": 700, "members": False, "limit": 200},
+    {"id": 10, "name": "Slow mid-roi", "highalch": 2560, "members": True, "limit": 70},
+    {"id": 11, "name": "Slow too thin", "highalch": 1900, "members": True, "limit": 50},
+    {"id": 12, "name": "Capped", "highalch": 3700, "members": True, "limit": 70},
 ]
 
 _OSRS_LATEST = {
     "data": {
-        "561": {"high": 200,   "low": 195},
-        "1":   {"high": 2000,  "low": 1990},
-        "2":   {"high": 1500,  "low": 1490},
-        "3":   {"high": 1500,  "low": 1490},
-        "4":   {"high": 1500,  "low": 1490},
-        "5":   {"high": 12000, "low": 11900},
-        "6":   {"high": 1000,  "low": 990},
-        "7":   {"high": 8000,  "low": 7990},
-        "8":   {"high": 4000,  "low": 3990},
-        "9":   {"high": 600,   "low": 590},
-        "10":  {"high": 2000,  "low": 1990},
-        "11":  {"high": 1500,  "low": 1490},
-        "12":  {"high": 3000,  "low": 2990},
+        "561": {"high": 200, "low": 195},
+        "1": {"high": 2000, "low": 1990},
+        "2": {"high": 1500, "low": 1490},
+        "3": {"high": 1500, "low": 1490},
+        "4": {"high": 1500, "low": 1490},
+        "5": {"high": 12000, "low": 11900},
+        "6": {"high": 1000, "low": 990},
+        "7": {"high": 8000, "low": 7990},
+        "8": {"high": 4000, "low": 3990},
+        "9": {"high": 600, "low": 590},
+        "10": {"high": 2000, "low": 1990},
+        "11": {"high": 1500, "low": 1490},
+        "12": {"high": 3000, "low": 2990},
     }
 }
 
 _OSRS_1H = {
     "data": {
-        "1":  {"highPriceVolume": 833,  "lowPriceVolume": 0},
-        "2":  {"highPriceVolume": 750,  "lowPriceVolume": 0},
-        "3":  {"highPriceVolume": 600,  "lowPriceVolume": 0},
-        "4":  {"highPriceVolume": 290,  "lowPriceVolume": 0},
-        "5":  {"highPriceVolume": 300,  "lowPriceVolume": 0},
-        "6":  {"highPriceVolume": 417,  "lowPriceVolume": 0},
-        "7":  {"highPriceVolume": 1000, "lowPriceVolume": 0},
-        "8":  {"highPriceVolume": 1000, "lowPriceVolume": 0},
-        "9":  {"highPriceVolume": 833,  "lowPriceVolume": 0},
-        "10": {"highPriceVolume": 275,  "lowPriceVolume": 0},
-        "11": {"highPriceVolume": 50,   "lowPriceVolume": 0},
+        "1": {"highPriceVolume": 833, "lowPriceVolume": 0},
+        "2": {"highPriceVolume": 750, "lowPriceVolume": 0},
+        "3": {"highPriceVolume": 600, "lowPriceVolume": 0},
+        "4": {"highPriceVolume": 290, "lowPriceVolume": 0},
+        "5": {"highPriceVolume": 300, "lowPriceVolume": 0},
+        "6": {"highPriceVolume": 417, "lowPriceVolume": 0},
+        "7": {"highPriceVolume": 1000, "lowPriceVolume": 0},
+        "8": {"highPriceVolume": 1000, "lowPriceVolume": 0},
+        "9": {"highPriceVolume": 833, "lowPriceVolume": 0},
+        "10": {"highPriceVolume": 275, "lowPriceVolume": 0},
+        "11": {"highPriceVolume": 50, "lowPriceVolume": 0},
         "12": {"highPriceVolume": 2000, "lowPriceVolume": 0},
     }
 }
@@ -133,12 +134,12 @@ class TestGetBestAlchablesOsrs:
             assert pos != -1
         assert bs < ea < eb < smr < sp
         # Mirages and ineligibles must not appear.
-        assert "Slow mirage" not in result       # ROI > 20% → excluded
-        assert "Slow too thin" not in result     # daily volume 1,200 → below 5k floor
-        assert "Mid item" not in result          # mid-bucket volume
-        assert "Easy C" not in result            # bumped out of top 3 by Bulk staple
-        assert "Untradeable" not in result       # buy_limit=0
-        assert "Loss" not in result              # negative profit
+        assert "Slow mirage" not in result  # ROI > 20% → excluded
+        assert "Slow too thin" not in result  # daily volume 1,200 → below 5k floor
+        assert "Mid item" not in result  # mid-bucket volume
+        assert "Easy C" not in result  # bumped out of top 3 by Bulk staple
+        assert "Untradeable" not in result  # buy_limit=0
+        assert "Loss" not in result  # negative profit
 
     @pytest.mark.anyio
     async def test_mirage_excluded_no_warning_marker(self, monkeypatch):
@@ -216,9 +217,7 @@ class TestGetBestAlchablesOsrs:
     async def test_no_qualifying_items(self, monkeypatch):
         # Move every item's volume into the mid-bucket so neither Easy nor Slow qualifies.
         ids = [str(item["id"]) for item in _OSRS_MAPPING if item["id"] != 561]
-        mid_volumes = {
-            "data": {i: {"highPriceVolume": 417, "lowPriceVolume": 0} for i in ids}
-        }
+        mid_volumes = {"data": {i: {"highPriceVolume": 417, "lowPriceVolume": 0} for i in ids}}
         fake = _osrs_fake_factory(hourly=mid_volumes)
         _patch_osrs(monkeypatch, fake)
         result = await get_best_alchables(game="osrs")
@@ -262,7 +261,8 @@ class TestGetBestAlchablesOsrs:
 # Bulk salvage     25000   50,000   8000   9500  +1500    18.8   12,000,000  easy (volume only)
 # Loser bow         1000   50,000    100     50   -100   -50.0      -60,000  filtered (negative profit)
 
-_RS3_PAGE_HTML = """
+_RS3_PAGE_HTML = (
+    """
 <h2>About</h2>
 <table class="wikitable">
 <tr><th>Setup</th><th>Cost</th></tr>
@@ -283,11 +283,12 @@ _RS3_PAGE_HTML = """
   <th>Max daily profit</th>
   <th>Details</th>
 </tr>
-""" + "".join(
-    f"""
+"""
+    + "".join(
+        f"""
 <tr>
   <td></td>
-  <td><a href="/w/{name.replace(' ', '_')}">{name}</a></td>
+  <td><a href="/w/{name.replace(" ", "_")}">{name}</a></td>
   <td data-sort-value="{ge}">{ge:,}</td>
   <td data-sort-value="{alch}">{alch:,}</td>
   <td data-sort-value="{profit}">{profit:,}</td>
@@ -298,25 +299,28 @@ _RS3_PAGE_HTML = """
   <td>view</td>
 </tr>
 """
-    for name, ge, alch, profit, roi, limit, vol, mdp in [
-        ("Easy A",         2000,  2400,    400,   20.0,   200, 20000,  8000000),
-        ("Easy B",         2000,  2300,    300,   15.0,   150, 18000,  6000000),
-        ("Easy C",         2000,  2350,    350,   17.5,   120, 14000,  7000000),
-        ("Slow plain",     1500,  1700,    200,   13.3,    50,  7000,   180000),
-        ("Slow mid-roi",   2000,  2360,    360,   18.0,    70,  6000,   400000),
-        ("Slow mirage",    12000, 20000,   8000,  66.7,   100,  7000,  4800000),
-        ("Slow too thin",  1500,  1700,    200,   13.3,    50,  1500,    40000),
-        ("Capped easy",    3000,  3700,    500,   16.7,    70, 30000,  4000000),
-        ("Mid item",       1000,  1300,    300,   30.0,    80, 10000,  1200000),
-        ("Bulk salvage",   8000,  9500,    1500,  18.8, 25000, 50000, 12000000),
-        ("Loser bow",      100,   50,     -100,  -50.0,  1000, 50000,   -60000),
-    ]
-) + "</table>"
+        for name, ge, alch, profit, roi, limit, vol, mdp in [
+            ("Easy A", 2000, 2400, 400, 20.0, 200, 20000, 8000000),
+            ("Easy B", 2000, 2300, 300, 15.0, 150, 18000, 6000000),
+            ("Easy C", 2000, 2350, 350, 17.5, 120, 14000, 7000000),
+            ("Slow plain", 1500, 1700, 200, 13.3, 50, 7000, 180000),
+            ("Slow mid-roi", 2000, 2360, 360, 18.0, 70, 6000, 400000),
+            ("Slow mirage", 12000, 20000, 8000, 66.7, 100, 7000, 4800000),
+            ("Slow too thin", 1500, 1700, 200, 13.3, 50, 1500, 40000),
+            ("Capped easy", 3000, 3700, 500, 16.7, 70, 30000, 4000000),
+            ("Mid item", 1000, 1300, 300, 30.0, 80, 10000, 1200000),
+            ("Bulk salvage", 8000, 9500, 1500, 18.8, 25000, 50000, 12000000),
+            ("Loser bow", 100, 50, -100, -50.0, 1000, 50000, -60000),
+        ]
+    )
+    + "</table>"
+)
 
 
 def _rs3_fake(html_text=_RS3_PAGE_HTML):
     async def fake_http_get(url, params=None, timeout=10.0):
         return {"parse": {"text": html_text}}
+
     return fake_http_get
 
 
@@ -419,6 +423,7 @@ class TestGetBestAlchablesRs3:
     async def test_page_not_found(self, monkeypatch):
         async def fake(url, params=None, timeout=10.0):
             return {}
+
         monkeypatch.setattr("rs_mcp_server.tools.alchables.http_get", fake)
         result = await get_best_alchables(game="rs3")
         assert "Could not load the Alchemiser" in result

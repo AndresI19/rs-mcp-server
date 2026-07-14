@@ -1,4 +1,5 @@
 """RuneScape MCP Server — HTTP/SSE entry point."""
+
 import os
 import sys
 import threading
@@ -39,7 +40,11 @@ setup_logging()
 
 def _excepthook(exc_type, exc_value, exc_tb):
     frames = "".join(traceback.format_tb(exc_tb, limit=3))
-    print(f"\nServer terminated — {exc_type.__name__}: {exc_value}\n{frames}", file=sys.stderr, flush=True)
+    print(
+        f"\nServer terminated — {exc_type.__name__}: {exc_value}\n{frames}",
+        file=sys.stderr,
+        flush=True,
+    )
 
 
 def _thread_excepthook(args):
@@ -62,7 +67,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "The search term or topic to look up."},
+                    "query": {
+                        "type": "string",
+                        "description": "The search term or topic to look up.",
+                    },
                     "game": {
                         "type": "string",
                         "enum": ["rs3", "osrs"],
@@ -78,7 +86,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "item_name": {"type": "string", "description": "The exact or approximate item name."},
+                    "item_name": {
+                        "type": "string",
+                        "description": "The exact or approximate item name.",
+                    },
                     "game": {
                         "type": "string",
                         "enum": ["rs3", "osrs"],
@@ -94,7 +105,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "username": {"type": "string", "description": "The player's RuneScape username."},
+                    "username": {
+                        "type": "string",
+                        "description": "The player's RuneScape username.",
+                    },
                     "game": {
                         "type": "string",
                         "enum": ["rs3", "osrs"],
@@ -126,7 +140,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "item_name": {"type": "string", "description": "The exact or approximate item name."},
+                    "item_name": {
+                        "type": "string",
+                        "description": "The exact or approximate item name.",
+                    },
                     "game": {
                         "type": "string",
                         "enum": ["rs3", "osrs"],
@@ -142,7 +159,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "item_name": {"type": "string", "description": "The exact or approximate item name."},
+                    "item_name": {
+                        "type": "string",
+                        "description": "The exact or approximate item name.",
+                    },
                     "game": {
                         "type": "string",
                         "enum": ["rs3", "osrs"],
@@ -158,7 +178,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "monster_name": {"type": "string", "description": "The exact or approximate monster name."},
+                    "monster_name": {
+                        "type": "string",
+                        "description": "The exact or approximate monster name.",
+                    },
                     "game": {
                         "type": "string",
                         "enum": ["rs3", "osrs"],
@@ -174,7 +197,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "item_name": {"type": "string", "description": "The exact or approximate item name."},
+                    "item_name": {
+                        "type": "string",
+                        "description": "The exact or approximate item name.",
+                    },
                     "game": {
                         "type": "string",
                         "enum": ["rs3", "osrs"],
@@ -190,7 +216,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "name": {"type": "string", "description": "The achievement name (e.g. 'Noxious Foe', 'Falador Diary', 'The Essence of Magic')."},
+                    "name": {
+                        "type": "string",
+                        "description": "The achievement name (e.g. 'Noxious Foe', 'Falador Diary', 'The Essence of Magic').",
+                    },
                     "game": {
                         "type": "string",
                         "enum": ["rs3", "osrs"],
@@ -207,7 +236,10 @@ async def list_tools() -> list[Tool]:
                 "type": "object",
                 "properties": {
                     "name": {"type": "string", "description": "The achievement name."},
-                    "username": {"type": "string", "description": "The player's RuneScape username."},
+                    "username": {
+                        "type": "string",
+                        "description": "The player's RuneScape username.",
+                    },
                     "game": {
                         "type": "string",
                         "enum": ["rs3", "osrs"],
@@ -251,7 +283,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "method_name": {"type": "string", "description": "The method name as it appears on the wiki (e.g. 'Bird house trapping')."},
+                    "method_name": {
+                        "type": "string",
+                        "description": "The method name as it appears on the wiki (e.g. 'Bird house trapping').",
+                    },
                     "game": {
                         "type": "string",
                         "enum": ["rs3", "osrs"],
@@ -291,7 +326,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "setting_name": {"type": "string", "description": "The setting name as it appears in the in-game menu (e.g. 'Roof removal', 'Master volume')."},
+                    "setting_name": {
+                        "type": "string",
+                        "description": "The setting name as it appears in the in-game menu (e.g. 'Roof removal', 'Master volume').",
+                    },
                     "game": {
                         "type": "string",
                         "enum": ["rs3", "osrs"],
@@ -307,7 +345,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "clue_text": {"type": "string", "description": "The clue text the player is stuck on — anagram letters, cryptic/challenge riddle, emote instructions, cipher text, or coordinate degrees."},
+                    "clue_text": {
+                        "type": "string",
+                        "description": "The clue text the player is stuck on — anagram letters, cryptic/challenge riddle, emote instructions, cipher text, or coordinate degrees.",
+                    },
                     "game": {
                         "type": "string",
                         "enum": ["rs3", "osrs"],
@@ -315,7 +356,15 @@ async def list_tools() -> list[Tool]:
                     },
                     "clue_format": {
                         "type": "string",
-                        "enum": ["anagram", "cryptic", "emote", "cipher", "challenge", "simple", "coordinate"],
+                        "enum": [
+                            "anagram",
+                            "cryptic",
+                            "emote",
+                            "cipher",
+                            "challenge",
+                            "simple",
+                            "coordinate",
+                        ],
                         "description": "Optional format hint to narrow the lookup. Ciphers are OSRS-only. Coordinates are auto-detected from the degrees text, so the hint is rarely needed.",
                     },
                     "tier": {
@@ -336,12 +385,20 @@ async def list_tools() -> list[Tool]:
                     "rings": {
                         "type": "array",
                         "description": "One array per loop; each element is a rune token (integer or string) or null for a rune hidden in the screenshot. The same rune must use the same token across all rings.",
-                        "items": {"type": "array", "items": {"type": ["integer", "string", "null"]}},
+                        "items": {
+                            "type": "array",
+                            "items": {"type": ["integer", "string", "null"]},
+                        },
                     },
                     "intersections": {
                         "type": "array",
                         "description": "Each crossing as [ring_a, slot_a, ring_b, slot_b]: slot_a of ring_a must equal slot_b of ring_b.",
-                        "items": {"type": "array", "items": {"type": "integer"}, "minItems": 4, "maxItems": 4},
+                        "items": {
+                            "type": "array",
+                            "items": {"type": "integer"},
+                            "minItems": 4,
+                            "maxItems": 4,
+                        },
                     },
                 },
             },
@@ -395,7 +452,9 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             arguments.get("limit", 10),
         )
     elif name == "get_money_maker_method":
-        result = await get_money_maker_method(arguments["method_name"], arguments.get("game", "rs3"))
+        result = await get_money_maker_method(
+            arguments["method_name"], arguments.get("game", "rs3")
+        )
     elif name == "get_best_alchables":
         result = await get_best_alchables(
             arguments.get("game", "osrs"),
@@ -456,7 +515,7 @@ web = Starlette(
         Route("/version", version),
         Route("/sse", endpoint=handle_sse),
         Mount("/messages/", app=sse.handle_post_message),
-    ]
+    ],
 )
 
 if __name__ == "__main__":

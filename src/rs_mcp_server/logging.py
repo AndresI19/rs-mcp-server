@@ -1,4 +1,5 @@
 """Stdlib logging setup and tool-instrumentation decorator for rs-mcp-server."""
+
 import functools
 import inspect
 import logging
@@ -13,13 +14,13 @@ _MAX_ARG_VALUE = 200
 _LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
 
 _RESET = "\033[0m"
-_TOOL_COLOR = 39        # bright sky-blue — applied to tool name regardless of level
+_TOOL_COLOR = 39  # bright sky-blue — applied to tool name regardless of level
 _ERROR_TYPE_COLOR = 165  # magenta — applied to error_type value regardless of level
 _LEVEL_COLORS: dict[str, tuple[int, int, int]] = {
     # (label, source module, method) — INFO intentionally absent (uncolored)
-    "WARNING":  (100, 178, 220),  # yellow: olive, amber, gold
-    "ERROR":    (88, 124, 160),   # red: dark, medium, light
-    "CRITICAL": (52, 88, 124),    # dark-red (FATAL)
+    "WARNING": (100, 178, 220),  # yellow: olive, amber, gold
+    "ERROR": (88, 124, 160),  # red: dark, medium, light
+    "CRITICAL": (52, 88, 124),  # dark-red (FATAL)
 }
 _TOOL_RE = re.compile(r"^(tool_call_(?:start|end|error)\s+tool=)(\w+)")
 # Lookahead on \s+error_msg= rejects user-injected error_type= occurrences inside quoted args (which end with ').

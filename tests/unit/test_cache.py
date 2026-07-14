@@ -1,7 +1,9 @@
 """Unit tests for cache.py (issue #18)."""
+
 from rs_mcp_server import cache
 
 # ── get / set round-trips ─────────────────────────────────────────────────────
+
 
 class TestGet:
     def test_missing_key_returns_none(self):
@@ -30,6 +32,7 @@ class TestSet:
 
 # ── invalidate ────────────────────────────────────────────────────────────────
 
+
 class TestInvalidate:
     def test_removes_existing_key(self):
         cache.set("k", "v", ttl_seconds=60)
@@ -42,6 +45,7 @@ class TestInvalidate:
 
 
 # ── TTL semantics with monkeypatched time.monotonic ───────────────────────────
+
 
 class TestTtl:
     def test_within_ttl_returns_value(self, monkeypatch):
@@ -76,6 +80,7 @@ class TestTtl:
 
 
 # ── bounded LRU eviction ──────────────────────────────────────────────────────
+
 
 class TestEviction:
     def test_overflow_evicts_least_recently_used(self, monkeypatch):

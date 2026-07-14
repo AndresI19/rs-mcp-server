@@ -7,6 +7,7 @@ The endpoints are re-exported from rs_mcp_server.config, which resolves them fro
 They stay importable from here so every tool's `from ._constants import *` keeps working — but there
 is now exactly one place an endpoint can be *set*, and it is not this file.
 """
+
 from rs_mcp_server.config import (  # noqa: F401  (re-exported for the tools)
     OSRS_PRICES_BASE,
     WIKI_APIS,
@@ -16,7 +17,7 @@ from rs_mcp_server.config import (  # noqa: F401  (re-exported for the tools)
 # Short display label per game (used in result headers). Callers validate game
 # against WIKI_APIS first, so a lookup here is always present.
 WIKI_LABELS = {
-    "rs3":  "RS3",
+    "rs3": "RS3",
     "osrs": "OSRS",
 }
 

@@ -1,4 +1,5 @@
 """Tests for the get_player_achievement_progress MCP tool (issue #60)."""
+
 import httpx
 import pytest
 
@@ -71,6 +72,7 @@ _RS3_ACH_WIKITEXT = (
 
 def _wiki_router(title: str, content: str):
     """Build a fake_http_get that returns the wiki page for any wiki call + the given hiscores."""
+
     def make(hiscores_data):
         async def fake_http_get(url, params=None, timeout=10.0):
             if "runescape.wiki" in url or "oldschool.runescape.wiki" in url:
@@ -78,16 +80,20 @@ def _wiki_router(title: str, content: str):
             if "index_lite.json" in url:
                 return hiscores_data
             raise AssertionError(f"unexpected URL: {url}")
+
         return fake_http_get
+
     return make
 
 
 class TestCombatAchievement:
     @pytest.mark.anyio
     async def test_monster_kc_surfaced_when_player_ranked(self, monkeypatch):
-        hiscores = _hiscores([
-            {"id": 20, "name": "Abyssal Sire", "rank": 100, "score": 50},
-        ])
+        hiscores = _hiscores(
+            [
+                {"id": 20, "name": "Abyssal Sire", "rank": 100, "score": 50},
+            ]
+        )
         fake = _wiki_router("Noxious Foe", _ca_wikitext("Noxious Foe", "Abyssal Sire"))(hiscores)
         monkeypatch.setattr("rs_mcp_server.tools.achievements.http_get", fake)
         monkeypatch.setattr("rs_mcp_server.tools.player_progress.http_get", fake)
@@ -102,9 +108,11 @@ class TestCombatAchievement:
 
     @pytest.mark.anyio
     async def test_monster_unranked_shows_no_kills_message(self, monkeypatch):
-        hiscores = _hiscores([
-            {"id": 20, "name": "Abyssal Sire", "rank": -1, "score": -1},
-        ])
+        hiscores = _hiscores(
+            [
+                {"id": 20, "name": "Abyssal Sire", "rank": -1, "score": -1},
+            ]
+        )
         fake = _wiki_router("Noxious Foe", _ca_wikitext("Noxious Foe", "Abyssal Sire"))(hiscores)
         monkeypatch.setattr("rs_mcp_server.tools.achievements.http_get", fake)
         monkeypatch.setattr("rs_mcp_server.tools.player_progress.http_get", fake)
@@ -114,9 +122,11 @@ class TestCombatAchievement:
 
     @pytest.mark.anyio
     async def test_monster_not_in_hiscores_says_so(self, monkeypatch):
-        hiscores = _hiscores([
-            {"id": 20, "name": "Abyssal Sire", "rank": 100, "score": 50},
-        ])
+        hiscores = _hiscores(
+            [
+                {"id": 20, "name": "Abyssal Sire", "rank": 100, "score": 50},
+            ]
+        )
         # The CA targets "Cabbage", which is NOT in the hiscores boss list
         fake = _wiki_router("Eat the Cabbage", _ca_wikitext("Eat the Cabbage", "Cabbage"))(hiscores)
         monkeypatch.setattr("rs_mcp_server.tools.achievements.http_get", fake)
@@ -145,9 +155,11 @@ class TestAchievementDiary:
 class TestRs3Achievement:
     @pytest.mark.anyio
     async def test_rs3_says_not_in_hiscores(self, monkeypatch):
-        hiscores = _hiscores([
-            {"id": 2, "name": "Dominion Tower", "rank": 144, "score": 26_445_855},
-        ])
+        hiscores = _hiscores(
+            [
+                {"id": 2, "name": "Dominion Tower", "rank": 144, "score": 26_445_855},
+            ]
+        )
         fake = _wiki_router("The Essence of Magic", _RS3_ACH_WIKITEXT)(hiscores)
         monkeypatch.setattr("rs_mcp_server.tools.achievements.http_get", fake)
         monkeypatch.setattr("rs_mcp_server.tools.player_progress.http_get", fake)
@@ -166,7 +178,9 @@ class TestPlayer404:
             if "index_lite.json" in url:
                 response = httpx.Response(404)
                 raise httpx.HTTPStatusError(
-                    "404", request=httpx.Request("GET", url), response=response,
+                    "404",
+                    request=httpx.Request("GET", url),
+                    response=response,
                 )
             raise AssertionError(f"unexpected URL: {url}")
 

@@ -23,6 +23,9 @@ jobs:
       - name: Lint with ruff
         run: ruff check .
 
+      - name: Check formatting with ruff
+        run: ruff format --check .
+
       - name: Import smoke test
         run: python -c "from rs_mcp_server import server, cache; from rs_mcp_server.tools import wiki, prices, hiscores, quests"
 

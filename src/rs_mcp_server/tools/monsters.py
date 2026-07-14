@@ -75,9 +75,8 @@ async def get_monster_info(monster_name: str, game: str = "rs3") -> str:
 
     # Resolve via the first strategy that lands — the same chain achievements.py, equipment.py and
     # quests.py use. Monsters have no roman-numeral variants, so the chain is two links, not three.
-    result = (
-        await _from_direct(monster_name, game, wiki_label)
-        or await _from_search(monster_name, game, wiki_label)
+    result = await _from_direct(monster_name, game, wiki_label) or await _from_search(
+        monster_name, game, wiki_label
     )
     if result is None:
         return f"No monster found for '{monster_name}' on the {wiki_label} wiki."
@@ -133,6 +132,7 @@ def _cache_and_return(value: str, cache_key: str) -> str:
 # Wiki API helpers
 # ---------------------------------------------------------------------------
 
+
 async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | None:
     data = await http_get(WIKI_APIS[game], params=fetch_page_params(title, follow_redirects))
     return parse_page_response(data, title, game)
@@ -140,10 +140,14 @@ async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | N
 
 async def _search_monster(query: str, game: str) -> dict | None:
     data = await http_get(WIKI_APIS[game], params=search_params(query))
-    return first_matching_page(data, game, lambda c: _find_template(c, "Infobox Monster") is not None)
+    return first_matching_page(
+        data, game, lambda c: _find_template(c, "Infobox Monster") is not None
+    )
 
 
-def _format_monster(title: str, url: str, wiki_label: str, fields: dict[str, str], fields_def: list[tuple[str, str]]) -> str:
+def _format_monster(
+    title: str, url: str, wiki_label: str, fields: dict[str, str], fields_def: list[tuple[str, str]]
+) -> str:
     lines = [f"**{title}** ({wiki_label} Wiki)", url, ""]
     for label, key in fields_def:
         val = fields.get(key) or fields.get(f"{key}1")

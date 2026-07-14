@@ -9,6 +9,7 @@ issued after the entry's TTL expires re-fetches.
 If a future tool author wires the cache incorrectly (sets but never
 gets, or never sets), these tests are the safety net.
 """
+
 import pytest
 
 from rs_mcp_server import cache
@@ -35,6 +36,7 @@ def _spy_http_get():
 
 
 # ── Sequential warm-hit ────────────────────────────────────────────────────────
+
 
 class TestCacheHitWithinTtl:
     @pytest.mark.anyio
@@ -69,6 +71,7 @@ class TestCacheHitWithinTtl:
 
 
 # ── Sequential cold-after-expiry ───────────────────────────────────────────────
+
 
 class TestCacheMissAfterTtl:
     @pytest.mark.anyio

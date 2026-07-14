@@ -4,6 +4,7 @@ Parses the rendered Settings page HTML on each game's wiki, walks <h2>/<h3>
 headings and <table class="wikitable"> rows to build a name → description index,
 then supports exact / substring / fuzzy / description / wiki-search-fallback lookup.
 """
+
 from difflib import get_close_matches
 from html.parser import HTMLParser
 
@@ -17,8 +18,13 @@ from ._wiki_parsing import TableScope, join_text, match_by_name
 _PAGE = "Settings"
 
 _SKIP_SECTIONS = {
-    "update_history", "history", "changes",
-    "gallery", "references", "trivia", "see_also",
+    "update_history",
+    "history",
+    "changes",
+    "gallery",
+    "references",
+    "trivia",
+    "see_also",
     "mw-toc-heading",
 }
 
@@ -46,9 +52,15 @@ async def get_game_setting(setting_name: str, game: str = "rs3") -> str:
     if kind == "exact":
         return _render_setting(payload, wiki_label, page_url)
     if kind == "did_you_mean":
-        return _render_did_you_mean(payload, wiki_label, header="Did you mean one of these settings?")
+        return _render_did_you_mean(
+            payload, wiki_label, header="Did you mean one of these settings?"
+        )
     if kind == "description_hits":
-        return _render_did_you_mean(payload, wiki_label, header=f"No setting named '{setting_name}', but it appears in these descriptions:")
+        return _render_did_you_mean(
+            payload,
+            wiki_label,
+            header=f"No setting named '{setting_name}', but it appears in these descriptions:",
+        )
 
     # All local-index tiers failed — try a wiki-wide search before giving up.
     suggestions = await _wiki_search_fallback(setting_name, game)
@@ -61,6 +73,7 @@ async def get_game_setting(setting_name: str, game: str = "rs3") -> str:
 # ---------------------------------------------------------------------------
 # Wiki fetch
 # ---------------------------------------------------------------------------
+
 
 async def _fetch_settings_index(game: str) -> list[dict] | None:
     params = {
@@ -79,6 +92,7 @@ async def _fetch_settings_index(game: str) -> list[dict] | None:
 # ---------------------------------------------------------------------------
 # HTML parser
 # ---------------------------------------------------------------------------
+
 
 class _SettingsParser(HTMLParser):
     """Walk <h2>/<h3> headings and <table class="wikitable"> rows in document order.
@@ -147,20 +161,24 @@ class _SettingsParser(HTMLParser):
     def _emit_row(self) -> None:
         if self._row_has_th or self._cells is None or len(self._cells) < 2:
             return
-        if (self.section_anchor.lower() in _SKIP_SECTIONS
-                or self.subsection_anchor.lower() in _SKIP_SECTIONS):
+        if (
+            self.section_anchor.lower() in _SKIP_SECTIONS
+            or self.subsection_anchor.lower() in _SKIP_SECTIONS
+        ):
             return
         name, desc = self._cells[0], self._cells[1]
         if not name or not desc:
             return
-        self.rows.append({
-            "name": name,
-            "name_lower": name.lower(),
-            "section": self.section,
-            "subsection": self.subsection,
-            "description": desc,
-            "anchor": self.subsection_anchor or self.section_anchor,
-        })
+        self.rows.append(
+            {
+                "name": name,
+                "name_lower": name.lower(),
+                "section": self.section,
+                "subsection": self.subsection,
+                "description": desc,
+                "anchor": self.subsection_anchor or self.section_anchor,
+            }
+        )
 
 
 def _parse_settings_html(html_text: str) -> list[dict]:
@@ -173,6 +191,7 @@ def _parse_settings_html(html_text: str) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Matching
 # ---------------------------------------------------------------------------
+
 
 def _match_setting(query: str, rows: list[dict]) -> tuple[str, object]:
     q = query.strip().lower()
@@ -200,6 +219,7 @@ def _match_setting(query: str, rows: list[dict]) -> tuple[str, object]:
 # ---------------------------------------------------------------------------
 # Rendering
 # ---------------------------------------------------------------------------
+
 
 def _section_path(row: dict) -> str:
     if row["section"] and row["subsection"]:
@@ -234,6 +254,7 @@ def _render_did_you_mean(candidates: list[dict], wiki_label: str, header: str) -
 # Wiki-search fallback (issue #74) — invoked when the local index has no hits
 # ---------------------------------------------------------------------------
 
+
 async def _wiki_search_fallback(query: str, game: str) -> list[dict]:
     """Generic wiki search for queries that don't match any settings-page row."""
     params = {
@@ -258,11 +279,13 @@ async def _wiki_search_fallback(query: str, game: str) -> list[dict]:
         if not title:
             continue
         snippet = (p.get("extract") or "").strip()
-        out.append({
-            "title": title,
-            "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
-            "snippet": snippet[:160] + ("…" if len(snippet) > 160 else ""),
-        })
+        out.append(
+            {
+                "title": title,
+                "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
+                "snippet": snippet[:160] + ("…" if len(snippet) > 160 else ""),
+            }
+        )
     return out
 
 

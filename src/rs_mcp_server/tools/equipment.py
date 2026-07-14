@@ -1,4 +1,5 @@
 """get_equipment_stats tool — RuneScape Wiki Infobox Bonuses (OSRS + RS3)."""
+
 import html
 from html.parser import HTMLParser
 
@@ -24,9 +25,9 @@ from ._wiki_parsing import (
 # Section headings whose prose should be surfaced alongside the infobox.
 # Each entry is (canonical display label, accepted heading variants — lowercased).
 _SECTION_TARGETS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("Set bonus",          ("set bonus", "set effect", "set effects")),
-    ("Passive",            ("passive", "passive effect", "passive effects", "passive ability")),
-    ("Special attack",     ("special attack", "special attacks")),
+    ("Set bonus", ("set bonus", "set effect", "set effects")),
+    ("Passive", ("passive", "passive effect", "passive effects", "passive ability")),
+    ("Special attack", ("special attack", "special attacks")),
     ("Special properties", ("special properties", "special property", "properties")),
 )
 
@@ -89,9 +90,8 @@ async def get_equipment_stats(item_name: str, game: str = "rs3") -> str:
 
     wiki_label = WIKI_LABELS[game]
 
-    result = (
-        await _stats_from_direct(item_name, game, wiki_label)
-        or await _stats_from_search(item_name, game, wiki_label)
+    result = await _stats_from_direct(item_name, game, wiki_label) or await _stats_from_search(
+        item_name, game, wiki_label
     )
     if result is None:
         return f"No equipment found for '{item_name}' on the {wiki_label} wiki."
@@ -144,6 +144,7 @@ def _cache_and_return(value: str, cache_key: str) -> str:
 # Wiki API helpers
 # ---------------------------------------------------------------------------
 
+
 async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | None:
     data = await http_get(WIKI_APIS[game], params=fetch_page_params(title, follow_redirects))
     return parse_page_response(data, title, game)
@@ -151,10 +152,19 @@ async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | N
 
 async def _search_equipment(query: str, game: str) -> dict | None:
     data = await http_get(WIKI_APIS[game], params=search_params(query))
-    return first_matching_page(data, game, lambda c: _find_template(c, "Infobox Bonuses") is not None)
+    return first_matching_page(
+        data, game, lambda c: _find_template(c, "Infobox Bonuses") is not None
+    )
 
 
-def _format_stats(title: str, url: str, wiki_label: str, fields: dict[str, str], stats_def: list[tuple[str, str]], sections: dict[str, str]) -> str:
+def _format_stats(
+    title: str,
+    url: str,
+    wiki_label: str,
+    fields: dict[str, str],
+    stats_def: list[tuple[str, str]],
+    sections: dict[str, str],
+) -> str:
     lines = [f"**{title}** ({wiki_label} Wiki)", url, ""]
     for label, key in stats_def:
         val = fields.get(key)
@@ -177,6 +187,7 @@ def _format_stats(title: str, url: str, wiki_label: str, fields: dict[str, str],
 # ---------------------------------------------------------------------------
 # Named-section prose enrichment (issue #77)
 # ---------------------------------------------------------------------------
+
 
 async def _fetch_named_sections(title: str, game: str) -> dict[str, str]:
     """Fetch the rendered page and extract prose for the target named sections.
@@ -253,7 +264,9 @@ class _SectionsParser(HTMLParser):
 
     def _flush(self) -> None:
         if self._label is not None and self._paragraphs:
-            self.sections[self._label] = _truncate("\n\n".join(self._paragraphs), _SECTION_PROSE_LIMIT)
+            self.sections[self._label] = _truncate(
+                "\n\n".join(self._paragraphs), _SECTION_PROSE_LIMIT
+            )
         self._label = None
         self._paragraphs = []
 

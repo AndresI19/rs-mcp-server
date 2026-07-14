@@ -1,4 +1,5 @@
 """Sanity tests for the Starlette server: /health success and /health?crash termination (issue #27)."""
+
 import subprocess
 import sys
 import time
@@ -27,10 +28,14 @@ class TestHealthCrash:
         with open(log_file, "wb") as fh:
             proc = subprocess.Popen(
                 [
-                    sys.executable, "-m", "uvicorn",
+                    sys.executable,
+                    "-m",
+                    "uvicorn",
                     "rs_mcp_server.server:web",
-                    "--host", "127.0.0.1",
-                    "--port", str(port),
+                    "--host",
+                    "127.0.0.1",
+                    "--port",
+                    str(port),
                 ],
                 stdout=fh,
                 stderr=subprocess.STDOUT,

@@ -1,4 +1,5 @@
 """Unit tests for tools/_http.py retry/backoff behavior."""
+
 import httpx
 import pytest
 
@@ -10,7 +11,9 @@ async def _instant_sleep(*_args, **_kwargs):
 
 
 def _inject(monkeypatch, handler):
-    monkeypatch.setattr(_http._CLIENT, "_client", httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    monkeypatch.setattr(
+        _http._CLIENT, "_client", httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    )
     monkeypatch.setattr(_http.asyncio, "sleep", _instant_sleep)  # skip real backoff
 
 

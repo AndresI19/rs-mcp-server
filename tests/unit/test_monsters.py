@@ -1,4 +1,5 @@
 """End-to-end tests for the get_monster_info MCP tool (issue #49)."""
+
 import pytest
 
 from rs_mcp_server.tools.monsters import get_monster_info
@@ -98,7 +99,9 @@ class TestGetMonsterInfoOsrs:
     async def test_no_info_when_template_missing(self, monkeypatch):
         # Page exists but has no monster infobox. Search filter rejects it →
         # tool returns the cleaner "No monster found" message (#76).
-        page_without_infobox = _wiki_page("Cabbage", "Just an article body, no infobox monster here.")
+        page_without_infobox = _wiki_page(
+            "Cabbage", "Just an article body, no infobox monster here."
+        )
 
         async def fake_http_get(url, params=None, timeout=10.0):
             return page_without_infobox
@@ -172,7 +175,10 @@ class TestSearchTypeFilter:
                     "pages": [
                         page_revision("Random NPC", "{{Infobox NPC|name=Random}}"),
                         page_revision("Quest about demons", "{{Infobox Quest|difficulty=Hard}}"),
-                        page_revision("Demonic creature", "{{Infobox Monster\n|combat = 100\n|hitpoints = 1000\n|members = Yes\n}}"),
+                        page_revision(
+                            "Demonic creature",
+                            "{{Infobox Monster\n|combat = 100\n|hitpoints = 1000\n|members = Yes\n}}",
+                        ),
                     ]
                 }
             }

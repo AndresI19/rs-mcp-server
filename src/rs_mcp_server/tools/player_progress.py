@@ -1,4 +1,5 @@
 """get_player_achievement_progress — pairs wiki achievement info with player hiscores data."""
+
 import httpx
 
 from rs_mcp_server import cache
@@ -27,7 +28,9 @@ async def get_player_achievement_progress(name: str, username: str, game: str = 
         return cached
 
     info = await get_achievement(name, game)
-    if info.startswith(("No achievement found", "Did you mean", "Unknown game", "Multiple tiered variants")):
+    if info.startswith(
+        ("No achievement found", "Did you mean", "Unknown game", "Multiple tiered variants")
+    ):
         return info
 
     direct = await _fetch_page(name, game, follow_redirects=True)
@@ -71,12 +74,18 @@ def _format_progress(kind: str | None, monster: str | None, username: str, data:
         if activity is not None:
             rank = _as_int(activity.get("rank"))
             if rank > 0:
-                lines.append(f"  {activity.get('name', '')}: {_as_int(activity.get('score')):,} KCs  (rank {rank:,})")
+                lines.append(
+                    f"  {activity.get('name', '')}: {_as_int(activity.get('score')):,} KCs  (rank {rank:,})"
+                )
             else:
                 lines.append(f"  {activity.get('name', '')}: not yet ranked (no recorded kills)")
-            lines.append("  Note: per-task CA completion isn't in public hiscores; the KC above is an engagement signal.")
+            lines.append(
+                "  Note: per-task CA completion isn't in public hiscores; the KC above is an engagement signal."
+            )
         else:
-            lines.append(f"  '{monster}' isn't in the public hiscores boss list. Per-task CA completion isn't tracked there either.")
+            lines.append(
+                f"  '{monster}' isn't in the public hiscores boss list. Per-task CA completion isn't tracked there either."
+            )
         lines.append("  See the in-game adventurer's log for per-task completion status.")
     elif kind == "Achievement Diary":
         lines.append("  Achievement Diary completion isn't in public hiscores.")

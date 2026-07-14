@@ -1,4 +1,5 @@
 """Tests for the solve_clue MCP tool (issue #50)."""
+
 import pytest
 
 from rs_mcp_server.tools.clues import (
@@ -80,6 +81,7 @@ _SIMPLE_HTML = """
 # Parser tests
 # ---------------------------------------------------------------------------
 
+
 class TestParseAnagramHtml:
     def test_extracts_two_tier_sections(self):
         rows = _parse_clue_html(_ANAGRAM_HTML, "anagram")
@@ -146,7 +148,7 @@ class TestParseChallengeHtml:
         r = next(x for x in rows if "snakeskins" in x["clue_text"])
         assert r["answer"] == "666"
         assert r["npc"] == "Ironman tutor"
-        assert r["tier"] == ""          # challenge pages carry no tier
+        assert r["tier"] == ""  # challenge pages carry no tier
         assert r["format"] == "challenge"
 
     def test_question_is_the_clue_text(self):
@@ -176,6 +178,7 @@ class TestParseSkipsTablesOutsideTier:
 # Matcher tests
 # ---------------------------------------------------------------------------
 
+
 class TestMatchClues:
     def test_exact_match(self):
         rows = _parse_clue_html(_ANAGRAM_HTML, "anagram")
@@ -203,6 +206,7 @@ class TestMatchClues:
 # ---------------------------------------------------------------------------
 # End-to-end tests
 # ---------------------------------------------------------------------------
+
 
 def _parse_response(html_text: str) -> dict:
     return {"parse": {"text": html_text}}
@@ -302,14 +306,18 @@ class TestSolveClueValidation:
 # Coordinates (baked dataset — these tests never touch the live wiki)
 # ---------------------------------------------------------------------------
 
+
 class TestNormalizeCoordinate:
-    @pytest.mark.parametrize(("text", "expected"), [
-        ("04 degrees 13 minutes south, 16 degrees 25 minutes east", "04.13S,16.25E"),
-        ("00 degrees 05 minutes south, 01 degrees 13 minutes east", "00.05S,01.13E"),
-        ("00 degrees 00 minutes north 07 degrees 13 minutes west", "00.00N,07.13W"),
-        ("AN EARL", None),
-        ("Talk to the bartender of the Rusty Anchor.", None),
-    ])
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            ("04 degrees 13 minutes south, 16 degrees 25 minutes east", "04.13S,16.25E"),
+            ("00 degrees 05 minutes south, 01 degrees 13 minutes east", "00.05S,01.13E"),
+            ("00 degrees 00 minutes north 07 degrees 13 minutes west", "00.00N,07.13W"),
+            ("AN EARL", None),
+            ("Talk to the bartender of the Rusty Anchor.", None),
+        ],
+    )
     def test_normalize(self, text, expected):
         assert normalize_coordinate(text) == expected
 
@@ -318,7 +326,8 @@ class TestResolveCoordinate:
     def test_resolves_known_coordinate_from_baked_data(self):
         # 00.05S,01.13E is in both committed datasets; resolution is purely local.
         out = _resolve_coordinate(
-            "00 degrees 05 minutes south, 01 degrees 13 minutes east", "rs3", "RS3")
+            "00 degrees 05 minutes south, 01 degrees 13 minutes east", "rs3", "RS3"
+        )
         assert out is not None
         assert "Medium coordinate" in out
         assert "Location:" in out  # RS3 carries a text location
@@ -329,7 +338,8 @@ class TestResolveCoordinate:
 
     def test_unknown_coordinate_points_to_guide(self):
         out = _resolve_coordinate(
-            "89 degrees 59 minutes north, 89 degrees 59 minutes west", "osrs", "OSRS")
+            "89 degrees 59 minutes north, 89 degrees 59 minutes west", "osrs", "OSRS"
+        )
         assert out is not None and "not in the OSRS dataset" in out
 
 

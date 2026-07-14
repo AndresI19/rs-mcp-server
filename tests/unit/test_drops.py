@@ -1,4 +1,5 @@
 """Tests for the get_item_drop_sources MCP tool (issue #58)."""
+
 import pytest
 
 from rs_mcp_server import cache as _cache_mod
@@ -18,14 +19,16 @@ def _wiki_parse(title: str, body_html: str) -> dict:
 def _table_html(rows_html: str) -> str:
     return (
         '<div><table class="wikitable sortable filterable item-drops align-center-2">'
-        '<tbody>'
-        '<tr><th>Source</th><th>Level</th><th>Quantity</th><th>Rarity</th></tr>'
-        f'{rows_html}'
-        '</tbody></table></div>'
+        "<tbody>"
+        "<tr><th>Source</th><th>Level</th><th>Quantity</th><th>Rarity</th></tr>"
+        f"{rows_html}"
+        "</tbody></table></div>"
     )
 
 
-def _drops_row(source: str, level: str | None, quantity: str, rarity: str, version: str = "") -> str:
+def _drops_row(
+    source: str, level: str | None, quantity: str, rarity: str, version: str = ""
+) -> str:
     """Build one rendered <tr> matching the wiki's item-drops table schema."""
     version_span = f'<span class="beast-version">{version}</span>' if version else ""
     if level is None:
@@ -35,9 +38,9 @@ def _drops_row(source: str, level: str | None, quantity: str, rarity: str, versi
     rarity_td = f'<td data-sort-value="1"><span data-drop-fraction="{rarity}" data-drop-percent="0.5">{rarity}</span></td>'
     return (
         f'<tr><td><a href="/w/{source.replace(" ", "_")}" title="{source}">{source}{version_span}</a></td>'
-        f'{level_td}'
+        f"{level_td}"
         f'<td data-sort-value="1">{quantity}</td>'
-        f'{rarity_td}</tr>'
+        f"{rarity_td}</tr>"
     )
 
 
@@ -50,6 +53,7 @@ class TestGetItemDropSources:
             + _drops_row("Lesser demon", "82", "1", "1/4096")
             + _drops_row("Imp", "7", "1", "1/8192")
         )
+
         async def fake_http_get(url, params=None, timeout=10.0):
             return _wiki_parse("Abyssal whip", _table_html(rows))
 
@@ -67,10 +71,8 @@ class TestGetItemDropSources:
 
     @pytest.mark.anyio
     async def test_two_sources_no_overflow_line(self, monkeypatch):
-        rows = (
-            _drops_row("Goblin", "2", "1", "1/4")
-            + _drops_row("Goblin guard", "42", "1", "1/8")
-        )
+        rows = _drops_row("Goblin", "2", "1", "1/4") + _drops_row("Goblin guard", "42", "1", "1/8")
+
         async def fake_http_get(url, params=None, timeout=10.0):
             return _wiki_parse("Bones", _table_html(rows))
 
@@ -85,7 +87,7 @@ class TestGetItemDropSources:
     @pytest.mark.anyio
     async def test_no_item_drops_table_returns_no_sources_message(self, monkeypatch):
         async def fake_http_get(url, params=None, timeout=10.0):
-            return _wiki_parse("Bread", '<div><p>Bread is a basic food item.</p></div>')
+            return _wiki_parse("Bread", "<div><p>Bread is a basic food item.</p></div>")
 
         monkeypatch.setattr("rs_mcp_server.tools.drops.http_get", fake_http_get)
         result = await get_item_drop_sources("Bread", "osrs")
@@ -96,6 +98,7 @@ class TestGetItemDropSources:
     @pytest.mark.anyio
     async def test_non_combat_source_renders_as_drop_not_level(self, monkeypatch):
         rows = _drops_row("Unsired", None, "1", "12/128")
+
         async def fake_http_get(url, params=None, timeout=10.0):
             return _wiki_parse("Abyssal whip", _table_html(rows))
 
@@ -108,13 +111,17 @@ class TestGetItemDropSources:
     @pytest.mark.anyio
     async def test_version_suffix_renders_in_parens(self, monkeypatch):
         rows = _drops_row("Abyssal demon", "124", "1", "1/512", version="Wilderness Slayer Cave")
+
         async def fake_http_get(url, params=None, timeout=10.0):
             return _wiki_parse("Abyssal whip", _table_html(rows))
 
         monkeypatch.setattr("rs_mcp_server.tools.drops.http_get", fake_http_get)
         result = await get_item_drop_sources("Abyssal whip", "osrs")
 
-        assert "1. Abyssal demon (Wilderness Slayer Cave) — 1/512 from a level-124 monster, qty 1" in result
+        assert (
+            "1. Abyssal demon (Wilderness Slayer Cave) — 1/512 from a level-124 monster, qty 1"
+            in result
+        )
 
     @pytest.mark.anyio
     async def test_missing_page_returns_not_found(self, monkeypatch):
@@ -130,6 +137,7 @@ class TestGetItemDropSources:
     async def test_second_call_hits_cache(self, monkeypatch):
         rows = _drops_row("Cow", "2", "1", "1/2")
         call_count = {"n": 0}
+
         async def fake_http_get(url, params=None, timeout=10.0):
             call_count["n"] += 1
             return _wiki_parse("Bones", _table_html(rows))
@@ -177,5 +185,5 @@ class TestGetItemDropSources:
         result = await get_item_drop_sources("Bones", "rs3")
         assert "1. Imp — 1/8 from a level-7 monster, qty 1" in result
         assert "2. Nightmare — 1/100 from a level-50 monster, qty 1" in result
-        assert "junk" not in result          # nested-table text ignored
-        assert "more source" not in result   # nested <tr> did not become a 3rd row
+        assert "junk" not in result  # nested-table text ignored
+        assert "more source" not in result  # nested <tr> did not become a 3rd row

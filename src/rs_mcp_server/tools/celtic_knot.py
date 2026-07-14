@@ -16,6 +16,7 @@ Key ideas:
 A knot is 3-4 loops of up to ~30 runes with 2-6 intersections, so the rotation space
 (product of ring lengths) is small enough to brute-force.
 """
+
 import itertools
 
 from rs_mcp_server.logging import instrument
@@ -131,17 +132,21 @@ async def solve_celtic_knot(
     solutions = _find_solutions(rings, intersections)
 
     if not solutions:
-        return ("These runes have no consistent rotation — the knot is **unsolvable as read**. A real "
-                "Celtic knot always has a solution, so this almost always means a rune was misread or "
-                "an intersection was mis-mapped; double-check those. If the reading is definitely "
-                "correct, the puzzle is genuinely unsolvable.")
+        return (
+            "These runes have no consistent rotation — the knot is **unsolvable as read**. A real "
+            "Celtic knot always has a solution, so this almost always means a rune was misread or "
+            "an intersection was mis-mapped; double-check those. If the reading is definitely "
+            "correct, the puzzle is genuinely unsolvable."
+        )
 
     if len(solutions) > _MAX_CANDIDATES:
-        return ("**Too many rotations fit to pin one answer.** More than "
-                f"{_MAX_CANDIDATES} rotation sets satisfy the runes as read — usually because runes were "
-                "left hidden (`null`). Click the puzzle's **INVERT PATHS** button to expose the runes "
-                "tucked under the crossings, re-read so every slot is filled, and call again; a complete "
-                "reading resolves to a single solution.")
+        return (
+            "**Too many rotations fit to pin one answer.** More than "
+            f"{_MAX_CANDIDATES} rotation sets satisfy the runes as read — usually because runes were "
+            "left hidden (`null`). Click the puzzle's **INVERT PATHS** button to expose the runes "
+            "tucked under the crossings, re-read so every slot is filled, and call again; a complete "
+            "reading resolves to a single solution."
+        )
 
     solutions.sort(key=lambda ks: _clicks(ks, lengths))
     best = solutions[0]

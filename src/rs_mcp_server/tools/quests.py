@@ -1,4 +1,5 @@
 """get_quest_info tool — RuneScape Wiki quest data via MediaWiki API."""
+
 import re
 
 from rs_mcp_server import cache
@@ -118,6 +119,7 @@ def _cache_and_return(value: str, cache_key: str) -> str:
 # Wiki API helpers
 # ---------------------------------------------------------------------------
 
+
 async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | None:
     """Direct title lookup. Returns dict with title/url/content, or None if missing."""
     data = await http_get(WIKI_APIS[game], params=fetch_page_params(title, follow_redirects))
@@ -142,6 +144,7 @@ async def _search_quest(query: str, game: str) -> dict | None:
 # ---------------------------------------------------------------------------
 # Wikitext parsing
 # ---------------------------------------------------------------------------
+
 
 async def _enumerate_roman_variants(quest_name: str, game: str) -> list[dict]:
     """Try '<name> I' through '<name> V' in one batch query; return variants
@@ -169,11 +172,13 @@ async def _enumerate_roman_variants(quest_name: str, game: str) -> list[dict]:
         if not _has_quest_template(content):
             continue
         title = page.get("title", "")
-        found.append({
-            "title": title,
-            "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
-            "content": content,
-        })
+        found.append(
+            {
+                "title": title,
+                "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
+                "content": content,
+            }
+        )
     return found
 
 
@@ -190,17 +195,17 @@ def _find_template(wikitext: str, name: str) -> str | None:
     i = match.end()
     depth = 2
     while i < len(wikitext) and depth > 0:
-        if wikitext[i:i+2] == "{{":
+        if wikitext[i : i + 2] == "{{":
             depth += 2
             i += 2
-        elif wikitext[i:i+2] == "}}":
+        elif wikitext[i : i + 2] == "}}":
             depth -= 2
             i += 2
         else:
             i += 1
     if depth != 0:
         return None
-    return wikitext[match.end():i-2]
+    return wikitext[match.end() : i - 2]
 
 
 def _merged_fields(wikitext: str) -> dict[str, str]:
@@ -242,7 +247,9 @@ def _format_from_content(title: str, url: str, wiki_label: str, wikitext: str) -
 
 
 def _clean_wikitext(s: str) -> str:
-    s = re.sub(r"\{\{(?:Skillreq|SCP)\|([^|}]+)\|(\d+)[^}]*\}\}", r"Level \2 \1", s, flags=re.IGNORECASE)
+    s = re.sub(
+        r"\{\{(?:Skillreq|SCP)\|([^|}]+)\|(\d+)[^}]*\}\}", r"Level \2 \1", s, flags=re.IGNORECASE
+    )
     s = re.sub(r"\{\{plinkp?\|([^|}]+)[^}]*\}\}", r"\1", s, flags=re.IGNORECASE)
     s = re.sub(r"\{\{[^}]*\}\}", "", s)
     s = re.sub(r"\[\[(?:[^\]|]+\|)?([^\]]+)\]\]", r"\1", s)

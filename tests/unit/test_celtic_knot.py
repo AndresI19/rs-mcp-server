@@ -1,4 +1,5 @@
 """Unit tests for the solve_celtic_knot solver (issue #98)."""
+
 import pytest
 
 from rs_mcp_server.tools.celtic_knot import (
@@ -36,7 +37,7 @@ class TestSolver:
 
 class TestDescribeRotation:
     def test_prefers_shorter_direction(self):
-        assert "backward" in _describe_rotation(3, 4)   # 3 forward == 1 backward
+        assert "backward" in _describe_rotation(3, 4)  # 3 forward == 1 backward
         assert "forward" in _describe_rotation(1, 4)
         assert _describe_rotation(0, 4) == "leave as-is"
 
@@ -93,10 +94,14 @@ class TestRealisticScale:
     def test_solves_full_size_knot(self):
         # 3 rings of 24 runes with 6 crossings — in-game dimensions, not the toy length-4.
         n = 24
-        rings = [[f"r{r}_{i}" for i in range(n)] for r in range(3)]   # all distinct base runes
+        rings = [[f"r{r}_{i}" for i in range(n)] for r in range(3)]  # all distinct base runes
         intersections = [
-            [0, 2, 1, 5], [0, 9, 2, 3], [0, 16, 1, 20],
-            [1, 1, 2, 18], [1, 12, 2, 7], [0, 22, 2, 14],
+            [0, 2, 1, 5],
+            [0, 9, 2, 3],
+            [0, 16, 1, 20],
+            [1, 1, 2, 18],
+            [1, 12, 2, 7],
+            [0, 22, 2, 14],
         ]
         for j, (ra, pa, rb, pb) in enumerate(intersections):  # plant a shared token per crossing
             rings[ra][pa] = rings[rb][pb] = f"X{j}"
@@ -113,12 +118,18 @@ class TestRealisticScale:
         n = 24
         rings = [[f"r{r}_{i}" for i in range(n)] for r in range(3)]
         intersections = [
-            [0, 2, 1, 5], [0, 9, 2, 3], [0, 16, 1, 20],
-            [1, 1, 2, 18], [1, 12, 2, 7], [0, 22, 2, 14],
+            [0, 2, 1, 5],
+            [0, 9, 2, 3],
+            [0, 16, 1, 20],
+            [1, 1, 2, 18],
+            [1, 12, 2, 7],
+            [0, 22, 2, 14],
         ]
         for j, (ra, pa, rb, pb) in enumerate(intersections):
             rings[ra][pa] = rings[rb][pb] = f"X{j}"
-        current = [[rings[r][(p - off) % n] for p in range(n)] for r, off in zip(range(3), [5, 11, 19])]
+        current = [
+            [rings[r][(p - off) % n] for p in range(n)] for r, off in zip(range(3), [5, 11, 19])
+        ]
         for ra, pa, rb, pb in intersections:
             current[rb][pb] = None  # under-path rune hidden at every crossing
         sols = _find_solutions(current, intersections)

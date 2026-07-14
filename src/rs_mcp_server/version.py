@@ -1,4 +1,5 @@
 """Version metadata for the running server — exposed via the /version endpoint."""
+
 from pathlib import Path
 
 # Sibling file written by the deploy step (typically the Dockerfile) using the

@@ -50,8 +50,8 @@ _RS3_FIELDS = [
 
 _TEMPLATE_DISPATCH = [
     ("Infobox Combat Achievement", _OSRS_CA_FIELDS, "Combat Achievement"),
-    ("Infobox Achievement Diary",  _OSRS_DIARY_FIELDS, "Achievement Diary"),
-    ("Infobox Achievement",        _RS3_FIELDS,        "Achievement"),
+    ("Infobox Achievement Diary", _OSRS_DIARY_FIELDS, "Achievement Diary"),
+    ("Infobox Achievement", _RS3_FIELDS, "Achievement"),
 ]
 
 
@@ -130,7 +130,9 @@ async def _from_search(name: str, game: str, wiki_label: str) -> str | None:
         return None
     if not _titles_match(name, candidate["title"]):
         return _disambiguate(candidate["title"], candidate["url"], wiki_label)
-    return _format_match(candidate["title"], candidate["url"], wiki_label, _dispatch(candidate["content"]))
+    return _format_match(
+        candidate["title"], candidate["url"], wiki_label, _dispatch(candidate["content"])
+    )
 
 
 def _dispatch(content: str) -> tuple[str, list[tuple[str, str]], str] | None:
@@ -153,6 +155,7 @@ def _cache_and_return(value: str, cache_key: str) -> str:
 # ---------------------------------------------------------------------------
 # Wiki API helpers
 # ---------------------------------------------------------------------------
+
 
 async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | None:
     data = await http_get(WIKI_APIS[game], params=fetch_page_params(title, follow_redirects))
@@ -192,15 +195,24 @@ async def _enumerate_roman_variants(name: str, game: str) -> list[dict]:
         if _dispatch(content) is None:
             continue
         title = page.get("title", "")
-        found.append({
-            "title": title,
-            "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
-            "content": content,
-        })
+        found.append(
+            {
+                "title": title,
+                "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
+                "content": content,
+            }
+        )
     return found
 
 
-def _format_achievement(title: str, url: str, wiki_label: str, kind: str, fields: dict[str, str], fields_def: list[tuple[str, str]]) -> str:
+def _format_achievement(
+    title: str,
+    url: str,
+    wiki_label: str,
+    kind: str,
+    fields: dict[str, str],
+    fields_def: list[tuple[str, str]],
+) -> str:
     lines = [f"**{title}** — {kind} ({wiki_label} Wiki)", url, ""]
     for label, key in fields_def:
         val = fields.get(key) or fields.get(f"{key}1")

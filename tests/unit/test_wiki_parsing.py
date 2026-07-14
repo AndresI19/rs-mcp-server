@@ -1,4 +1,5 @@
 """Unit tests for the shared wikitext-parsing helpers."""
+
 from rs_mcp_server.tools._wiki_parsing import (
     TableScope,
     clean_wikitext,
@@ -46,7 +47,9 @@ class TestRenderVariants:
     def test_renders_list_and_tool_hint(self):
         out = render_variants(
             [{"title": "Wuthering I", "url": "u1"}, {"title": "Wuthering II", "url": "u2"}],
-            "RS3", "Wuthering", "get_achievement",
+            "RS3",
+            "Wuthering",
+            "get_achievement",
         )
         assert 'Multiple tiered variants of **"Wuthering"**' in out
         assert "- **Wuthering I** — u1" in out
@@ -71,9 +74,9 @@ class TestTableScope:
         s = TableScope(lambda cls: "wikitable" in cls)
         s.open_table({"class": "wikitable"})
         s.open_table({"class": "wikitable"})  # nested inside a cell
-        assert not s.at_target_level()        # depth != target depth
+        assert not s.at_target_level()  # depth != target depth
         s.close_table()
-        assert s.at_target_level()            # back at the outer table
+        assert s.at_target_level()  # back at the outer table
 
     def test_first_only_ignores_later_targets(self):
         s = TableScope(lambda cls: "wikitable" in cls, first_only=True)
@@ -85,7 +88,7 @@ class TestTableScope:
         s = TableScope(lambda cls: "wikitable" in cls)
         s.open_table({"class": "wikitable"})
         s.close_table()
-        assert s.open_table({"class": "wikitable"}) is True   # re-enters each table
+        assert s.open_table({"class": "wikitable"}) is True  # re-enters each table
 
 
 class TestTitlesMatch:

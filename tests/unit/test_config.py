@@ -9,6 +9,7 @@ expected exception is matched as ValueError, not ConfigError: importlib.reload R
 so the object raised inside the reload is not the same object a reference captured beforehand would
 be. ConfigError subclasses ValueError precisely so a caller never has to care about that.
 """
+
 import importlib
 
 import pytest
@@ -20,9 +21,18 @@ def load(**env: str):
     """Reload config with exactly `env` layered over a cleared environment."""
     with pytest.MonkeyPatch.context() as mp:
         for name in (
-            "MCP_HOST", "MCP_PORT", "HTTP_TIMEOUT", "HTTP_MAX_RETRIES", "USER_AGENT",
-            "RS3_WIKI_API", "OSRS_WIKI_API", "RS3_WIKI_BASE", "OSRS_WIKI_BASE",
-            "OSRS_PRICES_BASE", "RS3_HISCORES_URL", "OSRS_HISCORES_URL",
+            "MCP_HOST",
+            "MCP_PORT",
+            "HTTP_TIMEOUT",
+            "HTTP_MAX_RETRIES",
+            "USER_AGENT",
+            "RS3_WIKI_API",
+            "OSRS_WIKI_API",
+            "RS3_WIKI_BASE",
+            "OSRS_WIKI_BASE",
+            "OSRS_PRICES_BASE",
+            "RS3_HISCORES_URL",
+            "OSRS_HISCORES_URL",
         ):
             mp.delenv(name, raising=False)
         for key, value in env.items():

@@ -1,4 +1,5 @@
 """End-to-end tests for the get_achievement MCP tool (issue #54)."""
+
 import pytest
 
 from rs_mcp_server.tools.achievements import get_achievement
@@ -135,7 +136,9 @@ class TestGetAchievementFallback:
     async def test_no_info_when_no_achievement_template(self, monkeypatch):
         # Page exists but has no achievement infobox. Search filter rejects it →
         # tool returns the cleaner "No achievement found" message (#76).
-        page_without_infobox = _wiki_page("Cabbage", "Just an article body, no achievement infobox here.")
+        page_without_infobox = _wiki_page(
+            "Cabbage", "Just an article body, no achievement infobox here."
+        )
 
         async def fake_http_get(url, params=None, timeout=10.0):
             return page_without_infobox
@@ -188,9 +191,36 @@ class TestSearchTypeFilter:
             return {
                 "query": {
                     "pages": [
-                        {"title": "Pest Control", "revisions": [{"slots": {"main": {"content": "{{Infobox Minigame|name=Pest Control}}"}}}]},
-                        {"title": "Some category", "revisions": [{"slots": {"main": {"content": "[[Category:Achievements]]"}}}]},
-                        {"title": "Are you winning yet", "revisions": [{"slots": {"main": {"content": "{{Infobox Combat Achievement|tier=Easy|description=Win.|monster=Test}}"}}}]},
+                        {
+                            "title": "Pest Control",
+                            "revisions": [
+                                {
+                                    "slots": {
+                                        "main": {
+                                            "content": "{{Infobox Minigame|name=Pest Control}}"
+                                        }
+                                    }
+                                }
+                            ],
+                        },
+                        {
+                            "title": "Some category",
+                            "revisions": [
+                                {"slots": {"main": {"content": "[[Category:Achievements]]"}}}
+                            ],
+                        },
+                        {
+                            "title": "Are you winning yet",
+                            "revisions": [
+                                {
+                                    "slots": {
+                                        "main": {
+                                            "content": "{{Infobox Combat Achievement|tier=Easy|description=Win.|monster=Test}}"
+                                        }
+                                    }
+                                }
+                            ],
+                        },
                     ]
                 }
             }
@@ -224,13 +254,17 @@ class TestRomanVariantEnumeration:
                 return {"query": {"pages": [{"missing": True}]}}
             # Batch variant query (pipe-separated)
             if "|" in titles:
-                return {"query": {"pages": [
-                    page("Are You Winning, Zam? I",   ach_template),
-                    page("Are You Winning, Zam? II",  ach_template),
-                    page("Are You Winning, Zam? III", ach_template),
-                    {"title": "Are You Winning, Zam? IV",  "missing": True},
-                    {"title": "Are You Winning, Zam? V",   "missing": True},
-                ]}}
+                return {
+                    "query": {
+                        "pages": [
+                            page("Are You Winning, Zam? I", ach_template),
+                            page("Are You Winning, Zam? II", ach_template),
+                            page("Are You Winning, Zam? III", ach_template),
+                            {"title": "Are You Winning, Zam? IV", "missing": True},
+                            {"title": "Are You Winning, Zam? V", "missing": True},
+                        ]
+                    }
+                }
             raise AssertionError(f"unexpected titles param: {titles!r}")
 
         monkeypatch.setattr("rs_mcp_server.tools.achievements.http_get", fake_http_get)

@@ -1,4 +1,5 @@
 """Unit tests for tools/quests.py parsing helpers (issue #18) and the get_quest_info tool (issue #28)."""
+
 import pytest
 
 from rs_mcp_server.tools.quests import (
@@ -13,6 +14,7 @@ from rs_mcp_server.tools.quests import (
 )
 
 # ── _find_template ────────────────────────────────────────────────────────────
+
 
 class TestFindTemplate:
     def test_basic_extraction(self):
@@ -46,6 +48,7 @@ class TestFindTemplate:
 
 
 # ── _parse_fields ─────────────────────────────────────────────────────────────
+
 
 class TestParseFields:
     def test_basic_key_value(self):
@@ -87,6 +90,7 @@ class TestParseFields:
 
 # ── _merged_fields ────────────────────────────────────────────────────────────
 
+
 class TestMergedFields:
     def test_merges_both_templates(self):
         wikitext = (
@@ -101,8 +105,7 @@ class TestMergedFields:
 
     def test_quest_details_overrides_infobox_on_conflict(self):
         wikitext = (
-            "{{Infobox Quest\n|difficulty = Easy\n}}\n"
-            "{{Quest details\n|difficulty = Hard\n}}"
+            "{{Infobox Quest\n|difficulty = Easy\n}}\n{{Quest details\n|difficulty = Hard\n}}"
         )
         fields = _merged_fields(wikitext)
         assert fields["difficulty"] == "Hard"
@@ -112,6 +115,7 @@ class TestMergedFields:
 
 
 # ── _clean_wikitext ───────────────────────────────────────────────────────────
+
 
 class TestCleanWikitext:
     def test_link_with_pipe(self):
@@ -154,6 +158,7 @@ class TestCleanWikitext:
 
 # ── _titles_match ─────────────────────────────────────────────────────────────
 
+
 class TestTitlesMatch:
     def test_exact_equal(self):
         assert _titles_match("Dragon Slayer", "Dragon Slayer")
@@ -174,6 +179,7 @@ class TestTitlesMatch:
 
 # ── _has_quest_template ───────────────────────────────────────────────────────
 
+
 class TestHasQuestTemplate:
     def test_infobox_quest_present(self):
         assert _has_quest_template("{{Infobox Quest|name=x}}")
@@ -190,6 +196,7 @@ class TestHasQuestTemplate:
 
 # ── _format_from_content ──────────────────────────────────────────────────────
 
+
 class TestFormatFromContent:
     def test_includes_title_url_label(self):
         wikitext = "{{Infobox Quest\n|difficulty = Hard\n|members = Yes\n}}"
@@ -204,9 +211,7 @@ class TestFormatFromContent:
         assert "**Length:** Long" in result
 
     def test_multiline_field_indented(self):
-        wikitext = (
-            "{{Infobox Quest\n|requirements = * level 50\n* level 60 cooking\n}}"
-        )
+        wikitext = "{{Infobox Quest\n|requirements = * level 50\n* level 60 cooking\n}}"
         result = _format_from_content("Q", "u", "RS3", wikitext)
         assert "**Requirements:**" in result
         # Multi-line values get indented continuation
@@ -222,11 +227,7 @@ class TestFormatFromContent:
 
     def test_items_required_field_displayed(self):
         wikitext = (
-            "{{Quest details\n"
-            "|items = * 4 [[steel bar]]s\n"
-            "* [[Bronze bar]]\n"
-            "* [[Iron bar]]\n"
-            "}}"
+            "{{Quest details\n|items = * 4 [[steel bar]]s\n* [[Bronze bar]]\n* [[Iron bar]]\n}}"
         )
         result = _format_from_content("Q", "u", "RS3", wikitext)
         assert "**Items required:**" in result
@@ -236,6 +237,7 @@ class TestFormatFromContent:
 
 
 # ── get_quest_info end-to-end ─────────────────────────────────────────────────
+
 
 def _quest_page(title: str, content: str) -> dict:
     return {
@@ -253,9 +255,7 @@ def _quest_page(title: str, content: str) -> dict:
 class TestGetQuestInfo:
     @pytest.mark.anyio
     async def test_direct_hit_returns_formatted_quest(self, monkeypatch):
-        wikitext = (
-            "{{Infobox Quest\n|difficulty = Novice\n|length = Short\n|members = No\n}}"
-        )
+        wikitext = "{{Infobox Quest\n|difficulty = Novice\n|length = Short\n|members = No\n}}"
 
         async def fake_http_get(url, params=None, timeout=10.0):
             return _quest_page("Cook's Assistant", wikitext)
@@ -307,9 +307,11 @@ class TestSearchTypeFilter:
                 "query": {
                     "pages": [
                         wiki_page("Some music", "{{Infobox Music|composer=Ian Taylor}}"),
-                        wiki_page("Some NPC",   "{{Infobox NPC|name=Random}}"),
-                        wiki_page("Cook's Helper",
-                                  "{{Infobox Quest\n|difficulty = Novice\n|length = Short\n}}"),
+                        wiki_page("Some NPC", "{{Infobox NPC|name=Random}}"),
+                        wiki_page(
+                            "Cook's Helper",
+                            "{{Infobox Quest\n|difficulty = Novice\n|length = Short\n}}",
+                        ),
                     ]
                 }
             }
@@ -339,13 +341,17 @@ class TestRomanVariantEnumeration:
             if titles == "Dragon Slayer (quest)":
                 return {"query": {"pages": [{"missing": True}]}}
             if "|" in titles:
-                return {"query": {"pages": [
-                    page("Dragon Slayer I",  quest_template),
-                    page("Dragon Slayer II", quest_template),
-                    {"title": "Dragon Slayer III", "missing": True},
-                    {"title": "Dragon Slayer IV",  "missing": True},
-                    {"title": "Dragon Slayer V",   "missing": True},
-                ]}}
+                return {
+                    "query": {
+                        "pages": [
+                            page("Dragon Slayer I", quest_template),
+                            page("Dragon Slayer II", quest_template),
+                            {"title": "Dragon Slayer III", "missing": True},
+                            {"title": "Dragon Slayer IV", "missing": True},
+                            {"title": "Dragon Slayer V", "missing": True},
+                        ]
+                    }
+                }
             raise AssertionError(f"unexpected titles param: {titles!r}")
 
         monkeypatch.setattr("rs_mcp_server.tools.quests.http_get", fake_http_get)
@@ -364,7 +370,13 @@ class TestDisambigSuffixFallback:
         # Bare "Dragon Slayer" → music-track page (no Infobox Quest).
         # "Dragon Slayer (quest)" → the right quest page.
         def wiki_page(title, content):
-            return {"query": {"pages": [{"title": title, "revisions": [{"slots": {"main": {"content": content}}}]}]}}
+            return {
+                "query": {
+                    "pages": [
+                        {"title": title, "revisions": [{"slots": {"main": {"content": content}}}]}
+                    ]
+                }
+            }
 
         music_wikitext = "{{Infobox Music|name = Dragon Slayer|composer = Ian Taylor}}"
         quest_wikitext = (

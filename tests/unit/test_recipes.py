@@ -1,4 +1,5 @@
 """End-to-end tests for the get_item_recipe MCP tool (issue #40)."""
+
 import pytest
 
 from rs_mcp_server.tools.recipes import _enumerate_index, _enumerate_pairs, get_item_recipe
@@ -62,7 +63,9 @@ class TestGetItemRecipeRs3:
     async def test_no_recipe_template_on_page(self, monkeypatch):
         # Page exists but has no recipe template (e.g., a quest article)
         async def fake_http_get(url, params=None, timeout=10.0):
-            return _wiki_page("Cook's Assistant", "{{Infobox Quest|members=No}}\nSome quest article body.")
+            return _wiki_page(
+                "Cook's Assistant", "{{Infobox Quest|members=No}}\nSome quest article body."
+            )
 
         monkeypatch.setattr("rs_mcp_server.tools.recipes.http_get", fake_http_get)
         result = await get_item_recipe("Cook's Assistant", "rs3")

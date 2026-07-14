@@ -36,6 +36,13 @@ jobs:
           languages: ${{ matrix.language }}
           build-mode: none
           queries: security-extended
+          # Tests dispatch mock HTTP responses by URL substring (`if "geprice.com" in url`), which the
+          # py/incomplete-url-substring-sanitization query reads as a bypassable auth check. It is a
+          # real antipattern in PRODUCTION code, but a test double is not making a trust decision — so
+          # the test tree is out of scope for security analysis.
+          config: |
+            paths-ignore:
+              - tests
       - name: Analyze
         uses: github/codeql-action/analyze@v3
         with:

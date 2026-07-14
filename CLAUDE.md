@@ -76,9 +76,23 @@ a fixture host without editing source.
 | Path | Purpose |
 |------|---------|
 | `GET /health` | Liveness check — returns `{"status": "ok"}` |
-| `GET /version` | Returns `VERSION_INFO` |
+| `GET /version` | Returns `VERSION_INFO` — the real version now, not always `"snapshot"` (see below) |
 | `GET /sse` | MCP SSE connection |
 | `/messages/` | MCP message transport — a Starlette `Mount`, and the **trailing slash is significant** (`SseServerTransport("/messages/")`) |
+
+### /version
+
+`version.py` reads a `VERSION` file sibling to itself and falls back to `"snapshot"` when it is
+absent — which, until now, it always was: the Dockerfile declared `ARG VERSION` and labelled the
+image with it, but **nothing ever passed the arg and nothing ever wrote the file**, so this endpoint
+reported `"snapshot"` unconditionally. The runtime stage now writes it, and
+`platform-orchestration/k8s/deploy.sh` stamps it from this repo's latest git tag (suffixed
+`-snapshot` when the source differs from `main`).
+
+The file lands **inside the installed package in the venv**, not in `/app` — `version.py` looks for a
+sibling of itself. The Dockerfile asks the package where it lives rather than hard-coding a
+`site-packages` path, because that path embeds the Python minor version and a base-image bump would
+otherwise silently return this endpoint to reporting `"snapshot"` forever.
 
 **This server speaks SSE only.** There is no `/mcp` streamable-http route on it. Streamable HTTP
 appears only on the *client* side of the FVT suite, for talking to the open-vMCP gateway — that

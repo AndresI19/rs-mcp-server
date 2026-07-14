@@ -7,6 +7,19 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# Stamped by k8s/deploy.sh, which passes the same three args to every image. This one serves no
+# /version endpoint — it is a traffic generator, not a service, and nothing asks it what it is — but
+# it still carries the OCI labels so `docker inspect` can identify a running container, and so the
+# build does not warn about unconsumed build-args.
+ARG VERSION
+ARG GIT_SHA
+ARG BUILD_DATE
+LABEL org.opencontainers.image.title="rs-mcp-fvt-traffic" \
+      org.opencontainers.image.description="Replays the FVT suite through the gateway on a loop" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${GIT_SHA}" \
+      org.opencontainers.image.created="${BUILD_DATE}"
+
 # curl is the gateway's readiness probe in fvt_traffic.sh; bash is already present in debian-slim.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \

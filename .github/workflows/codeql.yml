@@ -1,0 +1,42 @@
+# CodeQL — GitHub's static analysis (SAST). This is the layer the Trivy scans do NOT cover: Trivy
+# finds KNOWN-vulnerable dependencies and images (the CVE question); CodeQL analyses the code we
+# wrote for injection, SSRF, unsafe deserialization, hardcoded crypto and the like via dataflow/taint
+# tracking. Free on public repos.
+#
+# build-mode: none — Python is interpreted, so CodeQL analyses source directly. This complements ruff
+# (a linter): ruff catches style and obvious bugs, CodeQL does security dataflow analysis.
+name: codeql
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly, so newly-published queries run against unchanged code between commits.
+    - cron: "23 5 * * 1"
+
+permissions:
+  contents: read
+  security-events: write # upload the SARIF results to the Security tab
+  actions: read
+
+jobs:
+  analyze:
+    name: analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+          queries: security-extended
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"

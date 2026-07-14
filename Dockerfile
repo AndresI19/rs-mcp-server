@@ -57,6 +57,17 @@ ENV VIRTUAL_ENV=/opt/venv \
 COPY --from=builder --chown=mcp-server:mcp-server ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 COPY --chmod=755 docker/bin/start-server /usr/local/bin/start-server
 
+# Stamp the version, which version.py serves from /version. It reads a VERSION file SIBLING TO ITSELF
+# (Path(__file__).parent / "VERSION"), so this cannot just drop a file in /app — it has to land inside
+# the installed package. The package lives somewhere in the venv's site-packages, whose path embeds
+# the Python minor version, so the location is asked of the package itself rather than hard-coded: a
+# 3.12 → 3.13 base bump would silently break a hardcoded path, and the failure would be a server
+# quietly reporting "snapshot" forever, which is exactly the bug this endpoint exists to prevent.
+# An unset VERSION (a bare `docker build`) writes an empty file, and version.py falls back to
+# "snapshot" on its own.
+RUN printf '%s' "${VERSION}" \
+      > "$(python -c 'import pathlib, rs_mcp_server; print(pathlib.Path(rs_mcp_server.__file__).parent)')/VERSION"
+
 USER mcp-server
 # The listen address is the IMAGE's decision, not the entrypoint's: a container exists to be reached
 # from outside itself, so it binds every interface. The library default stays 127.0.0.1, because a

@@ -34,21 +34,49 @@ jobs:
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "this merge is tagged $V"
 
+      - id: pr
+        name: PR context for this merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # The PR this merge commit came from. `gh` returns [] for a direct push, and every field then
+          # falls back to empty — the deploy message simply omits the PR footer. GITHUB_TOKEN can read
+          # this repo's own PRs, so no extra credential is needed.
+          j="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
+                 -H 'Accept: application/vnd.github+json' 2>/dev/null || echo '[]')"
+          {
+            echo "num=$(jq -r '.[0].number // ""' <<<"$j")"
+            echo "url=$(jq -r '.[0].html_url // ""' <<<"$j")"
+            echo "author=$(jq -r '.[0].user.login // ""' <<<"$j")"
+            echo "branch=$(jq -r '.[0].head.ref // ""' <<<"$j")"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Ask the platform to build and deploy
         env:
           TOKEN: ${{ secrets.CICD_DISPATCH_TOKEN }}
+          V: ${{ steps.version.outputs.version }}
+          PR: ${{ steps.pr.outputs.num }}
+          PR_URL: ${{ steps.pr.outputs.url }}
+          AUTHOR: ${{ steps.pr.outputs.author }}
+          MERGER: ${{ github.actor }}
+          BRANCH: ${{ steps.pr.outputs.branch }}
         run: |
           set -euo pipefail
-          V="${{ steps.version.outputs.version }}"
-          # ONE dispatch carrying every component this repo ships at this tag. platform-cicd builds and
-          # deploys them together in a single job and reports them in a single Discord message — they
-          # are one release at one version, so they get one notification, not one ping per component.
+          # GITHUB_TOKEN cannot dispatch across repos, so the fine-grained CICD_DISPATCH_TOKEN (scoped
+          # to platform-cicd only) does it. The payload is built with jq so branch/author strings are
+          # safely quoted, and every value comes from env — none interpolated into the shell.
+          payload="$(jq -n \
+            --arg comps 'rs-mcp-server fvt-traffic' \
+            --arg repo "$GITHUB_REPOSITORY" \
+            --arg v "$V" --arg pr "$PR" --arg url "$PR_URL" \
+            --arg author "$AUTHOR" --arg merger "$MERGER" --arg branch "$BRANCH" \
+            '{event_type:"release", client_payload:{
+               components:$comps, repo:$repo, version:$v,
+               pr:$pr, pr_url:$url, author:$author, merger:$merger, branch:$branch}}')"
           curl -fsS -X POST \
             -H "Authorization: Bearer $TOKEN" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/AndresI19/platform-cicd/dispatches \
-            -d "{\"event_type\":\"release\",\"client_payload\":{
-                   \"components\":\"rs-mcp-server fvt-traffic\",
-                   \"repo\":\"${{ github.repository }}\",
-                   \"version\":\"$V\"}}"
-          echo "dispatched rs-mcp-server fvt-traffic $V"
+            -d "$payload"
+          echo "dispatched rs-mcp-server fvt-traffic $V (PR ${PR:-none})"

@@ -1,0 +1,56 @@
+# Merge to main → version-tag cuts the tag → hand it to the platform to deploy.
+#
+# NOTHING here runs on the platform's machine. This job runs on GitHub's own VMs and only POSTs. The
+# self-hosted runner is registered to platform-cicd alone, so no workflow in this repo — including one
+# in a fork — can reach it.
+name: release
+
+on:
+  push:
+    branches: [main] # a merge. main is protected, so the checks are already green.
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - id: version
+        name: The tag version-tag put on this commit
+        run: |
+          set -euo pipefail
+          # READ the tag, do NOT recompute it. version-tag.yml cuts the tag for this same merge, and
+          # two independent "latest + 1" computations cannot agree — whichever runs second lands one
+          # higher and then waits forever for a tag that will never exist. The version on the commit is
+          # correct by construction, so wait for it to appear and use exactly that.
+          for i in $(seq 1 40); do
+            git fetch -q --tags origin
+            V="$(git tag --points-at "$GITHUB_SHA" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)"
+            [ -n "$V" ] && break
+            echo "waiting for version-tag to tag this commit ($i)"; sleep 4
+          done
+          [ -n "${V:-}" ] || { echo "no version tag on $GITHUB_SHA — did version-tag.yml fail?" >&2; exit 1; }
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "this merge is tagged $V"
+
+      - name: Ask the platform to build and deploy
+        env:
+          TOKEN: ${{ secrets.CICD_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          V="${{ steps.version.outputs.version }}"
+          # This repo ships 2 component(s): "rs-mcp-server fvt-traffic". Each is a
+          # separate deploy job on the runner, and platform-cicd's concurrency group serializes them —
+          # both carry THIS repo's single tag as their version.
+          for c in rs-mcp-server fvt-traffic; do
+            curl -fsS -X POST \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/AndresI19/platform-cicd/dispatches \
+              -d "{\"event_type\":\"release\",\"client_payload\":{
+                     \"component\":\"$c\",
+                     \"repo\":\"${{ github.repository }}\",
+                     \"version\":\"$V\"}}"
+            echo "dispatched $c $V"
+          done

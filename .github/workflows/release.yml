@@ -40,17 +40,15 @@ jobs:
         run: |
           set -euo pipefail
           V="${{ steps.version.outputs.version }}"
-          # This repo ships 2 component(s): "rs-mcp-server fvt-traffic". Each is a
-          # separate deploy job on the runner, and platform-cicd's concurrency group serializes them —
-          # both carry THIS repo's single tag as their version.
-          for c in rs-mcp-server fvt-traffic; do
-            curl -fsS -X POST \
-              -H "Authorization: Bearer $TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              https://api.github.com/repos/AndresI19/platform-cicd/dispatches \
-              -d "{\"event_type\":\"release\",\"client_payload\":{
-                     \"component\":\"$c\",
-                     \"repo\":\"${{ github.repository }}\",
-                     \"version\":\"$V\"}}"
-            echo "dispatched $c $V"
-          done
+          # ONE dispatch carrying every component this repo ships at this tag. platform-cicd builds and
+          # deploys them together in a single job and reports them in a single Discord message — they
+          # are one release at one version, so they get one notification, not one ping per component.
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/AndresI19/platform-cicd/dispatches \
+            -d "{\"event_type\":\"release\",\"client_payload\":{
+                   \"components\":\"rs-mcp-server fvt-traffic\",
+                   \"repo\":\"${{ github.repository }}\",
+                   \"version\":\"$V\"}}"
+          echo "dispatched rs-mcp-server fvt-traffic $V"

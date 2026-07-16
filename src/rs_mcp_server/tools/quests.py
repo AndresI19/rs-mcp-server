@@ -1,6 +1,6 @@
 """get_quest_info tool — RuneScape Wiki quest data via MediaWiki API."""
 
-import re
+from functools import partial
 
 from rs_mcp_server import cache
 from rs_mcp_server.logging import instrument
@@ -9,12 +9,16 @@ from ._constants import *
 from ._http import http_get
 from ._registry import ToolSpec, game_param, object_schema, register
 from ._wiki_parsing import (
+    clean_infobox_wikitext,
     disambiguate,
     fetch_page_params,
+    find_template,
     first_matching_page,
+    matching_pages,
     parse_page_response,
     parse_template_fields as _parse_fields,
     render_variants,
+    roman_variant_params,
     roman_variant_titles,
     search_params,
     titles_match as _titles_match,
@@ -151,62 +155,16 @@ async def _enumerate_roman_variants(quest_name: str, game: str) -> list[dict]:
     """Try '<name> I' through '<name> V' in one batch query; return variants
     that exist and carry a quest template."""
     titles = roman_variant_titles(quest_name)
-    params = {
-        "action": "query",
-        "titles": titles,
-        "prop": "revisions|info",
-        "rvprop": "content",
-        "rvslots": "main",
-        "inprop": "url",
-        "redirects": 1,
-        **MW_BASE_PARAMS,
-    }
-    data = await http_get(WIKI_APIS[game], params=params)
-    found: list[dict] = []
-    for page in data.get("query", {}).get("pages", []):
-        if page.get("missing"):
-            continue
-        revisions = page.get("revisions") or []
-        if not revisions:
-            continue
-        content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
-        if not _has_quest_template(content):
-            continue
-        title = page.get("title", "")
-        found.append(
-            {
-                "title": title,
-                "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
-                "content": content,
-            }
-        )
-    return found
+    data = await http_get(WIKI_APIS[game], params=roman_variant_params(titles))
+    return matching_pages(data, game, _has_quest_template)
 
 
 def _has_quest_template(wikitext: str) -> bool:
     return any(_find_template(wikitext, name) is not None for name in _TEMPLATES)
 
 
-def _find_template(wikitext: str, name: str) -> str | None:
-    """Walk balanced braces from `{{<name>` to its matching `}}`."""
-    pattern = r"\{\{" + name.replace(" ", "[ _]") + r"(?=\s*[|}])"
-    match = re.search(pattern, wikitext, re.IGNORECASE)
-    if not match:
-        return None
-    i = match.end()
-    depth = 2
-    while i < len(wikitext) and depth > 0:
-        if wikitext[i : i + 2] == "{{":
-            depth += 2
-            i += 2
-        elif wikitext[i : i + 2] == "}}":
-            depth -= 2
-            i += 2
-        else:
-            i += 1
-    if depth != 0:
-        return None
-    return wikitext[match.end() : i - 2]
+# Quest template names use space/underscore interchangeably, so match either.
+_find_template = partial(find_template, allow_underscore=True)
 
 
 def _merged_fields(wikitext: str) -> dict[str, str]:
@@ -247,17 +205,8 @@ def _format_from_content(title: str, url: str, wiki_label: str, wikitext: str) -
     return "\n".join(lines)
 
 
-def _clean_wikitext(s: str) -> str:
-    s = re.sub(
-        r"\{\{(?:Skillreq|SCP)\|([^|}]+)\|(\d+)[^}]*\}\}", r"Level \2 \1", s, flags=re.IGNORECASE
-    )
-    s = re.sub(r"\{\{plinkp?\|([^|}]+)[^}]*\}\}", r"\1", s, flags=re.IGNORECASE)
-    s = re.sub(r"\{\{[^}]*\}\}", "", s)
-    s = re.sub(r"\[\[(?:[^\]|]+\|)?([^\]]+)\]\]", r"\1", s)
-    s = re.sub(r"'{2,}", "", s)
-    s = re.sub(r"<br ?/?>", "\n", s, flags=re.IGNORECASE)
-    s = re.sub(r"<[^>]+>", "", s)
-    return s.strip()
+# Quest infobox fields use the default Skillreq/SCP level templates.
+_clean_wikitext = clean_infobox_wikitext
 
 
 TOOL = register(

@@ -121,7 +121,6 @@ TOOL = register(
                 },
                 "game": game_param(
                     "Which game to query: 'rs3' (default) or 'osrs'.",
-                    games=("rs3", "osrs"),
                 ),
             },
             required=["name", "username"],

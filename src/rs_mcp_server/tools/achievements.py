@@ -12,9 +12,12 @@ from ._wiki_parsing import (
     fetch_page_params,
     find_template as _find_template,
     first_matching_page,
+    matching_pages,
     parse_page_response,
     parse_template_fields as _parse_fields,
+    render_labeled_fields,
     render_variants,
+    roman_variant_params,
     roman_variant_titles,
     search_params,
     titles_match as _titles_match,
@@ -174,36 +177,8 @@ async def _enumerate_roman_variants(name: str, game: str) -> list[dict]:
     """Try '<name> I' through '<name> V' in one batch query; return variants
     that exist and carry an achievement template."""
     titles = roman_variant_titles(name)
-    params = {
-        "action": "query",
-        "titles": titles,
-        "prop": "revisions|info",
-        "rvprop": "content",
-        "rvslots": "main",
-        "inprop": "url",
-        "redirects": 1,
-        **MW_BASE_PARAMS,
-    }
-    data = await http_get(WIKI_APIS[game], params=params)
-    found: list[dict] = []
-    for page in data.get("query", {}).get("pages", []):
-        if page.get("missing"):
-            continue
-        revisions = page.get("revisions") or []
-        if not revisions:
-            continue
-        content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
-        if _dispatch(content) is None:
-            continue
-        title = page.get("title", "")
-        found.append(
-            {
-                "title": title,
-                "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
-                "content": content,
-            }
-        )
-    return found
+    data = await http_get(WIKI_APIS[game], params=roman_variant_params(titles))
+    return matching_pages(data, game, lambda c: _dispatch(c) is not None)
 
 
 def _format_achievement(
@@ -215,13 +190,7 @@ def _format_achievement(
     fields_def: list[tuple[str, str]],
 ) -> str:
     lines = [f"**{title}** — {kind} ({wiki_label} Wiki)", url, ""]
-    for label, key in fields_def:
-        val = fields.get(key) or fields.get(f"{key}1")
-        if not val:
-            continue
-        cleaned = _clean(val)
-        if cleaned:
-            lines.append(f"**{label}:** {cleaned}")
+    lines += render_labeled_fields(fields, fields_def, _clean, numbered_fallback=True)
     return "\n".join(lines)
 
 
@@ -237,7 +206,6 @@ TOOL = register(
                 },
                 "game": game_param(
                     "Which game wiki to query: 'rs3' (default) or 'osrs'.",
-                    games=("rs3", "osrs"),
                 ),
             },
             required=["name"],

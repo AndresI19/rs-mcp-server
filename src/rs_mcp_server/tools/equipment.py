@@ -19,6 +19,7 @@ from ._wiki_parsing import (
     first_matching_page,
     parse_page_response,
     parse_template_fields as _parse_fields,
+    render_labeled_fields,
     search_params,
     titles_match as _titles_match,
 )
@@ -167,13 +168,7 @@ def _format_stats(
     sections: dict[str, str],
 ) -> str:
     lines = [f"**{title}** ({wiki_label} Wiki)", url, ""]
-    for label, key in stats_def:
-        val = fields.get(key)
-        if not val:
-            continue
-        cleaned = _clean(val)
-        if cleaned:
-            lines.append(f"**{label}:** {cleaned}")
+    lines += render_labeled_fields(fields, stats_def, _clean)
 
     for label, _aliases in _SECTION_TARGETS:
         prose = sections.get(label)

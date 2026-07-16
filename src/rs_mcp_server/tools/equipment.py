@@ -10,7 +10,7 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import MW_BASE_PARAMS, TTL_HOUR, WIKI_APIS, WIKI_LABELS
 from ._http import http_get
-from ._registry import ToolSpec, game_param, object_schema, register
+from ._registry import ToolSpec, game_param, normalize_game, object_schema, register
 from ._wiki_parsing import (
     clean_wikitext as _clean,
     disambiguate,
@@ -79,9 +79,9 @@ _STATS_BY_GAME = {"osrs": _OSRS_STATS, "rs3": _RS3_STATS}
 
 @instrument("get_equipment_stats")
 async def get_equipment_stats(item_name: str, game: str = "rs3") -> str:
-    game = game.lower()
-    if game not in WIKI_APIS:
-        return f"Unknown game '{game}'. Use 'rs3' or 'osrs'."
+    game, err = normalize_game(game, WIKI_APIS)
+    if err:
+        return err
     if not item_name.strip():
         return "No item name provided."
 

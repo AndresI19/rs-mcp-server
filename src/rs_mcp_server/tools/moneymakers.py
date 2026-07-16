@@ -14,7 +14,7 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import *
 from ._http import http_get
-from ._registry import ToolSpec, game_param, object_schema, register
+from ._registry import ToolSpec, game_param, normalize_game, object_schema, register
 from ._wiki_parsing import (
     TableScope,
     clean_infobox_wikitext,
@@ -51,9 +51,9 @@ async def get_money_makers(
     members_only: bool = False,
     limit: int = 10,
 ) -> str:
-    game = game.lower()
-    if game not in WIKI_APIS:
-        return f"Unknown game '{game}'. Use 'rs3' or 'osrs'."
+    game, err = normalize_game(game, WIKI_APIS)
+    if err:
+        return err
 
     if category is not None:
         category = category.lower()
@@ -341,9 +341,9 @@ def _render_master_table(
 
 @instrument("get_money_maker_method")
 async def get_money_maker_method(method_name: str, game: str = "rs3") -> str:
-    game = game.lower()
-    if game not in WIKI_APIS:
-        return f"Unknown game '{game}'. Use 'rs3' or 'osrs'."
+    game, err = normalize_game(game, WIKI_APIS)
+    if err:
+        return err
     if not method_name.strip():
         return "No method name provided."
 

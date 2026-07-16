@@ -7,7 +7,7 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import *
 from ._http import http_get
-from ._registry import ToolSpec, game_param, object_schema, register
+from ._registry import ToolSpec, game_param, normalize_game, object_schema, register
 from ._wiki_parsing import (
     clean_infobox_wikitext,
     disambiguate,
@@ -43,9 +43,9 @@ _FIELDS = (
 
 @instrument("get_quest_info")
 async def get_quest_info(quest_name: str, game: str = "rs3") -> str:
-    game = game.lower()
-    if game not in WIKI_APIS:
-        return f"Unknown game '{game}'. Use 'rs3' or 'osrs'."
+    game, err = normalize_game(game, WIKI_APIS)
+    if err:
+        return err
 
     cache_key = f"quest:{game}:{quest_name.lower()}"
     cached = cache.get(cache_key)

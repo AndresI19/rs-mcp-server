@@ -8,7 +8,7 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import *
 from ._http import http_get
-from ._registry import ToolSpec, game_param, object_schema, register
+from ._registry import ToolSpec, game_param, normalize_game, object_schema, register
 from ._wiki_parsing import find_template, parse_template_fields as _parse_fields
 
 _TEMPLATES = ("Infobox Recipe", "Recipe")
@@ -23,9 +23,9 @@ _SIMPLE_FIELDS = (
 
 @instrument("get_item_recipe")
 async def get_item_recipe(item_name: str, game: str = "rs3") -> str:
-    game = game.lower()
-    if game not in WIKI_APIS:
-        return f"Unknown game '{game}'. Use 'rs3' or 'osrs'."
+    game, err = normalize_game(game, WIKI_APIS)
+    if err:
+        return err
     if not item_name.strip():
         return "No item name provided."
 

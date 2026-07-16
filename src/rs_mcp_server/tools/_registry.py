@@ -57,3 +57,19 @@ def object_schema(properties: dict[str, Any], required: list[str] | None = None)
 
 def game_param(description: str, games: tuple[str, ...] = ("rs3", "osrs")) -> dict[str, Any]:
     return {"type": "string", "enum": list(games), "description": description}
+
+
+def normalize_game(
+    game: str, valid, order: tuple[str, str] = ("rs3", "osrs")
+) -> tuple[str, str | None]:
+    """Lowercase ``game`` and validate it against ``valid`` (any membership container).
+
+    Returns ``(game, error)`` — ``error`` is None when valid, else the frozen
+    ``Unknown game '<game>'. Use '<a>' or '<b>'.`` message naming the accepted games in
+    ``order``. Callers keep their own ``valid`` set (WIKI_APIS, the hiscores map, or a
+    literal tuple) and their own message order, so every tool's exact wording is preserved.
+    """
+    game = game.lower()
+    if game not in valid:
+        return game, f"Unknown game '{game}'. Use '{order[0]}' or '{order[1]}'."
+    return game, None

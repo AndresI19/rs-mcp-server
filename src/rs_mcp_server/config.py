@@ -111,6 +111,15 @@ WIKI_BASE_URLS: dict[str, str] = {
 
 OSRS_PRICES_BASE: str = _url("OSRS_PRICES_BASE", "https://prices.runescape.wiki/api/v1/osrs")
 
+# The RS3 Grand Exchange catalogue-detail endpoint, and a secondary GE price catalogue — both used by
+# get_item_price. These used to be literals in tools/prices.py, the last two upstream URLs that escaped
+# this module's parameterization. GEPRICE_CATALOG_URL returns 403 today (one FVT case xfails on it);
+# kept overridable so a working mirror can be pointed at without a code change.
+RS3_GE_DETAIL_URL: str = _url(
+    "RS3_GE_DETAIL_URL", "https://secure.runescape.com/m=itemdb_rs/api/catalogue/detail.json"
+)
+GEPRICE_CATALOG_URL: str = _url("GEPRICE_CATALOG_URL", "https://geprice.com/api/items")
+
 # The two hiscores endpoints do not share a base — they are different products behind different
 # `m=` paths — so each is its own variable rather than a base plus a suffix that only ever fits one.
 HISCORES_URLS: dict[str, str] = {

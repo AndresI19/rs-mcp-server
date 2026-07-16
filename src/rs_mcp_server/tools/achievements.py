@@ -5,6 +5,7 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import *
 from ._http import http_get
+from ._registry import ToolSpec, game_param, object_schema, register
 from ._wiki_parsing import (
     clean_wikitext as _clean,
     disambiguate,
@@ -222,3 +223,25 @@ def _format_achievement(
         if cleaned:
             lines.append(f"**{label}:** {cleaned}")
     return "\n".join(lines)
+
+
+TOOL = register(
+    ToolSpec(
+        name="get_achievement",
+        description="Look up a RuneScape achievement on the wiki — works for OSRS Combat Achievements (per-task), OSRS Achievement Diaries (summary only), and RS3 achievements (per-task). Returns description, tier or category, requirements, and rewards. For per-player completion progress, use get_player_achievement_progress.",
+        input_schema=object_schema(
+            {
+                "name": {
+                    "type": "string",
+                    "description": "The achievement name (e.g. 'Noxious Foe', 'Falador Diary', 'The Essence of Magic').",
+                },
+                "game": game_param(
+                    "Which game wiki to query: 'rs3' (default) or 'osrs'.",
+                    games=("rs3", "osrs"),
+                ),
+            },
+            required=["name"],
+        ),
+        invoke=lambda args: get_achievement(args["name"], args.get("game", "rs3")),
+    )
+)

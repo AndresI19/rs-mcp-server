@@ -8,6 +8,7 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import *
 from ._http import http_get
+from ._registry import ToolSpec, game_param, object_schema, register
 from ._wiki_parsing import find_template, parse_template_fields as _parse_fields
 
 _TEMPLATES = ("Infobox Recipe", "Recipe")
@@ -174,3 +175,22 @@ def _enumerate_pairs(prefix: str, fields: dict[str, str]) -> Iterator[tuple[str,
         name = _clean(fields[f"{prefix}{i}"])
         qty = fields.get(f"{prefix}{i}quantity", "")
         yield name, qty
+
+
+TOOL = register(
+    ToolSpec(
+        name="get_item_recipe",
+        description="Get the crafting recipe for a RuneScape item — required skills, materials, tools, and output.",
+        input_schema=object_schema(
+            {
+                "item_name": {
+                    "type": "string",
+                    "description": "The exact or approximate item name.",
+                },
+                "game": game_param("Which game wiki to query: 'rs3' (default) or 'osrs'."),
+            },
+            required=["item_name"],
+        ),
+        invoke=lambda args: get_item_recipe(args["item_name"], args.get("game", "rs3")),
+    )
+)

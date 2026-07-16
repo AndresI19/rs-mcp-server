@@ -14,6 +14,7 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import *
 from ._http import http_get
+from ._registry import ToolSpec, game_param, object_schema, register
 from ._wiki_parsing import (
     TableScope,
     disambiguate,
@@ -553,3 +554,61 @@ def _strip_commas_to_int(s: str) -> int | None:
         return int(float(s))
     except (ValueError, TypeError):
         return None
+
+
+TOOL_MAKERS = register(
+    ToolSpec(
+        name="get_money_makers",
+        description="Rank RuneScape money-making methods by hourly profit, optionally filtered by category (combat/skilling) and members status. Returns a markdown table from the wiki's Money Making Guide. Use get_money_maker_method to drill into a specific method.",
+        input_schema=object_schema(
+            {
+                "game": game_param(
+                    "Which game wiki to query: 'rs3' (default) or 'osrs'.",
+                    games=("rs3", "osrs"),
+                ),
+                "category": {
+                    "type": "string",
+                    "enum": ["combat", "skilling"],
+                    "description": "Optional category filter. OSRS-only; on RS3 the filter is a no-op with a note.",
+                },
+                "members_only": {
+                    "type": "boolean",
+                    "description": "If true, restrict to members-only methods.",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "How many top methods to return (default 10, max 50).",
+                },
+            },
+            required=[],
+        ),
+        invoke=lambda args: get_money_makers(
+            args.get("game", "rs3"),
+            args.get("category"),
+            args.get("members_only", False),
+            args.get("limit", 10),
+        ),
+    )
+)
+
+
+TOOL_METHOD = register(
+    ToolSpec(
+        name="get_money_maker_method",
+        description="Get full details about a single money-making method from the wiki — category, intensity, skills, items, quests required, inputs/outputs per hour, and a snippet of the guide details.",
+        input_schema=object_schema(
+            {
+                "method_name": {
+                    "type": "string",
+                    "description": "The method name as it appears on the wiki (e.g. 'Bird house trapping').",
+                },
+                "game": game_param(
+                    "Which game wiki to query: 'rs3' (default) or 'osrs'.",
+                    games=("rs3", "osrs"),
+                ),
+            },
+            required=["method_name"],
+        ),
+        invoke=lambda args: get_money_maker_method(args["method_name"], args.get("game", "rs3")),
+    )
+)

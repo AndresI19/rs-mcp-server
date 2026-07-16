@@ -23,6 +23,7 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import *
 from ._http import http_get
+from ._registry import ToolSpec, game_param, object_schema, register
 from ._wiki_parsing import TableScope, collapse_whitespace as _collapse, join_text, match_by_name
 
 _FORMATS = ("anagram", "cryptic", "emote", "cipher", "challenge", "simple")
@@ -499,3 +500,45 @@ def _render_visual(vtype: str, info: dict, wiki_label: str) -> str:
     if info.get("image_url"):
         lines.append(info["image_url"])
     return "\n".join(lines)
+
+
+TOOL = register(
+    ToolSpec(
+        name="solve_clue",
+        description="Look up a RuneScape clue scroll step by its clue text and return the solution (NPC, location, items required, decoded text, answer). Solves the text formats — anagram, cryptic, emote, cipher, challenge-scroll Q&A, and RS3 simple clues — across both games; resolves coordinate clues from a built-in dataset when you pass the degrees (e.g. '04 degrees 13 minutes south, 16 degrees 25 minutes east'); and for visual/interactive clues (maps, puzzle boxes, light boxes, compass, scan, hot/cold, etc.) returns a link to the relevant wiki guide. clue_format and tier are optional hints; without them the tool auto-detects coordinates and searches all text formats. Ciphers are OSRS-only; challenge scrolls and coordinates are not tier-segmented. If the user has not specified which game (RS3 or OSRS), ask them before calling this tool.",
+        input_schema=object_schema(
+            {
+                "clue_text": {
+                    "type": "string",
+                    "description": "The clue text the player is stuck on — anagram letters, cryptic/challenge riddle, emote instructions, cipher text, or coordinate degrees.",
+                },
+                "game": game_param("Which game wiki to query: 'rs3' (default) or 'osrs'."),
+                "clue_format": {
+                    "type": "string",
+                    "enum": [
+                        "anagram",
+                        "cryptic",
+                        "emote",
+                        "cipher",
+                        "challenge",
+                        "simple",
+                        "coordinate",
+                    ],
+                    "description": "Optional format hint to narrow the lookup. Ciphers are OSRS-only. Coordinates are auto-detected from the degrees text, so the hint is rarely needed.",
+                },
+                "tier": {
+                    "type": "string",
+                    "enum": ["beginner", "easy", "medium", "hard", "elite", "master"],
+                    "description": "Optional tier hint to filter results.",
+                },
+            },
+            required=["clue_text"],
+        ),
+        invoke=lambda args: solve_clue(
+            args["clue_text"],
+            args.get("game", "rs3"),
+            args.get("clue_format"),
+            args.get("tier"),
+        ),
+    )
+)

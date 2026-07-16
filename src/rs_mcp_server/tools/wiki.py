@@ -16,6 +16,7 @@ from rs_mcp_server.logging import instrument
 from ._aliases import expand_aliases
 from ._constants import *
 from ._http import http_get
+from ._registry import ToolSpec, game_param, object_schema, register
 from ._wiki_parsing import join_text
 
 _MAX_EXTRACT_CHARS = 1500
@@ -149,3 +150,22 @@ def _extract_prose_from_html(html_text: str) -> str:
     parser.feed(html_text)
     parser._flush()  # flush a trailing tag the source left unclosed
     return "\n".join(parser.pieces).strip()
+
+
+TOOL = register(
+    ToolSpec(
+        name="search_wiki",
+        description="Search the RuneScape Wiki for information about items, quests, skills, monsters, or mechanics.",
+        input_schema=object_schema(
+            {
+                "query": {
+                    "type": "string",
+                    "description": "The search term or topic to look up.",
+                },
+                "game": game_param("Which game wiki to search: 'rs3' (default) or 'osrs'."),
+            },
+            required=["query"],
+        ),
+        invoke=lambda args: search_wiki(args["query"], args.get("game", "rs3")),
+    )
+)

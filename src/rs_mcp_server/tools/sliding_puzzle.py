@@ -13,6 +13,8 @@ from collections import deque
 
 from rs_mcp_server.logging import instrument
 
+from ._registry import ToolSpec, object_schema, register
+
 # Gap move → (row delta, col delta) and its opposite (to avoid immediately undoing a move).
 _MOVES = {"up": (-1, 0), "down": (1, 0), "left": (0, -1), "right": (0, 1)}
 _OPPOSITE = {"up": "down", "down": "up", "left": "right", "right": "left"}
@@ -302,3 +304,22 @@ async def solve_sliding_puzzle(grid: list | None = None) -> str:
         "1-based from the top-left.",
     ]
     return "\n".join(lines)
+
+
+TOOL = register(
+    ToolSpec(
+        name="solve_sliding_puzzle",
+        description="Solve a RuneScape puzzle box (the sliding-tile picture clue). Two-phase: call with NO arguments first to get the instructions for reading the scrambled screenshot, then call again with the grid to get the click-by-click solution. The grid is the board read row-by-row (top-left to bottom-right) as a flat list whose length is a perfect square (9, 16, or 25); each cell holds the 0-based goal position of the fragment shown there, and the empty gap is null. Returns the ordered tiles to click — one click slides a whole row/column toward the gap. Reading the screenshot into the grid is your job; this tool only computes the moves.",
+        input_schema=object_schema(
+            {
+                "grid": {
+                    "type": "array",
+                    "items": {"type": ["integer", "null"]},
+                    "description": "Flat row-major board: each cell is the 0-based goal position of the fragment there, null for the gap. Length must be 9, 16, or 25. Omit entirely to get the reading instructions.",
+                },
+            },
+            required=[],
+        ),
+        invoke=lambda args: solve_sliding_puzzle(args.get("grid")),
+    )
+)

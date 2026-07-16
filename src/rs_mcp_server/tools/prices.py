@@ -5,13 +5,15 @@ import re
 import httpx
 
 from rs_mcp_server import cache
+from rs_mcp_server.config import (
+    GEPRICE_CATALOG_URL as _GEPRICE_CATALOG_URL,
+    RS3_GE_DETAIL_URL as _RS3_GE_DETAIL,
+)
 from rs_mcp_server.logging import instrument
 
 from ._constants import *
 from ._http import http_get
-
-_RS3_GE_DETAIL = "https://secure.runescape.com/m=itemdb_rs/api/catalogue/detail.json"
-_GEPRICE_CATALOG_URL = "https://geprice.com/api/items"
+from ._registry import ToolSpec, game_param, object_schema, register
 
 
 @instrument("get_item_price")
@@ -246,3 +248,24 @@ async def _geprice_lookup(name: str) -> dict | None:
         if entry.get("name", "").casefold() == target:
             return entry
     return None
+
+
+TOOL = register(
+    ToolSpec(
+        name="get_item_price",
+        description="Get the current Grand Exchange price for a RuneScape item.",
+        input_schema=object_schema(
+            {
+                "item_name": {
+                    "type": "string",
+                    "description": "The exact or approximate item name.",
+                },
+                "game": game_param(
+                    "Which game's Grand Exchange to query: 'rs3' (default) or 'osrs'."
+                ),
+            },
+            required=["item_name"],
+        ),
+        invoke=lambda args: get_item_price(args["item_name"], args.get("game", "rs3")),
+    )
+)

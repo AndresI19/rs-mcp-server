@@ -6,9 +6,13 @@ An MCP server exposing **17 RuneScape research tools** (RS3 + OSRS) over HTTP/SS
 **pip + venv** (not uv, not poetry), and the **low-level `mcp.server.Server`** — not FastMCP — mounted
 in a Starlette app under uvicorn (`src/rs_mcp_server/server.py`).
 
-Tools are hand-declared as `Tool(...)` objects with an `if/elif` dispatch in `call_tool()`; there is
-no `@mcp.tool` decorator. One module each under `src/rs_mcp_server/tools/`. The canonical list is
-`EXPECTED_TOOLS` in `tests/fvt/_fvt_fixtures.py`, which the FVT suite asserts against.
+Each tool module declares a **`ToolSpec`** — its MCP schema **and** its dispatch mapping — and
+`register()`s it into `REGISTRY` (`tools/_registry.py`); `server.py` renders `list_tools()` and
+dispatches `call_tool()` straight from the registry (no `@mcp.tool` decorator, no central schema list
+or `if/elif`). One module each under `src/rs_mcp_server/tools/`; the package `__init__.py` imports them
+in **tool-list order** (which is why it opts out of import sorting). Adding a tool is a single-module
+edit. The canonical list is `EXPECTED_TOOLS` in `tests/fvt/_fvt_fixtures.py`, which the FVT suite
+asserts against.
 (README.md's tool table is **stale** — it lists 15 and is missing `solve_celtic_knot` and
 `solve_sliding_puzzle`.)
 
@@ -66,6 +70,8 @@ from an endpoint nobody realised was hardcoded.
 | `RS3_WIKI_API` / `OSRS_WIKI_API` | the two `api.php` endpoints | MediaWiki API per game. |
 | `RS3_WIKI_BASE` / `OSRS_WIKI_BASE` | the two `/w/` prefixes | Used to build the article links in tool output. |
 | `OSRS_PRICES_BASE` | `https://prices.runescape.wiki/api/v1/osrs` | Live GE price API. |
+| `RS3_GE_DETAIL_URL` | the RS3 `catalogue/detail.json` endpoint | RS3 item-price lookup. |
+| `GEPRICE_CATALOG_URL` | `https://geprice.com/api/items` | Secondary GE catalogue. Returns 403 today (one FVT case xfails); overridable so a working mirror can be pointed at. |
 | `RS3_HISCORES_URL` / `OSRS_HISCORES_URL` | the two `index_lite.json` endpoints | Hiscores. Separate variables, not a shared base — they are different products behind different `m=` paths. |
 
 The upstream endpoints are overridable so the server can be pointed at a mirror, a caching proxy, or
@@ -211,10 +217,10 @@ python3 -m venv /tmp/lock-verify
   Local dev and CI/prod are on different minors.
 - **`_constants.py` is consumed via `from ._constants import *`**, which is why ruff globally ignores
   `F403`/`F405` — a genuinely undefined name in a tool module **will not be caught by lint**.
-- **`HTTP_TIMEOUT` does not govern text fetches.** `http_get_text` in `tools/_http.py` hardcodes
-  `timeout: float = 10.0` instead of reading the config value. It does govern `http_get`.
-- **Two upstream URLs escape config** (`tools/prices.py`): the RS3 GE detail endpoint and
-  `geprice.com/api/items`. The latter now returns 403, which is why one FVT case is a known xfail.
+- **`geprice.com/api/items` returns 403**, which is why one FVT case is a known xfail. It (and the RS3
+  GE detail endpoint) are now `GEPRICE_CATALOG_URL` / `RS3_GE_DETAIL_URL` in `config.py`, so a mirror
+  can be pointed at without a code change. (Both these and `http_get_text`'s timeout used to be
+  hardcoded — that parameterization is finished now.)
 - **The container runs `--read-only`** with a 16 MB `/tmp` tmpfs, `--cap-drop=ALL`, `--memory 512m`.
   Anything writing outside `/tmp` or `/logs` passes under `make dev` and fails in the container.
 - **There is no typechecker and no formatter.** `ruff check` is the only static gate.

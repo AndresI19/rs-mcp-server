@@ -10,6 +10,7 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import TTL_10MIN
 from ._http import http_get
+from ._registry import ToolSpec, game_param, object_schema, register
 
 # Endpoints resolved from the environment (see config.py) — the name is kept, the values are not
 # baked in any more.
@@ -117,3 +118,22 @@ def _format_stats(username: str, game: str, data: dict) -> str:
 
 def _fmt_rank(rank: int) -> str:
     return f"{rank:,}" if rank > 0 else "—"
+
+
+TOOL = register(
+    ToolSpec(
+        name="get_player_stats",
+        description="Look up the hiscores stats for a RuneScape player.",
+        input_schema=object_schema(
+            {
+                "username": {
+                    "type": "string",
+                    "description": "The player's RuneScape username.",
+                },
+                "game": game_param("Which hiscores to query: 'rs3' (default) or 'osrs'."),
+            },
+            required=["username"],
+        ),
+        invoke=lambda args: get_player_stats(args["username"], args.get("game", "rs3")),
+    )
+)

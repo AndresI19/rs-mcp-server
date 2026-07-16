@@ -97,7 +97,7 @@ async def get_equipment_stats(item_name: str, game: str = "rs3") -> str:
     )
     if result is None:
         return f"No equipment found for '{item_name}' on the {wiki_label} wiki."
-    return _cache_and_return(result, cache_key)
+    return cache.set_and_return(cache_key, result, TTL_HOUR)
 
 
 async def _stats_from_direct(item_name: str, game: str, wiki_label: str) -> str | None:
@@ -135,11 +135,6 @@ async def _render_stats(page: dict, game: str, wiki_label: str, body: str) -> st
 
 def _disambiguate(title: str, url: str, wiki_label: str) -> str:
     return disambiguate(title, url, wiki_label, "get_equipment_stats", "item_name", "stats")
-
-
-def _cache_and_return(value: str, cache_key: str) -> str:
-    cache.set(cache_key, value, TTL_HOUR)
-    return value
 
 
 # ---------------------------------------------------------------------------

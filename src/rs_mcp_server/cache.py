@@ -9,6 +9,7 @@ and writes mark an entry as most-recently-used.
 import logging
 import time
 from collections import OrderedDict
+from typing import TypeVar
 
 _log = logging.getLogger(__name__)
 _MAX_ENTRIES = 1000
@@ -36,6 +37,16 @@ def set(key: str, value: object, ttl_seconds: int) -> None:
     while len(_store) > _MAX_ENTRIES:
         evicted, _ = _store.popitem(last=False)  # drop least-recently-used
         _log.info(f"cache_evict key={evicted}")
+
+
+_T = TypeVar("_T")
+
+
+def set_and_return(key: str, value: _T, ttl_seconds: int) -> _T:
+    """Cache ``value`` under ``key`` and return it — the store-then-return idiom the wiki tools use
+    at their cache-miss exit, where the freshly built result is both cached and handed back."""
+    set(key, value, ttl_seconds)
+    return value
 
 
 def invalidate(key: str) -> None:

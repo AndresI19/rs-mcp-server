@@ -82,7 +82,7 @@ async def get_monster_info(monster_name: str, game: str = "rs3") -> str:
     )
     if result is None:
         return f"No monster found for '{monster_name}' on the {wiki_label} wiki."
-    return _cache_and_return(result, cache_key)
+    return cache.set_and_return(cache_key, result, TTL_HOUR)
 
 
 def _format_page(page: dict, game: str, wiki_label: str) -> str:
@@ -123,11 +123,6 @@ async def _from_search(monster_name: str, game: str, wiki_label: str) -> str | N
 
 def _disambiguate(title: str, url: str, wiki_label: str) -> str:
     return disambiguate(title, url, wiki_label, "get_monster_info", "monster_name", "info")
-
-
-def _cache_and_return(value: str, cache_key: str) -> str:
-    cache.set(cache_key, value, TTL_HOUR)
-    return value
 
 
 # ---------------------------------------------------------------------------

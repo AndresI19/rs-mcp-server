@@ -83,7 +83,7 @@ async def get_achievement(name: str, game: str = "rs3") -> str:
     )
     if result is None:
         return f"No achievement found for '{name}' on the {wiki_label} wiki."
-    return _cache_and_return(result, cache_key)
+    return cache.set_and_return(cache_key, result, TTL_HOUR)
 
 
 def _format_match(title: str, url: str, wiki_label: str, match: tuple) -> str:
@@ -149,11 +149,6 @@ def _dispatch(content: str) -> tuple[str, list[tuple[str, str]], str] | None:
 
 def _disambiguate(title: str, url: str, wiki_label: str) -> str:
     return disambiguate(title, url, wiki_label, "get_achievement", "name", "info")
-
-
-def _cache_and_return(value: str, cache_key: str) -> str:
-    cache.set(cache_key, value, TTL_HOUR)
-    return value
 
 
 # ---------------------------------------------------------------------------

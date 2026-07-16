@@ -1,0 +1,29 @@
+# Deploy values for rs-mcp-server — the Kubernetes Deployment/Service spec for this service. It is consumed at
+# deploy time by platform-orchestration's generic `service` chart:
+#   helm upgrade rs-mcp-server <orchestration>/charts/service -n platform -f deploy/rs-mcp-server.values.yaml \
+#     --set image.repo=registry:5000/rs-mcp-server --set image.tag=<version> --set version=<version>
+# The shared boilerplate (securityContext, /tmp mount, labels, probe rendering) lives in the chart's
+# platform.app helper; only what varies for this service is here. Image repo/tag + version are set per
+# deploy by CI. Keep the `name` field == the Service DNS name the router and sibling services expect.
+name: rs-mcp-server
+image:
+  repo: platform-rs-mcp-server
+  tag: latest
+version: 0.0.0
+port: 8000
+resources:
+  requests:
+    cpu: 25m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+probe:
+  path: /health
+  initialDelaySeconds: 3
+livenessProbe:
+  path: /health
+  initialDelaySeconds: 15
+  periodSeconds: 30
+env:
+  - name: PYTHONDONTWRITEBYTECODE
+    value: '1'

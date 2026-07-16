@@ -38,7 +38,7 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import *
 from ._http import http_get
-from ._registry import ToolSpec, game_param, object_schema, register
+from ._registry import ToolSpec, game_param, normalize_game, object_schema, register
 from ._wiki_parsing import TableScope, collapse_whitespace as _collapse, markdown_table
 from .prices import osrs_mapping
 
@@ -66,9 +66,9 @@ async def get_best_alchables(
     members_only: bool = False,
     mode: str | None = None,
 ) -> str:
-    game = game.lower()
-    if game not in ("osrs", "rs3"):
-        return f"Unknown game '{game}'. Use 'osrs' or 'rs3'."
+    game, err = normalize_game(game, ("osrs", "rs3"), order=("osrs", "rs3"))
+    if err:
+        return err
 
     if mode is None:
         mode = _DEFAULT_MODE[game]

@@ -13,14 +13,14 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import *
 from ._http import http_get
-from ._registry import ToolSpec, game_param, object_schema, register
+from ._registry import ToolSpec, game_param, normalize_game, object_schema, register
 
 
 @instrument("get_item_price")
 async def get_item_price(item_name: str, game: str = "rs3") -> str:
-    game = game.lower()
-    if game not in ("rs3", "osrs"):
-        return f"Unknown game '{game}'. Use 'rs3' or 'osrs'."
+    game, err = normalize_game(game, ("rs3", "osrs"))
+    if err:
+        return err
     if not item_name.strip():
         # Without this guard the OSRS substring match below treats "" as a match
         # for every item ('"" in name' is always True) and returns the first one.

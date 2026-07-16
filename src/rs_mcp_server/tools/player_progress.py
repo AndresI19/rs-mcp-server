@@ -7,16 +7,16 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import TTL_10MIN
 from ._http import http_get
-from ._registry import ToolSpec, game_param, object_schema, register
+from ._registry import ToolSpec, game_param, normalize_game, object_schema, register
 from .achievements import _dispatch, _fetch_page, _parse_fields, _titles_match, get_achievement
 from .hiscores import _HISCORES_JSON_APIS, _as_int, validate_username
 
 
 @instrument("get_player_achievement_progress")
 async def get_player_achievement_progress(name: str, username: str, game: str = "rs3") -> str:
-    game = game.lower()
-    if game not in _HISCORES_JSON_APIS:
-        return f"Unknown game '{game}'. Use 'rs3' or 'osrs'."
+    game, err = normalize_game(game, _HISCORES_JSON_APIS)
+    if err:
+        return err
     if not name.strip() or not username.strip():
         return "Both an achievement name and a username are required."
     invalid = validate_username(username.strip())

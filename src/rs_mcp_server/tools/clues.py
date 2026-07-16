@@ -23,7 +23,7 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import *
 from ._http import http_get
-from ._registry import ToolSpec, game_param, object_schema, register
+from ._registry import ToolSpec, game_param, normalize_game, object_schema, register
 from ._wiki_parsing import TableScope, collapse_whitespace as _collapse, join_text, match_by_name
 
 _FORMATS = ("anagram", "cryptic", "emote", "cipher", "challenge", "simple")
@@ -82,9 +82,9 @@ async def solve_clue(
     clue_format: str | None = None,
     tier: str | None = None,
 ) -> str:
-    game = game.lower()
-    if game not in WIKI_APIS:
-        return f"Unknown game '{game}'. Use 'rs3' or 'osrs'."
+    game, err = normalize_game(game, WIKI_APIS)
+    if err:
+        return err
     if not clue_text.strip():
         return "No clue text provided."
     if clue_format is not None:

@@ -10,7 +10,7 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import TTL_10MIN
 from ._http import http_get
-from ._registry import ToolSpec, game_param, object_schema, register
+from ._registry import ToolSpec, game_param, normalize_game, object_schema, register
 
 # Endpoints resolved from the environment (see config.py) — the name is kept, the values are not
 # baked in any more.
@@ -24,9 +24,9 @@ _VALID_RSN = re.compile(r"[A-Za-z0-9 _-]{1,12}")
 
 @instrument("get_player_stats")
 async def get_player_stats(username: str, game: str = "rs3") -> str:
-    game = game.lower()
-    if game not in _HISCORES_JSON_APIS:
-        return f"Unknown game '{game}'. Use 'rs3' or 'osrs'."
+    game, err = normalize_game(game, _HISCORES_JSON_APIS)
+    if err:
+        return err
 
     username = username.strip()
     if not username:

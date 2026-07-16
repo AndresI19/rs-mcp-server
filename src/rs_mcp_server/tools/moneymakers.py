@@ -5,8 +5,8 @@ Two tools:
 - get_money_maker_method: drill-down on a single method's subpage Mmgtable template.
 """
 
-import re
 from collections.abc import Iterator
+from functools import partial
 from html.parser import HTMLParser
 
 from rs_mcp_server import cache
@@ -17,6 +17,7 @@ from ._http import http_get
 from ._registry import ToolSpec, game_param, object_schema, register
 from ._wiki_parsing import (
     TableScope,
+    clean_infobox_wikitext,
     disambiguate,
     fetch_page_params,
     find_template as _find_template,
@@ -532,20 +533,8 @@ async def _search_method(query: str, game: str) -> dict | None:
     }
 
 
-def _clean_wikitext(s: str) -> str:
-    s = re.sub(
-        r"\{\{(?:Skillreq|SCP|mmgreq)\|([^|}]+)\|(\d+)[^}]*\}\}",
-        r"Level \2 \1",
-        s,
-        flags=re.IGNORECASE,
-    )
-    s = re.sub(r"\{\{plinkp?\|([^|}]+)[^}]*\}\}", r"\1", s, flags=re.IGNORECASE)
-    s = re.sub(r"\{\{[^}]*\}\}", "", s)
-    s = re.sub(r"\[\[(?:[^\]|]+\|)?([^\]]+)\]\]", r"\1", s)
-    s = re.sub(r"'{2,}", "", s)
-    s = re.sub(r"<br ?/?>", "\n", s, flags=re.IGNORECASE)
-    s = re.sub(r"<[^>]+>", "", s)
-    return s.strip()
+# Money-maker guides add the mmgreq level template on top of the quest set.
+_clean_wikitext = partial(clean_infobox_wikitext, skillreq_templates=("Skillreq", "SCP", "mmgreq"))
 
 
 def _strip_commas_to_int(s: str) -> int | None:
@@ -564,7 +553,6 @@ TOOL_MAKERS = register(
             {
                 "game": game_param(
                     "Which game wiki to query: 'rs3' (default) or 'osrs'.",
-                    games=("rs3", "osrs"),
                 ),
                 "category": {
                     "type": "string",
@@ -604,7 +592,6 @@ TOOL_METHOD = register(
                 },
                 "game": game_param(
                     "Which game wiki to query: 'rs3' (default) or 'osrs'.",
-                    games=("rs3", "osrs"),
                 ),
             },
             required=["method_name"],

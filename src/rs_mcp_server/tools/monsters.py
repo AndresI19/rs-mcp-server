@@ -14,6 +14,7 @@ from ._wiki_parsing import (
     first_matching_page,
     parse_page_response,
     parse_template_fields as _parse_fields,
+    render_labeled_fields,
     search_params,
     titles_match as _titles_match,
 )
@@ -150,13 +151,7 @@ def _format_monster(
     title: str, url: str, wiki_label: str, fields: dict[str, str], fields_def: list[tuple[str, str]]
 ) -> str:
     lines = [f"**{title}** ({wiki_label} Wiki)", url, ""]
-    for label, key in fields_def:
-        val = fields.get(key) or fields.get(f"{key}1")
-        if not val:
-            continue
-        cleaned = _clean(val)
-        if cleaned:
-            lines.append(f"**{label}:** {cleaned}")
+    lines += render_labeled_fields(fields, fields_def, _clean, numbered_fallback=True)
     return "\n".join(lines)
 
 

@@ -21,15 +21,20 @@ def titles_match(a: str, b: str) -> bool:
     return a.strip().casefold() == b.strip().casefold()
 
 
-def find_template(wikitext: str, name: str) -> str | None:
+def find_template(wikitext: str, name: str, allow_underscore: bool = False) -> str | None:
     """Return the body of the ``{{name|...}}`` template, or None if absent.
 
     Walks balanced ``{{``/``}}`` pairs so nested templates inside the body don't
     end the match early. Requires a real delimiter (whitespace, ``|``, or ``}``)
     after the name so e.g. "Infobox Achievement" doesn't match "Infobox
     Achievement category".
+
+    ``allow_underscore=True`` matches spaces in ``name`` against either a space or
+    an underscore (MediaWiki treats them interchangeably in template names); the
+    default path keeps the literal ``re.escape`` behavior.
     """
-    pattern = r"\{\{" + re.escape(name) + r"(?=\s*[|}])"
+    escaped = name.replace(" ", "[ _]") if allow_underscore else re.escape(name)
+    pattern = r"\{\{" + escaped + r"(?=\s*[|}])"
     match = re.search(pattern, wikitext, re.IGNORECASE)
     if not match:
         return None
@@ -99,6 +104,54 @@ def clean_wikitext(s: str) -> str:
     s = re.sub(r"<[^>]+>", "", s)
     s = re.sub(r" {2,}", " ", s)  # collapse runs of spaces left where templates were removed
     return s.strip()
+
+
+def clean_infobox_wikitext(s: str, skillreq_templates: tuple[str, ...] = ("Skillreq", "SCP")) -> str:
+    """Clean an infobox field value for prose display.
+
+    Expands ``{{Skillreq|Skill|N}}``-style templates to "Level N Skill", unwraps
+    ``{{plinkp|Item}}`` to the item name, strips remaining templates, links, bold
+    markup, and tags, and turns ``<br>`` into newlines. ``skillreq_templates`` names
+    the template aliases handled by the level-expansion (quests use ``Skillreq``/``SCP``;
+    moneymakers add ``mmgreq``)."""
+    alternation = "|".join(skillreq_templates)
+    s = re.sub(
+        r"\{\{(?:" + alternation + r")\|([^|}]+)\|(\d+)[^}]*\}\}",
+        r"Level \2 \1",
+        s,
+        flags=re.IGNORECASE,
+    )
+    s = re.sub(r"\{\{plinkp?\|([^|}]+)[^}]*\}\}", r"\1", s, flags=re.IGNORECASE)
+    s = re.sub(r"\{\{[^}]*\}\}", "", s)
+    s = re.sub(r"\[\[(?:[^\]|]+\|)?([^\]]+)\]\]", r"\1", s)
+    s = re.sub(r"'{2,}", "", s)
+    s = re.sub(r"<br ?/?>", "\n", s, flags=re.IGNORECASE)
+    s = re.sub(r"<[^>]+>", "", s)
+    return s.strip()
+
+
+def render_labeled_fields(
+    fields: dict[str, str],
+    fields_def: list[tuple[str, str]],
+    clean: Callable[[str], str],
+    numbered_fallback: bool = False,
+) -> list[str]:
+    """Render ``**Label:** value`` lines for each defined field with a non-empty,
+    non-blank-after-cleaning value.
+
+    ``numbered_fallback=True`` lets a key fall back to its ``<key>1`` numbered variant
+    (some infoboxes suffix the first entry) before cleaning.
+    """
+    lines: list[str] = []
+    for label, key in fields_def:
+        val = fields.get(key)
+        if numbered_fallback:
+            val = val or fields.get(f"{key}1")
+        if val:
+            cleaned = clean(val)
+            if cleaned:
+                lines.append(f"**{label}:** {cleaned}")
+    return lines
 
 
 def collapse_whitespace(s: str) -> str:
@@ -274,6 +327,49 @@ def roman_variant_titles(name: str, depth: int = 5) -> str:
     queried at once; the wiki's deepest tiered series sit comfortably under the default.
     """
     return "|".join(f"{name} {roman.toRoman(n)}" for n in range(1, depth + 1))
+
+
+def roman_variant_params(name: str) -> dict:
+    """Params for the batched roman-numeral variant lookup (#78).
+
+    ``name`` is the pipe-joined titles string from ``roman_variant_titles`` — one
+    ``titles=`` query fetches every sequel candidate at once. The caller issues the
+    request with its own ``http_get`` so unit tests can monkeypatch it per module.
+    """
+    return {
+        "action": "query",
+        "titles": name,
+        "prop": "revisions|info",
+        "rvprop": "content",
+        "rvslots": "main",
+        "inprop": "url",
+        "redirects": 1,
+        **MW_BASE_PARAMS,
+    }
+
+
+def matching_pages(data: dict, game: str, matches: Callable[[str], bool]) -> list[dict]:
+    """Every page whose wikitext satisfies ``matches`` — the plural sibling of
+    ``first_matching_page``. Skips ``missing`` pages and pages without revision content."""
+    found: list[dict] = []
+    for page in data.get("query", {}).get("pages", []):
+        if page.get("missing"):
+            continue
+        revisions = page.get("revisions") or []
+        if not revisions:
+            continue
+        content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
+        if not matches(content):
+            continue
+        title = page.get("title", "")
+        found.append(
+            {
+                "title": title,
+                "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
+                "content": content,
+            }
+        )
+    return found
 
 
 def render_variants(variants: list[dict], wiki_label: str, base_name: str, tool: str) -> str:

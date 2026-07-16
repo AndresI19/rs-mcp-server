@@ -106,7 +106,9 @@ def clean_wikitext(s: str) -> str:
     return s.strip()
 
 
-def clean_infobox_wikitext(s: str, skillreq_templates: tuple[str, ...] = ("Skillreq", "SCP")) -> str:
+def clean_infobox_wikitext(
+    s: str, skillreq_templates: tuple[str, ...] = ("Skillreq", "SCP")
+) -> str:
     """Clean an infobox field value for prose display.
 
     Expands ``{{Skillreq|Skill|N}}``-style templates to "Level N Skill", unwraps

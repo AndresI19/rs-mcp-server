@@ -167,21 +167,25 @@ suite asserts bare names.
 
 ### scripts/fvt_traffic.sh + Dockerfile.fvt
 
-`scripts/fvt_traffic.sh` replays the suite through the gateway **on an infinite loop** (`VMCP_URL`,
-default `http://vmcp:8001`; `FVT_INTERVAL_SECONDS`, default 900; `FVT_USER`, default `fvt-runner`).
-It mints its own base64url bearer — vMCP's v1 auth decodes without verifying — waits for the
-gateway's `/health`, then loops, logging failures and carrying on. It is what keeps the platform
-dashboard's Recent Calls populated.
+`scripts/fvt_traffic.sh` replays the suite through the gateway **on an infinite loop** (`VMCP_URL` /
+`AUTH_URL`, default the in-cluster services; `FVT_INTERVAL_SECONDS`, default 900; `FVT_USER`, default
+`fvt-runner`; `FVT_CODE`, **required** — the runner's password/pin). It **signs in to platform-auth for
+a real RS256 token** — vMCP verifies signatures now, so the old forged base64url bearer is rejected —
+self-provisioning the account (`POST /auth/identities`, then `/auth/token` if it already exists) and
+refreshing the token each run. It now runs on the **host, not as a Pod**, pointing both URLs at
+`https://api-andres.project-platform.me` (nginx routes `/mcp` and `/auth` there to the same services);
+see the platform-cicd repo for the host unit. It is what keeps the platform dashboard's Recent Calls
+populated.
 
 `Dockerfile.fvt` packages it. It is **deliberately not the production image**: production is a
 hardened minimal UBI9 runtime with no pytest, and adding test deps to ship a traffic generator would
 widen the attack surface of the thing that actually serves MCP. (`Dockerfile.fvt.dockerignore` exists
 because the root `.dockerignore` strips `tests/` and `scripts/` — exactly what this image needs.)
 
-> **Open follow-up:** the platform runs this as a Deployment rather than a Kubernetes CronJob purely
-> because the script never exits. Adding an `FVT_ONCE` flag here (break out of the `while true` after
-> one pass; note `set -uo pipefail` has no `-e`, so the exit status must be captured explicitly, and
-> the readiness `until curl` loop is unbounded) would let it become a proper CronJob.
+> **This now runs as a HOST container** (see platform-cicd), not a Kubernetes workload — it hits the
+> platform's public API from outside the cluster, so it never needed to be a Pod. That also settles the
+> old Deployment-vs-CronJob question (the script never exits, so a CronJob Pod would hang forever): a
+> long-lived host container with its own `while true` loop is the right shape, restarted by its unit.
 
 ## Dependency locking
 

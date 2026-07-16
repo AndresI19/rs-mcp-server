@@ -21,6 +21,8 @@ import itertools
 
 from rs_mcp_server.logging import instrument
 
+from ._registry import ToolSpec, object_schema, register
+
 # If more than this many rotation sets satisfy the visible runes, the screenshot didn't
 # reveal enough runes to pin a single answer — ask for more rather than guessing.
 _MAX_CANDIDATES = 8
@@ -163,3 +165,35 @@ async def solve_celtic_knot(
             "under-runes and retry.",
         ]
     return "\n".join(lines)
+
+
+TOOL = register(
+    ToolSpec(
+        name="solve_celtic_knot",
+        description="Solve a RuneScape (RS3) Celtic knot clue puzzle. TWO-PHASE: call this tool with NO arguments first to receive step-by-step instructions for reading the puzzle screenshot into the required format — including using the in-game INVERT PATHS button to reveal the runes hidden under the crossings; then call it again with 'rings' and 'intersections' to get the solution. 'rings' is one token array per loop, where identical runes share an identical token consistent across ALL rings; read both the normal and inverted views so every slot is filled (use null only for a rune you genuinely cannot read). 'intersections' lists each crossing as [ring_a, slot_a, ring_b, slot_b], meaning slot_a of ring_a must equal slot_b of ring_b. Returns the per-loop rotation that makes every crossing match — a complete reading resolves to a single solution.",
+        input_schema=object_schema(
+            {
+                "rings": {
+                    "type": "array",
+                    "description": "One array per loop; each element is a rune token (integer or string) or null for a rune hidden in the screenshot. The same rune must use the same token across all rings.",
+                    "items": {
+                        "type": "array",
+                        "items": {"type": ["integer", "string", "null"]},
+                    },
+                },
+                "intersections": {
+                    "type": "array",
+                    "description": "Each crossing as [ring_a, slot_a, ring_b, slot_b]: slot_a of ring_a must equal slot_b of ring_b.",
+                    "items": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "minItems": 4,
+                        "maxItems": 4,
+                    },
+                },
+            },
+            required=[],
+        ),
+        invoke=lambda args: solve_celtic_knot(args.get("rings"), args.get("intersections")),
+    )
+)

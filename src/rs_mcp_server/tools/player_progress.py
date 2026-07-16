@@ -7,6 +7,7 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import TTL_10MIN
 from ._http import http_get
+from ._registry import ToolSpec, game_param, object_schema, register
 from .achievements import _dispatch, _fetch_page, _parse_fields, _titles_match, get_achievement
 from .hiscores import _HISCORES_JSON_APIS, _as_int, validate_username
 
@@ -105,3 +106,28 @@ def _find_activity(activities: list[dict], monster: str) -> dict | None:
         if (a.get("name") or "").strip().casefold() == target:
             return a
     return None
+
+
+TOOL = register(
+    ToolSpec(
+        name="get_player_achievement_progress",
+        description="Pair wiki achievement info with a specific player's hiscores. For OSRS Combat Achievements that target a boss listed in public hiscores, surfaces that boss's kill count for the player. For Achievement Diaries (OSRS) and per-task achievements (RS3), the tool is honest that completion isn't in public hiscores and points to the in-game adventurer's log.",
+        input_schema=object_schema(
+            {
+                "name": {"type": "string", "description": "The achievement name."},
+                "username": {
+                    "type": "string",
+                    "description": "The player's RuneScape username.",
+                },
+                "game": game_param(
+                    "Which game to query: 'rs3' (default) or 'osrs'.",
+                    games=("rs3", "osrs"),
+                ),
+            },
+            required=["name", "username"],
+        ),
+        invoke=lambda args: get_player_achievement_progress(
+            args["name"], args["username"], args.get("game", "rs3")
+        ),
+    )
+)

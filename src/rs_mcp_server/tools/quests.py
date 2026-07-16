@@ -7,6 +7,7 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import *
 from ._http import http_get
+from ._registry import ToolSpec, game_param, object_schema, register
 from ._wiki_parsing import (
     disambiguate,
     fetch_page_params,
@@ -257,3 +258,19 @@ def _clean_wikitext(s: str) -> str:
     s = re.sub(r"<br ?/?>", "\n", s, flags=re.IGNORECASE)
     s = re.sub(r"<[^>]+>", "", s)
     return s.strip()
+
+
+TOOL = register(
+    ToolSpec(
+        name="get_quest_info",
+        description="Get details about a RuneScape quest — requirements, rewards, difficulty, and quest length.",
+        input_schema=object_schema(
+            {
+                "quest_name": {"type": "string", "description": "The quest name."},
+                "game": game_param("Which game wiki to query: 'rs3' (default) or 'osrs'."),
+            },
+            required=["quest_name"],
+        ),
+        invoke=lambda args: get_quest_info(args["quest_name"], args.get("game", "rs3")),
+    )
+)

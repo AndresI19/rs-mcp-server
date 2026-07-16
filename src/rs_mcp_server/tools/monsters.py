@@ -5,6 +5,7 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import TTL_HOUR, WIKI_APIS, WIKI_LABELS
 from ._http import http_get
+from ._registry import ToolSpec, game_param, object_schema, register
 from ._wiki_parsing import (
     clean_wikitext as _clean,
     disambiguate,
@@ -157,3 +158,22 @@ def _format_monster(
         if cleaned:
             lines.append(f"**{label}:** {cleaned}")
     return "\n".join(lines)
+
+
+TOOL = register(
+    ToolSpec(
+        name="get_monster_info",
+        description="Get details about a RuneScape monster — combat level, hitpoints, slayer requirement, slayer XP, attack style, weakness (RS3), and more. Drops are not returned by this tool; use get_item_drop_sources to look up where a specific item comes from.",
+        input_schema=object_schema(
+            {
+                "monster_name": {
+                    "type": "string",
+                    "description": "The exact or approximate monster name.",
+                },
+                "game": game_param("Which game wiki to query: 'rs3' (default) or 'osrs'."),
+            },
+            required=["monster_name"],
+        ),
+        invoke=lambda args: get_monster_info(args["monster_name"], args.get("game", "rs3")),
+    )
+)

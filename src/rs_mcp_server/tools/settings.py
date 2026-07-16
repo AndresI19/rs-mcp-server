@@ -13,6 +13,7 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import *
 from ._http import http_get
+from ._registry import ToolSpec, game_param, object_schema, register
 from ._wiki_parsing import TableScope, join_text, match_by_name
 
 _PAGE = "Settings"
@@ -300,3 +301,22 @@ def _render_wiki_suggestions(suggestions: list[dict], wiki_label: str, query: st
             line += f"\n    {s['snippet']}"
         lines.append(line)
     return "\n".join(lines)
+
+
+TOOL = register(
+    ToolSpec(
+        name="get_game_setting",
+        description="Look up an in-game RuneScape setting by name and return its description, category, and wiki anchor URL. Falls back to fuzzy 'did you mean…' suggestions when the name doesn't match exactly, and to a description-text scan when the query appears in a setting's description rather than its name. If the user has not specified which game (RS3 or OSRS), ask them before calling this tool.",
+        input_schema=object_schema(
+            {
+                "setting_name": {
+                    "type": "string",
+                    "description": "The setting name as it appears in the in-game menu (e.g. 'Roof removal', 'Master volume').",
+                },
+                "game": game_param("Which game wiki to query: 'rs3' (default) or 'osrs'."),
+            },
+            required=["setting_name"],
+        ),
+        invoke=lambda args: get_game_setting(args["setting_name"], args.get("game", "rs3")),
+    )
+)

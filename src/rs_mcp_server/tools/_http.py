@@ -69,7 +69,8 @@ async def http_get(url: str, params: dict | None = None, timeout: float = HTTP_T
     return resp.json()
 
 
-async def http_get_text(url: str, params: dict | None = None, timeout: float = 10.0) -> str:
-    """GET text via the shared retrying client."""
+async def http_get_text(url: str, params: dict | None = None, timeout: float = HTTP_TIMEOUT) -> str:
+    """GET text via the shared retrying client. Honours HTTP_TIMEOUT like http_get (it used to hardcode
+    10.0, so tightening the config timeout silently left text fetches on the old value)."""
     resp = await _CLIENT.request(url, params, timeout)
     return resp.text

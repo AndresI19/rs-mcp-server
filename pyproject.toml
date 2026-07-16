@@ -52,3 +52,9 @@ ignore = ["F403", "F405"]
 [tool.ruff.lint.isort]
 # Keep multiple aliased imports from one module on a single statement.
 combine-as-imports = true
+
+[tool.ruff.lint.per-file-ignores]
+# The tools package __init__ imports every tool module ONLY for its register() side effect, in the
+# curated tool-list order — so those imports are intentionally "unused" (F401) and intentionally NOT
+# alphabetised (I001). Scoped here instead of a per-line noqa repeated on all 16 imports.
+"src/rs_mcp_server/tools/__init__.py" = ["F401", "I001"]

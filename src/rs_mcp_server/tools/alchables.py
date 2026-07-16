@@ -38,6 +38,7 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import *
 from ._http import http_get
+from ._registry import ToolSpec, game_param, object_schema, register
 from ._wiki_parsing import TableScope, collapse_whitespace as _collapse, markdown_table
 from .prices import osrs_mapping
 
@@ -627,3 +628,34 @@ def _render_mixed(
     lines.append("")
     lines.append(footer)
     return "\n".join(lines)
+
+
+TOOL = register(
+    ToolSpec(
+        name="get_best_alchables",
+        description="Rank RuneScape items by High Alchemy profit. OSRS uses live GE prices and the prices.runescape.wiki mapping; RS3 reads the wiki's Alchemiser mk. II Money Making Guide table. Returns the top 3 'easy buys' (high trade volume) and top 2 'slow buys' (low buy limit, high ROI). Passive mode (RS3 default) shows two tables; manual mode mixes them sorted by profit per cast.",
+        input_schema=object_schema(
+            {
+                "game": game_param(
+                    "Which game to query: 'osrs' (default — uses live prices and mapping) or 'rs3' (uses the Alchemiser mk. II wiki table).",
+                    games=("osrs", "rs3"),
+                ),
+                "members_only": {
+                    "type": "boolean",
+                    "description": "If true (OSRS only), restrict to members-only items. Ignored on RS3.",
+                },
+                "mode": {
+                    "type": "string",
+                    "enum": ["manual", "passive"],
+                    "description": "Output shape. 'passive' (RS3 default) = two separate tables, Easy buys above Slow buys. 'manual' (OSRS default) = one mixed table sorted by profit per cast with a category tag column. 'passive' on OSRS falls back to manual since OSRS has no Alchemiser equivalent.",
+                },
+            },
+            required=[],
+        ),
+        invoke=lambda args: get_best_alchables(
+            args.get("game", "osrs"),
+            args.get("members_only", False),
+            args.get("mode"),
+        ),
+    )
+)

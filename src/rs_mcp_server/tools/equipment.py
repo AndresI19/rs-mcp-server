@@ -10,6 +10,7 @@ from rs_mcp_server.logging import instrument
 
 from ._constants import MW_BASE_PARAMS, TTL_HOUR, WIKI_APIS, WIKI_LABELS
 from ._http import http_get
+from ._registry import ToolSpec, game_param, object_schema, register
 from ._wiki_parsing import (
     clean_wikitext as _clean,
     disambiguate,
@@ -285,3 +286,22 @@ def _truncate(s: str, limit: int) -> str:
     # limit — falling back to a hard character cut when there's none to trim to.
     cut = s[:limit].rsplit(".", 1)[0]
     return (cut + "." if cut else s[:limit]) + " …"
+
+
+TOOL = register(
+    ToolSpec(
+        name="get_equipment_stats",
+        description="Get combat-equipment stats for a single item — attack/defence bonuses on OSRS, tier/damage/accuracy on RS3. To compare multiple items, call this tool once per item and tabulate the results.",
+        input_schema=object_schema(
+            {
+                "item_name": {
+                    "type": "string",
+                    "description": "The exact or approximate item name.",
+                },
+                "game": game_param("Which game wiki to query: 'rs3' (default) or 'osrs'."),
+            },
+            required=["item_name"],
+        ),
+        invoke=lambda args: get_equipment_stats(args["item_name"], args.get("game", "rs3")),
+    )
+)

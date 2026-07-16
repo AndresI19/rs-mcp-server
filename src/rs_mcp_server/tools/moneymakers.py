@@ -359,7 +359,7 @@ async def get_money_maker_method(method_name: str, game: str = "rs3") -> str:
     )
     if result is None:
         return f"No money-making method found for '{method_name}' on the {wiki_label} wiki."
-    return _cache_and_return(result, cache_key)
+    return cache.set_and_return(cache_key, result, TTL_HOUR)
 
 
 async def _method_from_direct(method_name: str, game: str, wiki_label: str) -> str | None:
@@ -496,11 +496,6 @@ def _find_method_template(wikitext: str) -> tuple[str | None, str]:
 # ---------------------------------------------------------------------------
 # Shared helpers (parse, fetch, search, cache)
 # ---------------------------------------------------------------------------
-
-
-def _cache_and_return(value: str, cache_key: str) -> str:
-    cache.set(cache_key, value, TTL_HOUR)
-    return value
 
 
 async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | None:

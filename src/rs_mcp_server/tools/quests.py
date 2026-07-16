@@ -56,7 +56,7 @@ async def get_quest_info(quest_name: str, game: str = "rs3") -> str:
 
     # Resolve via the first strategy that lands — the same chain achievements.py, equipment.py and
     # moneymakers.py already use. Previously this was the cascade written out inline, which meant
-    # _cache_and_return(...) appeared at six separate exit points and the shape of the search was
+    # the cache-and-return appeared at six separate exit points and the shape of the search was
     # buried in the plumbing.
     result = (
         await _from_direct(quest_name, game, wiki_label)
@@ -65,7 +65,7 @@ async def get_quest_info(quest_name: str, game: str = "rs3") -> str:
     )
     if result is None:
         return f"No quest found for '{quest_name}' on the {wiki_label} wiki."
-    return _cache_and_return(result, cache_key)
+    return cache.set_and_return(cache_key, result, TTL_HOUR)
 
 
 def _format_page(page: dict, wiki_label: str) -> str:
@@ -113,11 +113,6 @@ async def _from_search(quest_name: str, game: str, wiki_label: str) -> str | Non
 
 def _disambiguate(title: str, url: str, wiki_label: str) -> str:
     return disambiguate(title, url, wiki_label, "get_quest_info", "quest_name", "details")
-
-
-def _cache_and_return(value: str, cache_key: str) -> str:
-    cache.set(cache_key, value, TTL_HOUR)
-    return value
 
 
 # ---------------------------------------------------------------------------

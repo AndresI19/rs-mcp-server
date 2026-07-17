@@ -9,7 +9,7 @@ from rs_mcp_server.logging import instrument
 from ._constants import *
 from ._http import http_get
 from ._registry import ToolSpec, game_param, normalize_game, object_schema, register
-from ._wiki_parsing import find_template, parse_template_fields as _parse_fields
+from ._wiki_parsing import fetch_page_params, find_template, parse_template_fields as _parse_fields
 
 _TEMPLATES = ("Infobox Recipe", "Recipe")
 
@@ -37,17 +37,9 @@ async def get_item_recipe(item_name: str, game: str = "rs3") -> str:
     wiki_label = WIKI_LABELS[game]
     canonical = item_name[:1].upper() + item_name[1:]
 
-    params = {
-        "action": "query",
-        "titles": canonical,
-        "prop": "revisions|info",
-        "rvprop": "content",
-        "rvslots": "main",
-        "inprop": "url",
-        "redirects": 1,
-        **MW_BASE_PARAMS,
-    }
-    data = await http_get(WIKI_APIS[game], params=params)
+    data = await http_get(
+        WIKI_APIS[game], params=fetch_page_params(canonical, follow_redirects=True)
+    )
     pages = data.get("query", {}).get("pages", [])
     if not pages or pages[0].get("missing"):
         result = f"Recipe for '{item_name}' not found on the {wiki_label} wiki."

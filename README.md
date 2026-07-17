@@ -21,6 +21,8 @@ RuneScape research tools exposed to AI agents over the [Model Context Protocol](
 | `get_best_alchables` | Items ranked by High Alchemy profit |
 | `get_game_setting` | What an in-game setting does, from the wiki Settings page |
 | `solve_clue` | Solve a Treasure Trail clue (anagram, cryptic, emote, or cipher) |
+| `solve_celtic_knot` | Solve an RS3 Celtic knot clue from the ring/intersection reading |
+| `solve_sliding_puzzle` | Solve a puzzle-box (sliding-tile) clue from the scrambled grid |
 
 ## Run & connect
 

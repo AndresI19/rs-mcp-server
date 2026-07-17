@@ -18,12 +18,7 @@ HEADERS = {"User-Agent": USER_AGENT}
 
 
 class RetryingClient:
-    """A pooled httpx.AsyncClient that retries transient failures.
-
-    One instance is shared across tools so connections (and TLS handshakes) are
-    pooled instead of re-established per request. Transport errors and retryable
-    status codes are retried with a short linear backoff before the error surfaces.
-    """
+    """A pooled httpx.AsyncClient that retries transient failures (see module docstring)."""
 
     def __init__(
         self,

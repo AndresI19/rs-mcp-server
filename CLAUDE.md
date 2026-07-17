@@ -3,28 +3,25 @@
 ## What this is
 
 An MCP server exposing **17 RuneScape research tools** (RS3 + OSRS) over HTTP/SSE. Python 3.12,
-**pip + venv** (not uv, not poetry), and the **low-level `mcp.server.Server`** — not FastMCP — mounted
-in a Starlette app under uvicorn (`src/rs_mcp_server/server.py`).
+**pip + venv** (not uv/poetry), and the **low-level `mcp.server.Server`** — not FastMCP — mounted in a
+Starlette app under uvicorn (`src/rs_mcp_server/server.py`).
 
-Each tool module declares a **`ToolSpec`** — its MCP schema **and** its dispatch mapping — and
-`register()`s it into `REGISTRY` (`tools/_registry.py`); `server.py` renders `list_tools()` and
-dispatches `call_tool()` straight from the registry (no `@mcp.tool` decorator, no central schema list
-or `if/elif`). One module each under `src/rs_mcp_server/tools/`; the package `__init__.py` imports them
-in **tool-list order** (which is why it opts out of import sorting). Adding a tool is a single-module
-edit. The canonical list is `EXPECTED_TOOLS` in `tests/fvt/_fvt_fixtures.py`, which the FVT suite
-asserts against.
-(README.md's tool table is **stale** — it lists 15 and is missing `solve_celtic_knot` and
-`solve_sliding_puzzle`.)
+Each tool module declares a **`ToolSpec`** (its MCP schema **and** dispatch mapping) and `register()`s it
+into `REGISTRY` (`tools/_registry.py`); `server.py` renders `list_tools()` and dispatches `call_tool()`
+straight from the registry — no `@mcp.tool` decorator, no central schema list or `if/elif`. One module each
+under `src/rs_mcp_server/tools/`; the package `__init__.py` imports them in **tool-list order** (so it opts
+out of import sorting). Adding a tool is a single-module edit. The canonical list is `EXPECTED_TOOLS` in
+`tests/fvt/_fvt_fixtures.py`, which the FVT suite asserts against.
 
-**Platform context:** in the platform this server is *not* reached directly. It is registered as an
-upstream of the open-vMCP gateway, which fronts it at `/mcp/rs-mcp` and speaks Streamable HTTP to
-clients while talking **SSE** to this server. See `../platform-orchestration/ARCHITECTURE.md`.
+**Platform context:** this server is *not* reached directly. It is an upstream of the open-vMCP gateway,
+which fronts it at `/mcp/rs-mcp`, speaking Streamable HTTP to clients but **SSE** to this server. See
+`../platform-orchestration/ARCHITECTURE.md`.
 
 ## Caching
 
-`src/rs_mcp_server/cache.py` — a module-level `OrderedDict` with per-entry TTL and LRU eviction at
-1000 entries. **In-process and in-memory**: not shared across workers, lost on restart. TTLs are in
-`tools/_constants.py` (wiki lookups 1h, live OSRS prices 5m, hiscores 10m, OSRS item mapping 1 day).
+`src/rs_mcp_server/cache.py` — a module-level `OrderedDict` with per-entry TTL and LRU eviction at 1000
+entries. **In-process, in-memory**: not shared across workers, lost on restart. TTLs are in
+`tools/_constants.py` (wiki 1h, live OSRS prices 5m, hiscores 10m, OSRS item mapping 1 day).
 
 ## Server lifecycle
 
@@ -37,127 +34,133 @@ clients while talking **SSE** to this server. See `../platform-orchestration/ARC
 | Run FVT against the live server | `make fvt` |
 | Clean (image + volume + dangling layers) | `bash scripts/docker.sh clean` |
 
-`make start` checks the Docker daemon (instructs `colima start` on Linux if down), builds the `rs-mcp-server:dev` image, starts a detached container on port 8000, and polls `/health` until ready. `make dev` is preserved for in-venv iteration without Docker.
-
-The container binds to `0.0.0.0:8000` internally; the host sees it on `localhost:8000` via `-p 8000:8000`. Production deploys swap the run flags but keep the image identical.
+`make start` checks the Docker daemon (hints `colima start` on Linux if down), builds `rs-mcp-server:dev`,
+runs a detached container on port 8000, and polls `/health` until ready. `make dev` is in-venv iteration
+without Docker. The container binds `0.0.0.0:8000` internally; the host sees `localhost:8000` via
+`-p 8000:8000`. Production keeps the image identical, only swapping run flags.
 
 ### TLS
 
-TLS is opt-in via a mounted cert directory — a preflight step in the container entrypoint (`docker/bin/start-server`) resolves the listener mode from `/etc/tls_certs` before the server process starts, then launches uvicorn with the matching `--ssl-*` flags:
+TLS is opt-in via a mounted cert directory. A preflight in the container entrypoint
+(`docker/bin/start-server`) resolves the listener mode from `/etc/tls_certs` before uvicorn starts, then
+launches it with matching `--ssl-*` flags:
 
 | Cert dir | Listener |
 |----------|----------|
 | Not mounted | Plain HTTP (default) |
-| Mounted, empty / no usable pair | HTTPS with a self-signed fallback cert |
+| Mounted, empty / no usable pair | HTTPS, self-signed fallback cert |
 | Mounted with `tls.crt`+`tls.key` (or `fullchain.pem`+`privkey.pem`, or `cert.pem`+`key.pem`) | HTTPS with those certs |
 
-Run with TLS locally: `TLS_CERTS_DIR=/path/to/certs make start` (mounts the dir read-only at `/etc/tls_certs` and polls health over https). The same port `8000` carries HTTP or HTTPS — there is no second port. `make dev` (local venv, no container) is always plain HTTP, since the TLS preflight lives in the container entrypoint. Full rationale in the wiki [Security › Transport security (TLS)](https://github.com/AndresI19/rs-mcp-server/wiki/Security#transport-security-tls).
+Run TLS locally: `TLS_CERTS_DIR=/path/to/certs make start` (mounts read-only at `/etc/tls_certs`, polls
+health over https). One port `8000` carries HTTP or HTTPS — no second port. `make dev` is always plain HTTP
+(the TLS preflight lives in the container entrypoint). Full rationale: wiki [Security › Transport security
+(TLS)](https://github.com/AndresI19/rs-mcp-server/wiki/Security#transport-security-tls).
 
 ## Configuration
 
-Every variable is optional — the server runs with an empty environment — and all of them are
-resolved and validated once, on import, in `src/rs_mcp_server/config.py`. A value that is *set and
-wrong* fails at boot naming the variable, instead of surfacing later as a confusing timeout or a 404
-from an endpoint nobody realised was hardcoded.
+Every variable is optional — the server runs with an empty environment — and all are resolved and validated
+once, on import, in `src/rs_mcp_server/config.py`. A value that is *set and wrong* fails at boot naming the
+variable, rather than surfacing later as a confusing timeout or a 404 from a hardcoded endpoint.
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `MCP_HOST` | `127.0.0.1` | Listen address. The container sets `0.0.0.0` explicitly — a dev server that binds every interface the moment you run it is a surprise, not a convenience. |
+| `MCP_HOST` | `127.0.0.1` | Listen address. The container sets `0.0.0.0` explicitly. |
 | `MCP_PORT` | `8000` | Listen port. |
-| `HTTP_TIMEOUT` | `10.0` | Per-request timeout, seconds, for outbound calls to the wikis/APIs. |
-| `HTTP_MAX_RETRIES` | `2` | Retries for transient upstream failures (429/502/503/504). `0` disables. |
-| `USER_AGENT` | `RS-MCP-Server/<version>` | The wikis ask that tools identify themselves. Override to add a contact: `RS-MCP-Server/1.2 (+https://example.com/contact)`. |
+| `HTTP_TIMEOUT` | `10.0` | Per-request timeout (s) for outbound wiki/API calls. |
+| `HTTP_MAX_RETRIES` | `2` | Retries for transient upstream failures (429/502/503/504); `0` disables. |
+| `USER_AGENT` | `RS-MCP-Server/<version>` | Tool identity for the wikis. Override to add a contact. |
 | `RS3_WIKI_API` / `OSRS_WIKI_API` | the two `api.php` endpoints | MediaWiki API per game. |
-| `RS3_WIKI_BASE` / `OSRS_WIKI_BASE` | the two `/w/` prefixes | Used to build the article links in tool output. |
+| `RS3_WIKI_BASE` / `OSRS_WIKI_BASE` | the two `/w/` prefixes | Build article links in tool output. |
 | `OSRS_PRICES_BASE` | `https://prices.runescape.wiki/api/v1/osrs` | Live GE price API. |
 | `RS3_GE_DETAIL_URL` | the RS3 `catalogue/detail.json` endpoint | RS3 item-price lookup. |
-| `GEPRICE_CATALOG_URL` | `https://geprice.com/api/items` | Secondary GE catalogue. Returns 403 today (one FVT case xfails); overridable so a working mirror can be pointed at. |
-| `RS3_HISCORES_URL` / `OSRS_HISCORES_URL` | the two `index_lite.json` endpoints | Hiscores. Separate variables, not a shared base — they are different products behind different `m=` paths. |
+| `GEPRICE_CATALOG_URL` | `https://geprice.com/api/items` | Secondary GE catalogue. Returns 403 today (one FVT case xfails); overridable to point at a working mirror. |
+| `RS3_HISCORES_URL` / `OSRS_HISCORES_URL` | the two `index_lite.json` endpoints | Hiscores. Separate vars, not a shared base — different products behind different `m=` paths. |
 
-The upstream endpoints are overridable so the server can be pointed at a mirror, a caching proxy, or
-a fixture host without editing source.
+Endpoints are overridable so the server can be pointed at a mirror, caching proxy, or fixture host without
+editing source.
 
 ## Endpoints
 
 | Path | Purpose |
 |------|---------|
-| `GET /health` | Liveness check — returns `{"status": "ok"}` |
-| `GET /version` | Returns `VERSION_INFO` — the real version now, not always `"snapshot"` (see below) |
+| `GET /health` | Liveness — `{"status": "ok"}` |
+| `GET /version` | Returns `VERSION_INFO` (see below) |
 | `GET /sse` | MCP SSE connection |
-| `/messages/` | MCP message transport — a Starlette `Mount`, and the **trailing slash is significant** (`SseServerTransport("/messages/")`) |
+| `/messages/` | MCP message transport — a Starlette `Mount`; the **trailing slash is significant** (`SseServerTransport("/messages/")`) |
 
 ### /version
 
-`version.py` reads a `VERSION` file sibling to itself and falls back to `"snapshot"` when it is
-absent — which, until now, it always was: the Dockerfile declared `ARG VERSION` and labelled the
-image with it, but **nothing ever passed the arg and nothing ever wrote the file**, so this endpoint
-reported `"snapshot"` unconditionally. The runtime stage now writes it, and
-`platform-orchestration/k8s/deploy.sh` stamps it from this repo's latest git tag (suffixed
-`-snapshot` when the source differs from `main`).
+`version.py` reads a `VERSION` file sibling to itself, falling back to `"snapshot"` when absent (dev
+checkouts). The runtime image writes it; `platform-orchestration/k8s/deploy.sh` stamps it from this repo's
+latest git tag (suffixed `-snapshot` when the source differs from `main`). The file lands **inside the
+installed package in the venv**, not in `/app`. The Dockerfile asks the package where it lives rather than
+hard-coding a `site-packages` path — that path embeds the Python minor version, so a base-image bump would
+otherwise silently revert this endpoint to `"snapshot"` forever.
 
-The file lands **inside the installed package in the venv**, not in `/app` — `version.py` looks for a
-sibling of itself. The Dockerfile asks the package where it lives rather than hard-coding a
-`site-packages` path, because that path embeds the Python minor version and a base-image bump would
-otherwise silently return this endpoint to reporting `"snapshot"` forever.
+**This server speaks SSE only** — there is no `/mcp` streamable-http route on it. Streamable HTTP is
+client-side only in the FVT suite, for the open-vMCP gateway; that `/mcp/rs-mcp` path belongs to the gateway.
 
-**This server speaks SSE only.** There is no `/mcp` streamable-http route on it. Streamable HTTP
-appears only on the *client* side of the FVT suite, for talking to the open-vMCP gateway — that
-`/mcp/rs-mcp` path belongs to the gateway, not to this server.
-
-> **`GET /health?crash` deliberately kills the process.** It raises in a thread whose excepthook
-> calls `os._exit(1)`. The server has **no auth**, so anything that can reach `/health` can kill it.
-> It is not publicly exposed today — it sits behind the gateway and nginx — but treat any change that
-> widens its reachability as a security change.
+> **`GET /health?crash` deliberately kills the process.** It raises in a thread whose excepthook calls
+> `os._exit(1)`. The server has **no auth**, so anything that can reach `/health` can kill it. Not publicly
+> exposed today (behind the gateway and nginx) — treat any change that widens its reachability as a security
+> change.
 
 ## Logs
 
-Server output goes to two sinks at once: the container's **stdout** (so `docker logs -f rs-mcp-server` works and orchestrators can scrape it) and a **size-rotated file** on the `rs-mcp-server-logs` volume.
+Server output goes to two sinks: the container's **stdout** (`docker logs -f`) and a **size-rotated file**
+on the `rs-mcp-server-logs` volume.
 
-The file path is `/logs/uvicorn.log` **only when `scripts/docker.sh` starts the container** — it is
-`docker.sh` that injects `-e LOGFILE=/logs/uvicorn.log`. The entrypoint's own default is
-`/tmp/uvicorn.log`, so a bare `docker run` (as CI's `fvt-container` job does) writes to `/tmp` on the
-tmpfs instead. The entrypoint pipes uvicorn through `rotatelogs -e` to fan out to both — `-e` echoes to the console while the file rotates at `LOG_MAX_SIZE` (default `10M`), keeping `LOG_BACKUPS` (default `5`) generations as `uvicorn.log.1`, `.2`, …
+The file path is `/logs/uvicorn.log` **only when `scripts/docker.sh` starts the container** — it injects
+`-e LOGFILE=/logs/uvicorn.log`. The entrypoint's own default is `/tmp/uvicorn.log`, so a bare `docker run`
+(CI's `fvt-container` job) writes to `/tmp` on the tmpfs. The entrypoint pipes uvicorn through `rotatelogs
+-e` to fan out to both: `-e` echoes to console while the file rotates at `LOG_MAX_SIZE` (default `10M`),
+keeping `LOG_BACKUPS` (default `5`) generations as `uvicorn.log.1`, `.2`, …
 
-Tail the file with `make logs` (delegates to `scripts/docker.sh logs`); because it lives on the volume it survives container removal and can still be tailed after `make stop`. The current log is always at the stable path `/logs/uvicorn.log`, so `make logs` is unaffected by rotation.
+`make logs` tails the file (via `scripts/docker.sh logs`); it lives on the volume, so it survives container
+removal and stays tailable after `make stop`. The current log is always at `/logs/uvicorn.log`, so `make
+logs` is unaffected by rotation.
 
 ## Pre-PR checks
 
-These commands must pass before `/pr` opens a PR — the `/pr` skill runs them as Step 0 and aborts on any non-zero exit. Run from repo root:
+These must pass before `/pr` opens a PR — the `/pr` skill runs them as Step 0 and aborts on non-zero. From
+repo root:
 
 ```bash
 .venv/bin/ruff check .
 make unit
 ```
 
-Note: pre-PR checks are unit-only on purpose — fast, no container, no live wiki/hiscores calls. `make fvt` is the slower function-verification suite (see Local development below).
+Pre-PR checks are unit-only on purpose — fast, no container, no live calls. `make fvt` is the slower
+function-verification suite (below).
 
 ## Local development
 
-On Linux, Docker requires Colima as the container runtime:
+On Linux, Docker requires Colima:
 
 ```bash
 colima start    # required before make start / make fvt
 ```
 
-`make start` and `bash scripts/docker.sh start` both check the daemon and print the `colima start` hint if it's down.
+`make start` and `bash scripts/docker.sh start` both check the daemon and hint `colima start` if down.
 
-The test suite is split into two tiers:
+Two test tiers:
 
 | Tier | Command | Speed | Requires container |
 |------|---------|-------|--------------------|
 | Unit | `make unit` | ~1s | No (runs in .venv) |
-| Function-verification | `make fvt` | ~30s | Yes (must `make start` first) |
+| Function-verification | `make fvt` | ~30s | Yes (`make start` first) |
 
-`make unit` is the fast inner-loop check and the only thing the pre-PR gate runs. `make fvt` exercises every MCP tool end-to-end against a live server — slower, useful before opening a PR that touches tool behavior.
+`make unit` is the fast inner-loop check and the only pre-PR gate. `make fvt` exercises every MCP tool
+end-to-end against a live server.
 
-**`make fvt` *skips* (it does not fail) when no server is up** — the session aborts if
-`GET {FVT_BASE_URL}/health` doesn't answer within 2s. A green run against nothing is silent, which is
-why CI never points pytest at `tests/` wholesale.
+**`make fvt` *skips* (does not fail) when no server is up** — the session aborts if `GET
+{FVT_BASE_URL}/health` doesn't answer within 2s. A green run against nothing is silent, which is why CI never
+points pytest at `tests/` wholesale.
 
 ### The FVT suite is transport-parameterised
 
-54 tests (1 tool-registration check + 53 parametrized invocations). It can run against **this server
-over SSE**, or against **the open-vMCP gateway over Streamable HTTP** — configured entirely by env:
+54 tests (1 tool-registration check + 53 parametrized invocations). It runs against **this server over SSE**
+or **the open-vMCP gateway over Streamable HTTP**, configured entirely by env:
 
 | Var | Default | Notes |
 |-----|---------|-------|
@@ -166,36 +169,36 @@ over SSE**, or against **the open-vMCP gateway over Streamable HTTP** — config
 | `FVT_TRANSPORT` | `sse` | `sse` or `streamable-http`; anything else raises |
 | `FVT_BEARER` | `""` | no `Authorization` header when empty |
 
-`make fvt-vmcp` sets all four to run the suite **through the gateway** — which is what makes the
-gateway record `tool_calls` rows for its dashboard. The suite targets the *unprefixed* passthrough
-route on purpose: the aggregate endpoint would namespace the tools as `rs-mcp__search_wiki` and the
-suite asserts bare names.
+`make fvt-vmcp` sets all four to run through the gateway — which is what makes the gateway record
+`tool_calls` rows for its dashboard. The suite targets the *unprefixed* passthrough route on purpose: the
+aggregate endpoint would namespace tools as `rs-mcp__search_wiki`, and the suite asserts bare names.
 
 ### scripts/fvt_traffic.sh + Dockerfile.fvt
 
 `scripts/fvt_traffic.sh` replays the suite through the gateway **on an infinite loop** (`VMCP_URL` /
 `AUTH_URL`, default the in-cluster services; `FVT_INTERVAL_SECONDS`, default 900; `FVT_USER`, default
-`fvt-runner`; `FVT_CODE`, **required** — the runner's password/pin). It **signs in to platform-auth for
-a real RS256 token** — vMCP verifies signatures now, so the old forged base64url bearer is rejected —
-self-provisioning the account (`POST /auth/identities`, then `/auth/token` if it already exists) and
-refreshing the token each run. It now runs on the **host, not as a Pod**, pointing both URLs at
-`https://api-andres.project-platform.me` (nginx routes `/mcp` and `/auth` there to the same services);
-see the platform-cicd repo for the host unit. It is what keeps the platform dashboard's Recent Calls
+`fvt-runner`; `FVT_CODE`, **required** — the runner's password/pin). It **signs in to platform-auth for a
+real RS256 token** (vMCP verifies signatures, so the old forged bearer is rejected), self-provisioning the
+account (`POST /auth/identities`, then `/auth/token` if it exists) and refreshing each run. It runs on the
+**host, not as a Pod**, pointing both URLs at `https://api-andres.project-platform.me` (nginx routes `/mcp`
+and `/auth` to the same services); see platform-cicd for the host unit. It keeps the dashboard's Recent Calls
 populated.
 
-`Dockerfile.fvt` packages it. It is **deliberately not the production image**: production is a
-hardened minimal UBI9 runtime with no pytest, and adding test deps to ship a traffic generator would
-widen the attack surface of the thing that actually serves MCP. (`Dockerfile.fvt.dockerignore` exists
-because the root `.dockerignore` strips `tests/` and `scripts/` — exactly what this image needs.)
+`Dockerfile.fvt` packages it. It is **deliberately not the production image**: production is a hardened
+minimal UBI9 runtime with no pytest, and adding test deps to ship a traffic generator would widen the attack
+surface of the thing that serves MCP. (`Dockerfile.fvt.dockerignore` exists because the root `.dockerignore`
+strips `tests/` and `scripts/` — exactly what this image needs.)
 
-> **This now runs as a HOST container** (see platform-cicd), not a Kubernetes workload — it hits the
-> platform's public API from outside the cluster, so it never needed to be a Pod. That also settles the
-> old Deployment-vs-CronJob question (the script never exits, so a CronJob Pod would hang forever): a
-> long-lived host container with its own `while true` loop is the right shape, restarted by its unit.
+> **This runs as a HOST container** (see platform-cicd), not a Kubernetes workload — it hits the platform's
+> public API from outside the cluster. That also settles the old Deployment-vs-CronJob question (the script
+> never exits, so a CronJob Pod would hang forever): a long-lived host container with its own `while true`
+> loop, restarted by its unit.
 
 ## Dependency locking
 
-`requirements.txt` (committed) is the locked, hash-verified runtime dep list, generated from `pyproject.toml` via `pip-tools`. The container build (Epic #62 / C2) consumes it with `pip install -r requirements.txt --require-hashes` so image layer hashes are stable across builds.
+`requirements.txt` (committed) is the locked, hash-verified runtime dep list, generated from
+`pyproject.toml` via `pip-tools`. The container build consumes it with `pip install -r requirements.txt
+--require-hashes` so image layer hashes stay stable.
 
 Regenerate after editing the `[project] dependencies` block in `pyproject.toml`:
 
@@ -203,7 +206,8 @@ Regenerate after editing the `[project] dependencies` block in `pyproject.toml`:
 make lock
 ```
 
-The dev `.venv` itself uses `pip install -e .[test]` (loose constraints, editable install) — `requirements.txt` is for reproducibility downstream, not for daily dev iteration. To verify the lockfile installs cleanly in a fresh environment:
+The dev `.venv` uses `pip install -e .[test]` (loose constraints, editable) — `requirements.txt` is for
+downstream reproducibility, not daily dev. Verify it installs cleanly in a fresh env:
 
 ```bash
 python3 -m venv /tmp/lock-verify
@@ -213,18 +217,19 @@ python3 -m venv /tmp/lock-verify
 ## Gotchas
 
 - **Python version conflict.** `.python-version` and the checked-in `.venv` are **3.14.4**, but
-  `pyproject.toml` requires `>=3.12`, ruff targets `py312`, CI pins 3.12, and both images are 3.12.
-  Local dev and CI/prod are on different minors.
+  `pyproject.toml` requires `>=3.12`, ruff targets `py312`, CI pins 3.12, and both images are 3.12. Local dev
+  and CI/prod run different minors.
 - **`_constants.py` is consumed via `from ._constants import *`**, which is why ruff globally ignores
   `F403`/`F405` — a genuinely undefined name in a tool module **will not be caught by lint**.
-- **`geprice.com/api/items` returns 403**, which is why one FVT case is a known xfail. It (and the RS3
-  GE detail endpoint) are now `GEPRICE_CATALOG_URL` / `RS3_GE_DETAIL_URL` in `config.py`, so a mirror
-  can be pointed at without a code change. (Both these and `http_get_text`'s timeout used to be
-  hardcoded — that parameterization is finished now.)
-- **The container runs `--read-only`** with a 16 MB `/tmp` tmpfs, `--cap-drop=ALL`, `--memory 512m`.
-  Anything writing outside `/tmp` or `/logs` passes under `make dev` and fails in the container.
-- **There is no typechecker and no formatter.** `ruff check` is the only static gate.
+- **`geprice.com/api/items` returns 403**, so one FVT case is a known xfail. It and the RS3 GE detail
+  endpoint are `GEPRICE_CATALOG_URL` / `RS3_GE_DETAIL_URL` in `config.py`, pointable at a mirror without a
+  code change.
+- **The container runs `--read-only`** with a 16 MB `/tmp` tmpfs, `--cap-drop=ALL`, `--memory 512m`. Anything
+  writing outside `/tmp` or `/logs` passes under `make dev` and fails in the container.
+- **No typechecker, no formatter.** `ruff check` is the only static gate.
 
 ## Security
 
-See the wiki [Security](https://github.com/AndresI19/rs-mcp-server/wiki/Security) page for the hardened runtime contract (read-only rootfs, dropped Linux capabilities, Trivy gate in CI) and the residual risks the container does not cover. The `image-scan` job in `.github/workflows/test.yml` enforces the vulnerability gate on every PR.
+See the wiki [Security](https://github.com/AndresI19/rs-mcp-server/wiki/Security) page for the hardened
+runtime contract (read-only rootfs, dropped Linux capabilities, Trivy gate in CI) and residual risks. The
+`image-scan` job in `.github/workflows/test.yml` enforces the vulnerability gate on every PR.

@@ -3,7 +3,7 @@
 import httpx
 import pytest
 
-from rs_mcp_server.tools.hiscores import _fmt_rank, _format_stats, get_player_stats
+from rs_mcp_server.tools.hiscores import _format_rank, _format_stats, get_player_stats
 
 
 def _data(skills: list[dict], activities: list[dict] | None = None) -> dict:
@@ -97,20 +97,20 @@ class TestFormatStats:
         assert "No usable hiscores data" in result
 
 
-# ── _fmt_rank ─────────────────────────────────────────────────────────────────
+# ── _format_rank ──────────────────────────────────────────────────────────────
 
 
-class TestFmtRank:
+class TestFormatRank:
     def test_positive_rank_with_comma(self):
-        assert _fmt_rank(1234) == "1,234"
-        assert _fmt_rank(1) == "1"
-        assert _fmt_rank(1_000_000) == "1,000,000"
+        assert _format_rank(1234) == "1,234"
+        assert _format_rank(1) == "1"
+        assert _format_rank(1_000_000) == "1,000,000"
 
     def test_zero_rank_dash(self):
-        assert _fmt_rank(0) == "—"
+        assert _format_rank(0) == "—"
 
     def test_negative_rank_dash(self):
-        assert _fmt_rank(-1) == "—"
+        assert _format_rank(-1) == "—"
 
 
 # ── get_player_stats end-to-end ───────────────────────────────────────────────

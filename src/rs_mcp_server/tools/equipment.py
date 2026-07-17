@@ -92,7 +92,7 @@ async def get_equipment_stats(item_name: str, game: str = "rs3") -> str:
 
     wiki_label = WIKI_LABELS[game]
 
-    result = await _stats_from_direct(item_name, game, wiki_label) or await _stats_from_search(
+    result = await _from_direct(item_name, game, wiki_label) or await _from_search(
         item_name, game, wiki_label
     )
     if result is None:
@@ -100,7 +100,7 @@ async def get_equipment_stats(item_name: str, game: str = "rs3") -> str:
     return cache.set_and_return(cache_key, result, TTL_HOUR)
 
 
-async def _stats_from_direct(item_name: str, game: str, wiki_label: str) -> str | None:
+async def _from_direct(item_name: str, game: str, wiki_label: str) -> str | None:
     """Direct page lookup: render an exact Infobox-Bonuses hit, or disambiguate a near-title."""
     direct = await _fetch_page(item_name, game, follow_redirects=True)
     if direct is None:
@@ -113,7 +113,7 @@ async def _stats_from_direct(item_name: str, game: str, wiki_label: str) -> str 
     return _disambiguate(direct["title"], direct["url"], wiki_label)
 
 
-async def _stats_from_search(item_name: str, game: str, wiki_label: str) -> str | None:
+async def _from_search(item_name: str, game: str, wiki_label: str) -> str | None:
     """Search fallback: disambiguate a near-title, else render the hit."""
     candidate = await _search_equipment(item_name, game)
     if candidate is None:

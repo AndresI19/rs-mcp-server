@@ -93,7 +93,7 @@ def _format_stats(username: str, game: str, data: dict) -> str:
 
     lines = [
         f"**{username}** ({game.upper()} Hiscores)",
-        f"Total level: {_as_int(overall.get('level')):,}  ·  Rank: {_fmt_rank(_as_int(overall.get('rank')))}",
+        f"Total level: {_as_int(overall.get('level')):,}  ·  Rank: {_format_rank(_as_int(overall.get('rank')))}",
         "",
         "Skills:",
     ]
@@ -115,7 +115,7 @@ def _format_stats(username: str, game: str, data: dict) -> str:
     return "\n".join(lines)
 
 
-def _fmt_rank(rank: int) -> str:
+def _format_rank(rank: int) -> str:
     return f"{rank:,}" if rank > 0 else "—"
 
 

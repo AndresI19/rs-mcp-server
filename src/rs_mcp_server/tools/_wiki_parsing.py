@@ -9,11 +9,36 @@ helpers stay in each module so the test suite can monkeypatch ``http_get`` local
 
 import html
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 
 import roman
 
 from ._constants import MW_BASE_PARAMS, SEARCH_RESULT_LIMIT, WIKI_BASE_URLS
+
+# The revision-content property set every MediaWiki query below asks for: the page's
+# wikitext (revisions/main slot) plus its canonical URL (inprop=url). Single-sourced here
+# so search / direct-title / roman-variant lookups can't drift apart.
+_REVISION_PROPS = {
+    "prop": "revisions|info",
+    "rvprop": "content",
+    "rvslots": "main",
+    "inprop": "url",
+}
+
+
+def _revision_content(revisions: list[dict]) -> str:
+    """Read a page's wikitext from ``revisions[0].slots.main.content`` (``""`` when absent)."""
+    return revisions[0].get("slots", {}).get("main", {}).get("content", "")
+
+
+def _page_dict(title: str, game: str, content: str) -> dict:
+    """The ``{title, url, content}`` shape every page extractor returns, with the wiki link
+    built from the title (spaces → underscores) against the game's base URL."""
+    return {
+        "title": title,
+        "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
+        "content": content,
+    }
 
 
 def titles_match(a: str, b: str) -> bool:
@@ -188,31 +213,33 @@ def search_params(search_term: str) -> dict:
         "generator": "search",
         "gsrsearch": search_term,
         "gsrlimit": SEARCH_RESULT_LIMIT,
-        "prop": "revisions|info",
-        "rvprop": "content",
-        "rvslots": "main",
-        "inprop": "url",
+        **_REVISION_PROPS,
         **MW_BASE_PARAMS,
     }
+
+
+def _iter_matching_pages(
+    data: dict, game: str, matches: Callable[[str], bool]
+) -> Iterator[dict]:
+    """Yield ``{title, url, content}`` for each present, revision-bearing page whose wikitext
+    satisfies ``matches`` — the shared type-filter walk behind ``first_matching_page`` (which
+    stops at the first yield) and ``matching_pages`` (which drains it)."""
+    for page in data.get("query", {}).get("pages", []):
+        if page.get("missing"):
+            continue
+        revisions = page.get("revisions") or []
+        if not revisions:
+            continue
+        content = _revision_content(revisions)
+        if not matches(content):
+            continue
+        yield _page_dict(page.get("title", ""), game, content)
 
 
 def first_matching_page(data: dict, game: str, matches: Callable[[str], bool]) -> dict | None:
     """Return the first search result whose wikitext satisfies ``matches`` — the
     type-filter that stops generically-named hits from being returned."""
-    for page in data.get("query", {}).get("pages", []):
-        revisions = page.get("revisions") or []
-        if not revisions:
-            continue
-        content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
-        if not matches(content):
-            continue
-        title = page.get("title", "")
-        return {
-            "title": title,
-            "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
-            "content": content,
-        }
-    return None
+    return next(_iter_matching_pages(data, game, matches), None)
 
 
 def fetch_page_params(title: str, follow_redirects: bool) -> dict:
@@ -224,10 +251,7 @@ def fetch_page_params(title: str, follow_redirects: bool) -> dict:
     params = {
         "action": "query",
         "titles": title,
-        "prop": "revisions|info",
-        "rvprop": "content",
-        "rvslots": "main",
-        "inprop": "url",
+        **_REVISION_PROPS,
         **MW_BASE_PARAMS,
     }
     if follow_redirects:
@@ -246,13 +270,8 @@ def parse_page_response(data: dict, title: str, game: str) -> dict | None:
     revisions = pages[0].get("revisions") or []
     if not revisions:
         return None
-    content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
     resolved_title = pages[0].get("title", title)
-    return {
-        "title": resolved_title,
-        "url": f"{WIKI_BASE_URLS[game]}{resolved_title.replace(' ', '_')}",
-        "content": content,
-    }
+    return _page_dict(resolved_title, game, _revision_content(revisions))
 
 
 class TableScope:
@@ -341,10 +360,7 @@ def roman_variant_params(name: str) -> dict:
     return {
         "action": "query",
         "titles": name,
-        "prop": "revisions|info",
-        "rvprop": "content",
-        "rvslots": "main",
-        "inprop": "url",
+        **_REVISION_PROPS,
         "redirects": 1,
         **MW_BASE_PARAMS,
     }
@@ -353,25 +369,7 @@ def roman_variant_params(name: str) -> dict:
 def matching_pages(data: dict, game: str, matches: Callable[[str], bool]) -> list[dict]:
     """Every page whose wikitext satisfies ``matches`` — the plural sibling of
     ``first_matching_page``. Skips ``missing`` pages and pages without revision content."""
-    found: list[dict] = []
-    for page in data.get("query", {}).get("pages", []):
-        if page.get("missing"):
-            continue
-        revisions = page.get("revisions") or []
-        if not revisions:
-            continue
-        content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
-        if not matches(content):
-            continue
-        title = page.get("title", "")
-        found.append(
-            {
-                "title": title,
-                "url": f"{WIKI_BASE_URLS[game]}{title.replace(' ', '_')}",
-                "content": content,
-            }
-        )
-    return found
+    return list(_iter_matching_pages(data, game, matches))
 
 
 def render_variants(variants: list[dict], wiki_label: str, base_name: str, tool: str) -> str:

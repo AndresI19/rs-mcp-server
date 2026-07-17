@@ -431,21 +431,8 @@ def _render_method(name: str, url: str, wiki_label: str, fields: dict, template_
                     if sub.strip():
                         lines.append(f"  {sub.strip()}")
 
-    inputs = list(_enumerate_io(fields, "input"))
-    if inputs:
-        lines.append("")
-        lines.append("**Inputs:**")
-        for item, qty in inputs:
-            prefix = f"{qty} " if qty else ""
-            lines.append(f"  - {prefix}{item}")
-
-    outputs = list(_enumerate_io(fields, "output"))
-    if outputs:
-        lines.append("")
-        lines.append("**Outputs:**")
-        for item, qty in outputs:
-            prefix = f"{qty} " if qty else ""
-            lines.append(f"  - {prefix}{item}")
+    lines += _render_io_lines(fields, "input", "**Inputs:**")
+    lines += _render_io_lines(fields, "output", "**Outputs:**")
 
     details = fields.get("details")
     if details:
@@ -463,6 +450,20 @@ def _render_method(name: str, url: str, wiki_label: str, fields: dict, template_
         lines.append("_(This is a recurring activity — see the Recurrence time field.)_")
 
     return "\n".join(lines)
+
+
+def _render_io_lines(fields: dict[str, str], prefix: str, heading: str) -> list[str]:
+    """Render the inputs/outputs section (blank line, heading, one bullet per item).
+
+    Inputs and outputs share this shape exactly — only the field prefix and heading differ."""
+    pairs = list(_enumerate_io(fields, prefix))
+    if not pairs:
+        return []
+    lines = ["", heading]
+    for item, qty in pairs:
+        qty_prefix = f"{qty} " if qty else ""
+        lines.append(f"  - {qty_prefix}{item}")
+    return lines
 
 
 def _enumerate_io(fields: dict[str, str], prefix: str) -> Iterator[tuple[str, str]]:

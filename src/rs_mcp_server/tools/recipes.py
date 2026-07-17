@@ -42,9 +42,9 @@ async def get_item_recipe(item_name: str, game: str = "rs3") -> str:
     )
     pages = data.get("query", {}).get("pages", [])
     if not pages or pages[0].get("missing"):
-        result = f"Recipe for '{item_name}' not found on the {wiki_label} wiki."
-        cache.set(cache_key, result, TTL_HOUR)
-        return result
+        return cache.set_and_return(
+            cache_key, f"Recipe for '{item_name}' not found on the {wiki_label} wiki.", TTL_HOUR
+        )
 
     page = pages[0]
     title = page.get("title", canonical)
@@ -53,17 +53,15 @@ async def get_item_recipe(item_name: str, game: str = "rs3") -> str:
 
     body = _find_recipe_template(content)
     if body is None:
-        result = (
+        return cache.set_and_return(
+            cache_key,
             f"**{title}** ({wiki_label} Wiki)\n{url}\n\n"
-            f"No recipe template found on this page — it may not be craftable."
+            f"No recipe template found on this page — it may not be craftable.",
+            TTL_HOUR,
         )
-        cache.set(cache_key, result, TTL_HOUR)
-        return result
 
     fields = _parse_fields(body)
-    result = _format_recipe(title, url, wiki_label, fields)
-    cache.set(cache_key, result, TTL_HOUR)
-    return result
+    return cache.set_and_return(cache_key, _format_recipe(title, url, wiki_label, fields), TTL_HOUR)
 
 
 def _find_recipe_template(wikitext: str) -> str | None:
@@ -122,11 +120,10 @@ def _format_recipe(title: str, url: str, wiki_label: str, fields: dict) -> str:
 
     outputs = list(_enumerate_pairs("output", fields))
     if outputs:
+        lines.append("")
         if len(outputs) == 1 and not outputs[0][1]:
-            lines.append("")
             lines.append(f"**Output:** {outputs[0][0]}")
         else:
-            lines.append("")
             lines.append("**Outputs:**")
             for name, qty in outputs:
                 prefix = f"{qty} " if qty else ""

@@ -242,10 +242,7 @@ async def _geprice_lookup(name: str) -> dict | None:
     if not catalog:
         return None
     target = name.strip().casefold()
-    for entry in catalog:
-        if entry.get("name", "").casefold() == target:
-            return entry
-    return None
+    return next((e for e in catalog if e.get("name", "").casefold() == target), None)
 
 
 TOOL = register(

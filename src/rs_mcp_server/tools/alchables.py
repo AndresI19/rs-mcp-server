@@ -25,6 +25,7 @@ from .prices import osrs_mapping
 
 _NATURE_RUNE_ID_OSRS = 561
 _RS3_PAGE = "Money_making_guide/Operating_the_Alchemiser_mk._II"
+_RS3_PAGE_URL = f"https://runescape.wiki/w/{_RS3_PAGE}"
 
 # Categorization thresholds (chosen with the user — see issue #42 thread).
 _EASY_BUY_LIMIT_MIN = 100  # easy only: buy_limit must be > this (bulk-flood-friendly)
@@ -419,17 +420,17 @@ async def _get_best_alchables_rs3(mode: str) -> str:
     if rows is None:
         return (
             "Could not load the Alchemiser mk. II Money Making Guide page. "
-            "https://runescape.wiki/w/" + _RS3_PAGE
+            + _RS3_PAGE_URL
         )
 
     easy, slow = _split_pools(rows)
     if not easy and not slow:
         return (
             "No items on the Alchemiser mk. II page qualify as easy or slow buys "
-            "right now. https://runescape.wiki/w/" + _RS3_PAGE
+            "right now. " + _RS3_PAGE_URL
         )
 
-    page_url = "https://runescape.wiki/w/" + _RS3_PAGE
+    page_url = _RS3_PAGE_URL
 
     if mode == "passive":
         return _render_passive_two_tables(easy, slow, page_url)

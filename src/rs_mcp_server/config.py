@@ -1,12 +1,10 @@
 """The server's entire configuration surface, resolved from the environment and validated on import.
 
-Everything here has a working default: the server runs with an empty environment. What it does NOT
-do any more is *bake in* the answers. Before this module the listen address existed only inside
-`if __name__ == "__main__"`, the HTTP timeout was a default argument on one function, the User-Agent
-was a literal, and every upstream endpoint was a constant — so running against a mirror, tightening a
-timeout, or identifying the client honestly to the wikis all meant editing source.
+Everything has a working default: the server runs with an empty environment. Nothing is baked in —
+listen address, HTTP timeout, User-Agent, and every upstream endpoint are overridable, so running
+against a mirror, tightening a timeout, or identifying honestly to the wikis needs no source edit.
 
-A value that IS set and is wrong fails here, at import, naming the variable — rather than surfacing
+A value that is set and wrong fails here, at import, naming the variable — rather than surfacing
 later as a confusing timeout or a 404 from an endpoint nobody realised was hardcoded.
 """
 
@@ -75,11 +73,9 @@ def _non_negative_int(name: str, default: int) -> int:
 
 
 # --------------------------------------------------------------------------------------------
-# Where the server listens.
-#
-# 127.0.0.1 by default: a dev server that binds every interface the moment you run it is a
-# surprise, not a convenience. The container sets MCP_HOST=0.0.0.0 explicitly, because there the
-# whole point is to be reachable from the platform's network.
+# Where the server listens. 127.0.0.1 by default — a dev server that binds every interface the
+# moment you run it is a surprise, not a convenience. The container sets MCP_HOST=0.0.0.0
+# explicitly, because there the whole point is to be reachable from the platform's network.
 # --------------------------------------------------------------------------------------------
 MCP_HOST: str = os.environ.get("MCP_HOST", "127.0.0.1")
 MCP_PORT: int = _port("MCP_PORT", 8000)

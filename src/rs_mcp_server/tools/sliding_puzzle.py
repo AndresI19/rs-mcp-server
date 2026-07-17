@@ -1,11 +1,11 @@
-"""solve_sliding_puzzle tool — IDA* solver for RuneScape puzzle-box (sliding-tile) clues.
+"""solve_sliding_puzzle tool — layered solver for RuneScape puzzle-box (sliding-tile) clues.
 
 Reading the scrambled screenshot into the tile arrangement is the multimodal agent's job;
-this tool is the pure search. Given the current arrangement, it runs weighted IDA* with a
-Manhattan + linear-conflict heuristic ("optimal-ish": near-minimal but fast even on a 5x5)
-and returns the moves, compressed into RuneScape's row/column slides — one click shifts
-every tile between the clicked tile and the gap, so a run of same-direction single moves
-collapses into one click.
+this tool is the pure search. It reduces the board layer by layer — solve the top row and
+left column, shrink the working square, repeat down to a 3x3, then finish that with an
+exhaustive BFS. Deterministic and always-solving, not move-optimal. Moves are compressed
+into RuneScape's row/column slides: one click shifts every tile between the clicked tile and
+the gap, so a run of same-direction moves collapses into one click.
 """
 
 import math

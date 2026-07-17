@@ -41,6 +41,17 @@ _VALID_MODES = ("manual", "passive")
 _DEFAULT_MODE = {"osrs": "manual", "rs3": "passive"}
 
 
+def _criteria_sentence() -> str:
+    """The Easy/Slow bucket definition, single-sourced so its three footer uses can't drift.
+
+    Callers append their own trailing punctuation (a period, or the mispricing note)."""
+    return (
+        f"Easy = volume > {_EASY_VOLUME_MIN:,} AND buy_limit > {_EASY_BUY_LIMIT_MIN}. "
+        f"Slow = {_SLOW_VOLUME_MIN:,} < volume < {_SLOW_VOLUME_MAX:,} "
+        f"AND ROI% ≤ {int(_MIRAGE_ROI_MAX)}"
+    )
+
+
 @instrument("get_best_alchables")
 async def get_best_alchables(
     game: str = "osrs",
@@ -106,28 +117,20 @@ def _category_tag(r: dict) -> str:
 # OSRS — prices.runescape.wiki: mapping + bulk /latest + bulk /1h volumes
 
 
-async def _osrs_latest_bulk() -> dict:
-    cached = cache.get("osrs:latest:bulk")
+async def _cached_bulk(cache_key: str, url: str) -> dict:
+    """Fetch a bulk prices.runescape.wiki payload, memoised under `cache_key` for TTL_5MIN."""
+    cached = cache.get(cache_key)
     if cached is not None:
         return cached
-    data = await http_get(OSRS_PRICES_LATEST)
-    cache.set("osrs:latest:bulk", data, TTL_5MIN)
-    return data
-
-
-async def _osrs_1h_bulk() -> dict:
-    cached = cache.get("osrs:1h:bulk")
-    if cached is not None:
-        return cached
-    data = await http_get(OSRS_PRICES_1H)
-    cache.set("osrs:1h:bulk", data, TTL_5MIN)
+    data = await http_get(url)
+    cache.set(cache_key, data, TTL_5MIN)
     return data
 
 
 async def _build_osrs_rows(members_only: bool) -> tuple[list[dict] | None, int | None]:
     mapping = await osrs_mapping()
-    latest_payload = await _osrs_latest_bulk()
-    hourly_payload = await _osrs_1h_bulk()
+    latest_payload = await _cached_bulk("osrs:latest:bulk", OSRS_PRICES_LATEST)
+    hourly_payload = await _cached_bulk("osrs:1h:bulk", OSRS_PRICES_1H)
 
     prices = latest_payload.get("data", {})
     hourly = hourly_payload.get("data", {})
@@ -196,9 +199,7 @@ async def _get_best_alchables_osrs(members_only: bool, mode: str) -> str:
         passive_requested=(mode == "passive"),
         footer=(
             f"Nature rune: {nature_price:,} gp · "
-            f"Easy = volume > {_EASY_VOLUME_MIN:,} AND buy_limit > {_EASY_BUY_LIMIT_MIN}. "
-            f"Slow = {_SLOW_VOLUME_MIN:,} < volume < {_SLOW_VOLUME_MAX:,} "
-            f"AND ROI% ≤ {int(_MIRAGE_ROI_MAX)}. "
+            f"{_criteria_sentence()}. "
             "Volume projected from prices.runescape.wiki /1h × 24."
         ),
         columns=("Buy", "High Alch"),
@@ -437,12 +438,7 @@ async def _get_best_alchables_rs3(mode: str) -> str:
         easy_pool=easy,
         slow_pool=slow,
         passive_requested=False,
-        footer=(
-            f"{page_url}\n"
-            f"Easy = volume > {_EASY_VOLUME_MIN:,} AND buy_limit > {_EASY_BUY_LIMIT_MIN}. "
-            f"Slow = {_SLOW_VOLUME_MIN:,} < volume < {_SLOW_VOLUME_MAX:,} "
-            f"AND ROI% ≤ {int(_MIRAGE_ROI_MAX)}."
-        ),
+        footer=f"{page_url}\n{_criteria_sentence()}.",
         columns=("GE Price", "High Alch"),
         column_keys=("ge_price", "highalch"),
         members_column=False,
@@ -505,9 +501,7 @@ def _render_passive_two_tables(easy: list[dict], slow: list[dict], page_url: str
 
     lines.append("")
     lines.append(
-        f"Easy = volume > {_EASY_VOLUME_MIN:,} AND buy_limit > {_EASY_BUY_LIMIT_MIN}. "
-        f"Slow = {_SLOW_VOLUME_MIN:,} < volume < {_SLOW_VOLUME_MAX:,} "
-        f"AND ROI% ≤ {int(_MIRAGE_ROI_MAX)} (slow buys with higher ROI are excluded "
+        f"{_criteria_sentence()} (slow buys with higher ROI are excluded "
         "as likely mispricings)."
     )
     return "\n".join(lines)

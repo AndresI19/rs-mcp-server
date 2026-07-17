@@ -18,6 +18,15 @@ ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 RUN --mount=type=bind,source=requirements.txt,target=/build/requirements.txt \
     pip install --require-hashes -r /build/requirements.txt
 
+# Cache-bust the package install below on every commit. The runtime stage stamps VERSION and the
+# revision label from build-args, independently of what this stage installed into the venv — so a
+# reused install layer would ship OLD code under a FRESH version and revision, an image that labels
+# itself correct while running the previous release (this happened to home at 0.1.42). Referencing
+# GIT_SHA in a RUN here ties the source-install layer's cache key to the commit; the requirements
+# install above (the slow one) stays cached.
+ARG GIT_SHA
+RUN echo "build stage source commit: ${GIT_SHA:-unknown}"
+
 RUN --mount=type=bind,source=pyproject.toml,target=/src/pyproject.toml \
     --mount=type=bind,source=src,target=/src/src \
     cp -r /src /tmp/build \

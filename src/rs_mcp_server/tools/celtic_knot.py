@@ -1,20 +1,18 @@
 """solve_celtic_knot tool — deterministic solver for RS3 Celtic knot clue puzzles.
 
-The vision step (reading a screenshot into per-ring rune tokens plus the intersection
-constraints) is done by the multimodal agent. This tool is the pure search: given the
-rings as token arrays and the intersections as (ring, slot) equality pairs, it finds the
-ring rotations that make every intersection match.
+The vision step (reading a screenshot into per-ring rune tokens plus intersection constraints)
+is the multimodal agent's job. This tool is the pure search: given rings as token arrays and
+intersections as (ring, slot) equality pairs, it finds the ring rotations that match every one.
 
 Key ideas:
-- Runes are *tokens*, not identities — the agent only needs equal runes to share a token
-  (consistent across all rings); it never needs to know what a rune depicts.
-- The puzzle's INVERT PATHS button reveals the runes hidden under crossings, so the agent
-  reads both views and supplies *complete* rings — and a complete reading has a single
-  rotation solution. ``None`` (wildcard) is still accepted for a genuinely unreadable rune,
-  but it is the fallback, not the norm.
+- Runes are *tokens*, not identities — equal runes just share a token (consistent across rings);
+  the agent never needs to know what a rune depicts.
+- The INVERT PATHS button reveals the runes hidden under crossings, so the agent reads both views
+  and supplies *complete* rings, which have a single rotation solution. ``None`` (wildcard) is
+  accepted for a genuinely unreadable rune, but it's the fallback, not the norm.
 
-A knot is 3-4 loops of up to ~30 runes with 2-6 intersections, so the rotation space
-(product of ring lengths) is small enough to brute-force.
+A knot is 3-4 loops of up to ~30 runes with 2-6 intersections, so the rotation space (product of
+ring lengths) is small enough to brute-force.
 """
 
 import itertools

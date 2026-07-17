@@ -1,11 +1,9 @@
 """The server's entire configuration surface, resolved from the environment and validated on import.
 
-Everything has a working default: the server runs with an empty environment. Nothing is baked in —
-listen address, HTTP timeout, User-Agent, and every upstream endpoint are overridable, so running
-against a mirror, tightening a timeout, or identifying honestly to the wikis needs no source edit.
-
-A value that is set and wrong fails here, at import, naming the variable — rather than surfacing
-later as a confusing timeout or a 404 from an endpoint nobody realised was hardcoded.
+Everything has a working default, so the server runs with an empty environment; every value —
+listen address, timeout, User-Agent, every upstream endpoint — is overridable, so pointing at a
+mirror or tightening a timeout needs no source edit. A value that is set and wrong fails here, at
+import, naming the variable, rather than surfacing later as a confusing timeout or a stray 404.
 """
 
 from __future__ import annotations
@@ -72,17 +70,13 @@ def _non_negative_int(name: str, default: int) -> int:
     return value
 
 
-# --------------------------------------------------------------------------------------------
-# Where the server listens. 127.0.0.1 by default — a dev server that binds every interface the
-# moment you run it is a surprise, not a convenience. The container sets MCP_HOST=0.0.0.0
-# explicitly, because there the whole point is to be reachable from the platform's network.
-# --------------------------------------------------------------------------------------------
+# Where the server listens. 127.0.0.1 by default — a dev server binding every interface on start
+# is a surprise, not a convenience. The container sets MCP_HOST=0.0.0.0 explicitly (it must be
+# reachable from the platform's network).
 MCP_HOST: str = os.environ.get("MCP_HOST", "127.0.0.1")
 MCP_PORT: int = _port("MCP_PORT", 8000)
 
-# --------------------------------------------------------------------------------------------
 # Outbound HTTP.
-# --------------------------------------------------------------------------------------------
 HTTP_TIMEOUT: float = _positive_float("HTTP_TIMEOUT", 10.0)
 HTTP_MAX_RETRIES: int = _non_negative_int("HTTP_MAX_RETRIES", 2)
 
@@ -90,11 +84,8 @@ HTTP_MAX_RETRIES: int = _non_negative_int("HTTP_MAX_RETRIES", 2)
 # "RS-MCP-Server/1.2 (+https://example.com/contact)" — without a code change.
 USER_AGENT: str = os.environ.get("USER_AGENT", f"RS-MCP-Server/{VERSION_INFO['version']}")
 
-# --------------------------------------------------------------------------------------------
-# Upstream endpoints. Overridable so the server can be pointed at a mirror, a caching proxy, or a
-# recorded fixture host — which is also what makes an offline test run possible without patching
-# module internals.
-# --------------------------------------------------------------------------------------------
+# Upstream endpoints. Overridable to point at a mirror, caching proxy, or recorded fixture host —
+# which is also what lets an offline test run without patching module internals.
 WIKI_APIS: dict[str, str] = {
     "rs3": _url("RS3_WIKI_API", "https://runescape.wiki/api.php"),
     "osrs": _url("OSRS_WIKI_API", "https://oldschool.runescape.wiki/api.php"),
@@ -107,17 +98,16 @@ WIKI_BASE_URLS: dict[str, str] = {
 
 OSRS_PRICES_BASE: str = _url("OSRS_PRICES_BASE", "https://prices.runescape.wiki/api/v1/osrs")
 
-# The RS3 Grand Exchange catalogue-detail endpoint, and a secondary GE price catalogue — both used by
-# get_item_price. These used to be literals in tools/prices.py, the last two upstream URLs that escaped
-# this module's parameterization. GEPRICE_CATALOG_URL returns 403 today (one FVT case xfails on it);
-# kept overridable so a working mirror can be pointed at without a code change.
+# The RS3 GE catalogue-detail endpoint and a secondary GE price catalogue, both used by
+# get_item_price. GEPRICE_CATALOG_URL returns 403 today (one FVT case xfails); overridable so a
+# working mirror can be pointed at without a code change.
 RS3_GE_DETAIL_URL: str = _url(
     "RS3_GE_DETAIL_URL", "https://secure.runescape.com/m=itemdb_rs/api/catalogue/detail.json"
 )
 GEPRICE_CATALOG_URL: str = _url("GEPRICE_CATALOG_URL", "https://geprice.com/api/items")
 
-# The two hiscores endpoints do not share a base — they are different products behind different
-# `m=` paths — so each is its own variable rather than a base plus a suffix that only ever fits one.
+# The two hiscores endpoints don't share a base — different products behind different `m=` paths —
+# so each is its own variable, not a base plus a suffix that only ever fits one.
 HISCORES_URLS: dict[str, str] = {
     "rs3": _url("RS3_HISCORES_URL", "https://secure.runescape.com/m=hiscore/index_lite.json"),
     "osrs": _url(

@@ -137,9 +137,7 @@ def _disambiguate(title: str, url: str, wiki_label: str) -> str:
     return disambiguate(title, url, wiki_label, "get_equipment_stats", "item_name", "stats")
 
 
-# ---------------------------------------------------------------------------
 # Wiki API helpers
-# ---------------------------------------------------------------------------
 
 
 async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | None:
@@ -175,9 +173,7 @@ def _format_stats(
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
 # Named-section prose enrichment (issue #77)
-# ---------------------------------------------------------------------------
 
 
 async def _fetch_named_sections(title: str, game: str) -> dict[str, str]:
@@ -205,9 +201,8 @@ async def _fetch_named_sections(title: str, game: str) -> dict[str, str]:
 class _SectionsParser(HTMLParser):
     """Collect paragraph prose for recognised <h2> sections (set bonus, etc.).
 
-    Walks the rendered page: each <h2> opens a section; if its heading matches a
-    target alias (and that label isn't already filled), the following <p> text is
-    collected until the next <h2>. Replaces an <h2>-split + <p> regex scan.
+    Each <h2> opens a section; if its heading matches a target alias (and that label
+    isn't already filled), the following <p> text is collected until the next <h2>.
     """
 
     def __init__(self) -> None:
@@ -272,8 +267,7 @@ def _extract_named_sections(html_text: str) -> dict[str, str]:
 def _truncate(s: str, limit: int) -> str:
     if len(s) <= limit:
         return s
-    # Prefer to end at a sentence boundary — trim back to the last period within the
-    # limit — falling back to a hard character cut when there's none to trim to.
+    # Prefer a sentence boundary (last period within the limit); hard-cut if there's none.
     cut = s[:limit].rsplit(".", 1)[0]
     return (cut + "." if cut else s[:limit]) + " …"
 

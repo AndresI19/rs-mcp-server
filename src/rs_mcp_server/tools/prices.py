@@ -22,8 +22,8 @@ async def get_item_price(item_name: str, game: str = "rs3") -> str:
     if err:
         return err
     if not item_name.strip():
-        # Without this guard the OSRS substring match below treats "" as a match
-        # for every item ('"" in name' is always True) and returns the first one.
+        # Guard: without it the OSRS substring match treats "" as matching every item
+        # ('"" in name' is always True) and returns the first one.
         return "No item name provided."
 
     cache_key = f"price:{game}:{item_name.lower()}"
@@ -36,9 +36,7 @@ async def get_item_price(item_name: str, game: str = "rs3") -> str:
     return result
 
 
-# ---------------------------------------------------------------------------
 # OSRS — prices.runescape.wiki
-# ---------------------------------------------------------------------------
 
 
 async def osrs_mapping() -> list[dict]:
@@ -99,14 +97,12 @@ async def _get_osrs_price(item_name: str) -> str:
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
 # RS3 — wiki Module:Exchange for item ID, then GE detail API for price
-# ---------------------------------------------------------------------------
 
 
 async def _rs3_item_id(item_name: str) -> tuple[int, str] | None:
     """Return (item_id, canonical_name) via RS3 wiki Exchange module, or None."""
-    # Module:Exchange/<name> is case-sensitive; canonicalize first letter only (str.capitalize would clobber inner caps like "TzHaar-Ket-Om").
+    # Module:Exchange/<name> is case-sensitive; capitalize first letter only (str.capitalize would clobber inner caps like "TzHaar-Ket-Om").
     canonical_title = item_name[:1].upper() + item_name[1:]
     params = {
         "action": "query",
@@ -133,8 +129,8 @@ async def _rs3_item_id(item_name: str) -> tuple[int, str] | None:
 async def _get_rs3_price(item_name: str) -> str:
     match = await _rs3_item_id(item_name)
     if match is None:
-        # No GE module page — fall back to the geprice community catalog for
-        # off-GE items (Tumeken's Resplendence pieces, Devourer's Nexus, etc.).
+        # No GE module page — fall back to the geprice community catalog for off-GE
+        # items (Tumeken's Resplendence pieces, Devourer's Nexus, etc.).
         street = await _geprice_lookup(item_name)
         if street is not None:
             formatted = _format_geprice_only(street)
@@ -193,10 +189,8 @@ def _format_geprice_only(entry: dict) -> str | None:
     return f"**{entry.get('name', '?')}** (RS3 community trades)\n{line}"
 
 
-# ---------------------------------------------------------------------------
 # OSRS 5-minute aggregates — best-effort enrichment, swallows fetch errors so a
 # transient outage on the /5m endpoint doesn't break the primary GE response.
-# ---------------------------------------------------------------------------
 
 
 async def _osrs_5m_bulk() -> dict | None:
@@ -218,11 +212,8 @@ async def _osrs_5m_for(item_id: int) -> dict | None:
     return bulk.get("data", {}).get(str(item_id))
 
 
-# ---------------------------------------------------------------------------
-# geprice.com community catalog — RS3 off-GE / off-cap street prices for ~300
-# high-end items. Returned blob is small; we cache the full catalog and look
-# up by case-insensitive name.
-# ---------------------------------------------------------------------------
+# geprice.com community catalog — RS3 off-GE / off-cap street prices for ~300 high-end
+# items. The blob is small, so we cache the full catalog and look up by case-insensitive name.
 
 
 async def _geprice_catalog() -> list[dict] | None:

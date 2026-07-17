@@ -1,34 +1,15 @@
 """get_best_alchables tool — rank items by High Alchemy profit (OSRS, RS3).
 
-Categorization (chosen with the user, issue #42):
+Categorization (chosen with the user, issue #42; thresholds and rationale live on the
+constants below). Items must be tradeable (buy_limit > 0). Easy and Slow buckets are
+defined by _categorize; everything else is dropped. Sort is max_daily_profit, ROI% tiebreak.
 
-Universal: items must be tradeable (buy_limit > 0) — leagues-only and
-NPC-only items have limit=0 in the OSRS mapping.
+Output per mode:
+- Passive (RS3 default): two tables — Easy buys (top 3) above Slow buys (top 2).
+- Manual (OSRS default; RS3 explicit): one mixed table, deduped, sorted by profit per cast
+  (≈ max daily profit on OSRS where there's no Alchemiser cap), with a Category column.
 
-- Easy buy: volume > 13,000 AND buy_limit > 100. Both matter — Easy
-            means "bulk-flood-friendly," which needs both a deep
-            market and a per-window cap that doesn't gate you.
-- Slow buy: 5,000 < volume < 8,000 AND ROI% <= 20. Buy_limit isn't
-            the bottleneck for these items — when daily volume is in
-            the thousands, the GE per-window limit is moot regardless
-            of its value. The thin market itself defines the category.
-- Items not in either bucket (incl. mid-volumes, deep-market-but-low-
-  limit items, and very thin markets) are dropped.
-
-Sort: max_daily_profit primary, ROI% tiebreaker.
-
-Output shape per mode:
-- Passive (RS3 default):
-    Two tables — Easy buys (top 3) above Slow buys (top 2), each
-    sorted by max_daily_profit with ROI% as tiebreaker.
-- Manual (OSRS default; RS3 explicit):
-    Single mixed table — top 3 easy + top 2 slow, deduped, sorted by
-    profit per cast (≈ MDP for OSRS where there's no Alchemiser cap),
-    with a Category column and a Mirage marker on flagged slow buys.
-
-Daily volume sources:
-- OSRS — prices.runescape.wiki /1h projected to a day.
-- RS3  — Trade volume column on the Alchemiser mk. II wiki page.
+Daily volume: OSRS from prices.runescape.wiki /1h × 24; RS3 from the Alchemiser mk. II page.
 """
 
 from html.parser import HTMLParser
@@ -83,21 +64,11 @@ async def get_best_alchables(
 
 
 def _categorize(item: dict) -> tuple[bool, bool]:
-    """Return (is_easy, is_slow) for an item.
+    """Return (is_easy, is_slow); untradeable items (buy_limit <= 0) are excluded everywhere.
 
-    Untradeable items (buy_limit <= 0) are excluded everywhere.
-
-    Easy buys: volume > _EASY_VOLUME_MIN AND buy_limit > _EASY_BUY_LIMIT_MIN.
-        Both conditions are required for "bulk-flood-friendly" — a deep
-        market is moot if the per-window cap throttles acquisition.
-
-    Slow buys: _SLOW_VOLUME_MIN < volume < _SLOW_VOLUME_MAX
-        AND ROI% <= _MIRAGE_ROI_MAX. Buy_limit isn't the bottleneck for
-        thin-market items (volume itself caps how fast you can source).
-        The volume floor rejects items too thin to source reliably; the
-        ROI cap excludes likely mispricings.
-
-    Mid-bucket volumes (8k–13k) qualify for neither.
+    Easy = deep market AND a per-window cap that doesn't gate bulk buying (both required).
+    Slow = thin market (volume itself caps sourcing) with ROI capped to reject mispricings.
+    Mid-bucket volumes (8k–13k) qualify for neither. Thresholds are the constants above.
     """
     buy_limit = item.get("buy_limit", 0)
     if buy_limit <= 0:
@@ -132,9 +103,7 @@ def _category_tag(r: dict) -> str:
     return ""
 
 
-# ---------------------------------------------------------------------------
 # OSRS — prices.runescape.wiki: mapping + bulk /latest + bulk /1h volumes
-# ---------------------------------------------------------------------------
 
 
 async def _osrs_latest_bulk() -> dict:
@@ -203,9 +172,8 @@ async def _build_osrs_rows(members_only: bool) -> tuple[list[dict] | None, int |
                 "buy_limit": item.get("limit") or 0,
                 "roi": roi,
                 "members": bool(item.get("members")),
-                # OSRS has no Alchemiser; max_daily is meaningless here. Leave 0
-                # so the passive-on-OSRS fallback (which uses manual rendering)
-                # never surfaces it.
+                # OSRS has no Alchemiser; max_daily is meaningless here, left 0 so the
+                # passive-on-OSRS fallback (manual rendering) never surfaces it.
                 "max_daily": 0,
             }
         )
@@ -220,8 +188,7 @@ async def _get_best_alchables_osrs(members_only: bool, mode: str) -> str:
 
     easy, slow = _split_pools(rows)
 
-    # OSRS always renders the manual (mixed) layout — Alchemiser passive
-    # alching has no OSRS equivalent.
+    # OSRS always renders the manual (mixed) layout — no Alchemiser passive equivalent.
     return _render_mixed(
         title=_osrs_title(members_only),
         easy_pool=easy,
@@ -247,9 +214,7 @@ def _osrs_title(members_only: bool) -> str:
     return title
 
 
-# ---------------------------------------------------------------------------
 # RS3 — Alchemiser mk. II Money Making Guide page (table[1])
-# ---------------------------------------------------------------------------
 
 
 async def _fetch_rs3_alchemiser_rows() -> list[dict] | None:
@@ -277,9 +242,9 @@ async def _fetch_rs3_alchemiser_rows() -> list[dict] | None:
 
 
 class _AlchTableParser(HTMLParser):
-    """Collect wikitables as {headers, rows}. Each cell exposes its
-    ``data-sort-value`` (for numeric columns), first-anchor text (item name),
-    and stripped text. Depth-tracking so a nested table can't corrupt rows.
+    """Collect wikitables as {headers, rows}. Each cell exposes its ``data-sort-value``
+    (numeric columns), first-anchor text (item name), and stripped text. Depth-tracked
+    so a nested table can't corrupt rows.
     """
 
     def __init__(self) -> None:
@@ -484,9 +449,7 @@ async def _get_best_alchables_rs3(mode: str) -> str:
     )
 
 
-# ---------------------------------------------------------------------------
 # Renderers
-# ---------------------------------------------------------------------------
 
 _PASSIVE_COLUMNS = [
     "#",
@@ -563,9 +526,8 @@ def _render_mixed(
 ) -> str:
     """Single mixed table: top 3 easy + top 2 slow merged, sorted by profit/cast.
 
-    profit/cast is primary because manual alch throughput depends on the player,
-    not the Alchemiser device — multiplying by your own cast rate gives your
-    real daily profit. ROI% is the tiebreaker.
+    profit/cast is primary because manual alch throughput depends on the player, not the
+    Alchemiser device — multiply by your own cast rate for real daily profit. ROI% tiebreaks.
     """
     lines = [title, ""]
     if passive_requested:

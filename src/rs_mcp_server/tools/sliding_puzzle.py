@@ -1,11 +1,11 @@
 """solve_sliding_puzzle tool — layered solver for RuneScape puzzle-box (sliding-tile) clues.
 
-Reading the scrambled screenshot into the tile arrangement is the multimodal agent's job;
-this tool is the pure search. It reduces the board layer by layer — solve the top row and
-left column, shrink the working square, repeat down to a 3x3, then finish that with an
-exhaustive BFS. Deterministic and always-solving, not move-optimal. Moves are compressed
-into RuneScape's row/column slides: one click shifts every tile between the clicked tile and
-the gap, so a run of same-direction moves collapses into one click.
+Reading the scrambled screenshot into the tile arrangement is the multimodal agent's job; this
+tool is the pure search. It reduces the board layer by layer — solve the top row and left column,
+shrink the working square, repeat down to a 3x3, then finish that with an exhaustive BFS.
+Deterministic and always-solving, not move-optimal. Moves compress into RuneScape's row/column
+slides: one click shifts every tile between it and the gap, so a run of same-direction moves is
+one click.
 """
 
 import math
@@ -36,9 +36,7 @@ arrangement can't be reached (an odd misread), it says so — a real puzzle box 
 solvable."""
 
 
-# ---------------------------------------------------------------------------
 # Parsing / validation
-# ---------------------------------------------------------------------------
 
 
 def _parse(grid: list) -> tuple[int, tuple[int, ...], int]:
@@ -64,9 +62,7 @@ def _parse(grid: list) -> tuple[int, tuple[int, ...], int]:
     return n, state, blank_value
 
 
-# ---------------------------------------------------------------------------
 # Heuristic + solvability
-# ---------------------------------------------------------------------------
 
 
 def _is_solvable(state, n: int, blank: int) -> bool:
@@ -78,13 +74,10 @@ def _is_solvable(state, n: int, blank: int) -> bool:
     return inv % 2 == gap_dist % 2
 
 
-# ---------------------------------------------------------------------------
-# Layered solver — deterministic, always solves, never searches the open space. Solve
-# the top row + left column of the working square, shrink, repeat down to a 3x3, then
-# finish the 3x3 with a tiny exhaustive BFS. The method needs the gap's goal at the
-# bottom-right corner, so a board whose gap homes at another corner is reflected there
-# first and the move directions are reflected back.
-# ---------------------------------------------------------------------------
+# Layered solver — deterministic, always solves. Solve the top row + left column of the
+# working square, shrink, repeat down to a 3x3, then finish with a tiny exhaustive BFS. The
+# method needs the gap's goal at the bottom-right corner, so a board whose gap homes at
+# another corner is reflected there first and the move directions are reflected back.
 
 _HFLIP = {"up": "up", "down": "down", "left": "right", "right": "left"}
 _VFLIP = {"up": "down", "down": "up", "left": "left", "right": "right"}
@@ -145,11 +138,10 @@ def _apply(board, n, blank, move, moves):
 
 
 def _bfs_place(board, n, blank, tiles, targets, frozen, moves):
-    """Move `tiles` onto `targets` via BFS over (tracked-tile positions, gap), with the gap
-    confined to non-frozen cells. Every untracked tile is fungible filler, so the state is
-    just the tracked positions — which keeps the search tiny AND makes it trap-proof: BFS
-    explores every reachable configuration, so it can never box the gap into a dead end. The
-    joint two-tile case discovers the corner rotation on its own."""
+    """Move `tiles` onto `targets` via BFS over (tracked-tile positions, gap), gap confined to
+    non-frozen cells. Untracked tiles are fungible filler, so state is just the tracked positions:
+    keeps the search tiny AND makes it trap-proof (BFS explores every reachable config, so it can't
+    box the gap into a dead end). The joint two-tile case discovers the corner rotation on its own."""
     targets = tuple(targets)
     start = (tuple(board.index(t) for t in tiles), board.index(blank))
     if start[0] == targets:
@@ -244,15 +236,13 @@ def _solve_small(board, n, blank, k, frozen, moves):
         _apply(board, n, blank, move, moves)
 
 
-# ---------------------------------------------------------------------------
 # Click compression + formatting
-# ---------------------------------------------------------------------------
 
 
 def _to_clicks(moves: list[str], gap: int, n: int) -> list[tuple[int, int]]:
-    """Collapse runs of same-direction gap moves into clicks. One click in RuneScape slides
-    every tile between the clicked tile and the gap, so K same-direction moves = one click on
-    the tile K cells away. Returns (row, col) 1-based cells to click, in order."""
+    """Collapse runs of same-direction gap moves into clicks. One RuneScape click slides every
+    tile between the clicked tile and the gap, so K same-direction moves = one click on the tile
+    K cells away. Returns 1-based (row, col) cells to click, in order."""
     clicks: list[tuple[int, int]] = []
     gr, gc = divmod(gap, n)
     i = 0

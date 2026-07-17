@@ -91,11 +91,11 @@ editing source.
 ### /version
 
 `version.py` reads a `VERSION` file sibling to itself, falling back to `"snapshot"` when absent (dev
-checkouts). The runtime image writes it; `platform-orchestration/k8s/deploy.sh` stamps it from this repo's
-latest git tag (suffixed `-snapshot` when the source differs from `main`). The file lands **inside the
-installed package in the venv**, not in `/app`. The Dockerfile asks the package where it lives rather than
-hard-coding a `site-packages` path — that path embeds the Python minor version, so a base-image bump would
-otherwise silently revert this endpoint to `"snapshot"` forever.
+checkouts). The runtime image writes it; `platform-orchestration/k8s/deploy.sh` stamps it from the latest
+git tag (suffixed `-snapshot` when the source differs from `main`). The file lands **inside the installed
+package in the venv**, not `/app`. The Dockerfile asks the package where it lives rather than hard-coding a
+`site-packages` path — that path embeds the Python minor version, so a base-image bump would otherwise
+silently revert this endpoint to `"snapshot"` forever.
 
 **This server speaks SSE only** — there is no `/mcp` streamable-http route on it. Streamable HTTP is
 client-side only in the FVT suite, for the open-vMCP gateway; that `/mcp/rs-mcp` path belongs to the gateway.
@@ -117,8 +117,8 @@ The file path is `/logs/uvicorn.log` **only when `scripts/docker.sh` starts the 
 keeping `LOG_BACKUPS` (default `5`) generations as `uvicorn.log.1`, `.2`, …
 
 `make logs` tails the file (via `scripts/docker.sh logs`); it lives on the volume, so it survives container
-removal and stays tailable after `make stop`. The current log is always at `/logs/uvicorn.log`, so `make
-logs` is unaffected by rotation.
+removal and stays tailable after `make stop`. The current log is always `/logs/uvicorn.log`, so rotation
+never affects `make logs`.
 
 ## Pre-PR checks
 
@@ -182,7 +182,7 @@ real RS256 token** (vMCP verifies signatures, so the old forged bearer is reject
 account (`POST /auth/identities`, then `/auth/token` if it exists) and refreshing each run. It runs on the
 **host, not as a Pod**, pointing both URLs at `https://api-andres.project-platform.me` (nginx routes `/mcp`
 and `/auth` to the same services); see platform-cicd for the host unit. It keeps the dashboard's Recent Calls
-populated.
+populated between real traffic.
 
 `Dockerfile.fvt` packages it. It is **deliberately not the production image**: production is a hardened
 minimal UBI9 runtime with no pytest, and adding test deps to ship a traffic generator would widen the attack

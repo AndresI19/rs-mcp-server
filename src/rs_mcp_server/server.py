@@ -42,9 +42,8 @@ threading.excepthook = _thread_excepthook
 
 app = Server("rs-mcp-server")
 
-# Each tool's schema AND its dispatch live on its own ToolSpec now (see tools/_registry.py); importing
-# the tools package populated REGISTRY. list_tools() renders it; call_tool() dispatches by name. Adding
-# a tool no longer means editing a 360-line schema block and a 55-line if/elif here.
+# Each tool's schema AND dispatch live on its ToolSpec (see tools/_registry.py); importing the
+# tools package populated REGISTRY. list_tools() renders it; call_tool() dispatches by name.
 _TOOLS_BY_NAME = {spec.name: spec for spec in REGISTRY}
 
 

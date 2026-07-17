@@ -1,10 +1,9 @@
 """get_item_drop_sources tool — wiki "Item sources" table for an item.
 
-The wiki's {{Drop sources|<item>}} template is server-rendered into a sortable
-table; raw wikitext alone doesn't expose the source list. We fetch the rendered
-HTML via action=parse and walk the `item-drops` table with html.parser — a
-depth-tracking state machine, so nested tables (which a regex scan mis-splits at
-the first </table> or </tr>) are handled correctly.
+The {{Drop sources|<item>}} template is server-rendered into a sortable table; raw
+wikitext doesn't expose the source list. We fetch the rendered HTML via action=parse and
+walk the `item-drops` table with a depth-tracking html.parser, so nested tables are handled
+correctly (a regex scan would mis-split at the first </table> or </tr>).
 """
 
 import html
@@ -78,19 +77,16 @@ async def _fetch_page(item_name: str, game: str) -> dict | None:
     }
 
 
-# ---------------------------------------------------------------------------
 # HTML parsing — extract data rows from the `item-drops` table
-# ---------------------------------------------------------------------------
 
 
 class _DropsTableParser(HTMLParser):
     """Collect data rows from the first `item-drops` table.
 
-    Per row it captures only what the formatter needs: the source name (anchor
-    ``title``), an optional beast version, the level (``data-sort-value`` on the
-    level cell), the quantity text, and the rarity (``data-drop-fraction``).
-    Table nesting is tracked by depth so the target table closes at its matching
-    ``</table>`` rather than the first one encountered.
+    Per row it captures only what the formatter needs: source name (anchor ``title``),
+    optional beast version, level (``data-sort-value``), quantity text, and rarity
+    (``data-drop-fraction``). Depth-tracked so the target table closes at its matching
+    ``</table>``, not the first one encountered.
     """
 
     def __init__(self) -> None:

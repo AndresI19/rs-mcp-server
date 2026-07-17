@@ -75,8 +75,8 @@ async def get_monster_info(monster_name: str, game: str = "rs3") -> str:
 
     wiki_label = WIKI_LABELS[game]
 
-    # Resolve via the first strategy that lands — the same chain achievements.py, equipment.py and
-    # quests.py use. Monsters have no roman-numeral variants, so the chain is two links, not three.
+    # Resolve via the first strategy that lands — the same chain achievements.py, equipment.py
+    # and quests.py use, minus roman-numeral variants (monsters have none), so two links not three.
     result = await _from_direct(monster_name, game, wiki_label) or await _from_search(
         monster_name, game, wiki_label
     )
@@ -125,9 +125,7 @@ def _disambiguate(title: str, url: str, wiki_label: str) -> str:
     return disambiguate(title, url, wiki_label, "get_monster_info", "monster_name", "info")
 
 
-# ---------------------------------------------------------------------------
 # Wiki API helpers
-# ---------------------------------------------------------------------------
 
 
 async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | None:

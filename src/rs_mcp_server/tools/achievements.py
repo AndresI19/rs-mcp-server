@@ -151,9 +151,7 @@ def _disambiguate(title: str, url: str, wiki_label: str) -> str:
     return disambiguate(title, url, wiki_label, "get_achievement", "name", "info")
 
 
-# ---------------------------------------------------------------------------
 # Wiki API helpers
-# ---------------------------------------------------------------------------
 
 
 async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | None:
@@ -162,8 +160,7 @@ async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | N
 
 
 async def _search_achievement(query: str, game: str) -> dict | None:
-    # Fetch top candidates with content so we can type-filter: skip pages
-    # that don't carry one of the achievement infobox templates.
+    # Type-filter candidates: skip pages without an achievement infobox template.
     data = await http_get(WIKI_APIS[game], params=search_params(query))
     return first_matching_page(data, game, lambda c: _dispatch(c) is not None)
 

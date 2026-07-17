@@ -12,8 +12,7 @@ import httpx
 
 from rs_mcp_server.config import HTTP_MAX_RETRIES, HTTP_TIMEOUT, USER_AGENT
 
-# The wikis ask that tools identify themselves; USER_AGENT is overridable so a deployment can add a
-# contact address without editing source.
+# The wikis ask that tools identify themselves; USER_AGENT is overridable (see config.py).
 HEADERS = {"User-Agent": USER_AGENT}
 
 
@@ -65,7 +64,7 @@ async def http_get(url: str, params: dict | None = None, timeout: float = HTTP_T
 
 
 async def http_get_text(url: str, params: dict | None = None, timeout: float = HTTP_TIMEOUT) -> str:
-    """GET text via the shared retrying client. Honours HTTP_TIMEOUT like http_get (it used to hardcode
-    10.0, so tightening the config timeout silently left text fetches on the old value)."""
+    """GET text via the shared retrying client. Honours HTTP_TIMEOUT like http_get (must stay
+    config-driven; a hardcoded default silently ignores a tightened config timeout)."""
     resp = await _CLIENT.request(url, params, timeout)
     return resp.text

@@ -23,7 +23,7 @@ _LEVEL_COLORS: dict[str, tuple[int, int, int]] = {
     "CRITICAL": (52, 88, 124),  # dark-red (FATAL)
 }
 _TOOL_RE = re.compile(r"^(tool_call_(?:start|end|error)\s+tool=)(\w+)")
-# Lookahead on \s+error_msg= rejects user-injected error_type= occurrences inside quoted args (which end with ').
+# Lookahead on \s+error_msg= rejects user-injected error_type= inside quoted args (which end with ').
 _ERROR_TYPE_RE = re.compile(r"(?<=error_type=)(\w+)(?=\s+error_msg=)")
 _METHOD_RE = re.compile(r"^(\w+)")
 
@@ -105,10 +105,9 @@ def instrument(tool_name: str):
             try:
                 result = await fn(*args, **kwargs)
             except httpx.HTTPError as e:
-                # Systemic backstop: the upstream RuneScape APIs are unreliable, so any
-                # unhandled HTTP/network error from a tool degrades to a friendly message
-                # instead of crashing the client. Genuine bugs (KeyError, ValueError, …)
-                # are NOT caught here and still propagate below — see test_drops'
+                # Backstop: unreliable upstream APIs mean any unhandled HTTP/network error
+                # degrades to a friendly message instead of crashing the client. Genuine bugs
+                # (KeyError, ValueError, …) are NOT caught and still propagate — see test_drops'
                 # "non_http_error_is_not_masked".
                 dt = int((time.monotonic() - t0) * 1000)
                 _TOOL_LOGGER.warning(

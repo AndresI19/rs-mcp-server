@@ -1,14 +1,10 @@
 """solve_clue tool — RuneScape Wiki Treasure Trails clue databases.
 
-Supports five text-based clue formats (anagram, cryptic, emote, cipher, challenge)
-across both games, fetched live from the wiki. The wiki organizes each format on a
-single page (per game); this tool walks h3+table tags in document order, builds a
-flat index of {tier, format, clue_text, ...} entries, and supports exact / fuzzy /
-no-match lookup. Challenge scrolls are tier-less (one flat Q&A table).
-
-Coordinate and visual clue types (map, puzzle, compass, scan, hot/cold, …) are
-resolved from baked resources instead — see the coordinate resolver and visual-clue
-routing below.
+Text formats (anagram, cryptic, emote, cipher, challenge, simple) fetch live: each is one
+wiki page per game, walked h3+table in document order into a flat index of
+{tier, format, clue_text, ...} for exact/fuzzy lookup. Challenge scrolls are tier-less.
+Coordinate and visual types (map, puzzle, compass, scan, hot/cold, …) resolve from baked
+resources instead — see the coordinate resolver and visual-clue routing below.
 """
 
 import html
@@ -53,10 +49,8 @@ _PAGES = {
 }
 
 
-# ---------------------------------------------------------------------------
 # Coordinate normalization — shared by the offline data generator and the runtime
 # resolver so a generated key and a query key are always produced identically.
-# ---------------------------------------------------------------------------
 
 _COORD_RE = re.compile(
     r"(\d{1,2})\s*degrees?\s*(\d{1,2})\s*minutes?\s*(north|south)"
@@ -144,9 +138,7 @@ async def solve_clue(
     )
 
 
-# ---------------------------------------------------------------------------
 # Loaders
-# ---------------------------------------------------------------------------
 
 
 async def _load_format(game: str, fmt: str) -> list[dict]:
@@ -171,9 +163,7 @@ async def _load_format(game: str, fmt: str) -> list[dict]:
     return entries
 
 
-# ---------------------------------------------------------------------------
 # HTML parser (one walker, format-aware row extraction)
-# ---------------------------------------------------------------------------
 
 
 def _parse_clue_html(html_text: str, fmt: str) -> list[dict]:
@@ -194,11 +184,9 @@ def _tier_from_heading(text: str) -> str:
 class _CluesParser(HTMLParser):
     """Walk h2/h3 headings + wikitable rows in document order, emitting clue entries.
 
-    Replaces the _HEADING_OR_TABLE regex (which split <h2|h3|table> blocks then fed
-    each table body to a separate row parser) with a single pass: heading text sets
-    the current tier, and each 2+-column data row in a wikitable becomes an entry via
-    the format-specific _row_to_entry. Table depth is tracked so a table nested in a
-    cell is ignored; image alt text is captured per cell so emote item icons survive.
+    Heading text sets the current tier; each 2+-column data row becomes an entry via the
+    format-specific _row_to_entry. Table depth is tracked so a table nested in a cell is
+    ignored; image alt text is captured per cell so emote item icons survive.
     """
 
     _EXCLUDE_IDS = {"references", "see_also", "trivia", "gallery"}
@@ -280,9 +268,7 @@ def _finalize_cell(cell: dict) -> dict:
     return {"text": text, "items": items}
 
 
-# ---------------------------------------------------------------------------
 # Format-specific row extraction
-# ---------------------------------------------------------------------------
 
 # RS3 anagram pages prefix every clue with this verbose intro; strip it.
 _ANAGRAM_PREFIX = re.compile(r"^this anagram reveals who to speak to next:?\s*", re.IGNORECASE)
@@ -296,12 +282,10 @@ _CLUE_COL, _ANSWER_COL, _LOCATION_COL = 0, 1, 2
 _CHALLENGE_NPC, _CHALLENGE_QUESTION, _CHALLENGE_ANSWER = 0, 1, 2
 
 
-# Every clue format except "challenge" is the SAME three-column row — clue | answer | location — and
-# differs only in what the answer is called, which field of the answer cell holds it, and (for
-# anagrams alone) a preamble to strip off the clue. Stating those three differences as data means a
-# new clue format is one line here, rather than a seventh near-copy of the same fifteen lines.
-#
-#   format → (key the answer is published under, cell field to read, prefix to strip from the clue)
+# Every format except "challenge" is the same clue | answer | location row, differing only in
+# what the answer is called, which cell field holds it, and (anagrams only) a clue preamble to
+# strip. As data, a new format is one line here instead of a near-copy of the extractor.
+#   format → (answer key, cell field to read, prefix to strip from the clue)
 _STANDARD_ROWS: dict[str, tuple[str, str, re.Pattern[str] | None]] = {
     "anagram": ("solution", "text", _ANAGRAM_PREFIX),
     "cryptic": ("solution", "text", None),
@@ -360,18 +344,14 @@ def _clean_alt(s: str) -> str:
     return html.unescape(s).strip()
 
 
-# ---------------------------------------------------------------------------
 # Matching
-# ---------------------------------------------------------------------------
 
 
 def _match_clues(query: str, entries: list[dict]) -> tuple[str, object]:
     return match_by_name(query, entries, "clue_text_lower")
 
 
-# ---------------------------------------------------------------------------
 # Rendering
-# ---------------------------------------------------------------------------
 
 # Per-format solution fields (label, entry-key), rendered in order when present.
 _SOLUTION_FIELDS = {
@@ -409,9 +389,7 @@ def _render_did_you_mean(candidates: list[dict], wiki_label: str) -> str:
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
 # Baked resources — coordinate datasets + visual-clue links (no network at runtime)
-# ---------------------------------------------------------------------------
 
 
 @lru_cache(maxsize=None)
@@ -458,10 +436,9 @@ def _render_coordinate(entry: dict, wiki_label: str) -> str:
     return "\n".join(lines)
 
 
-# Visual/interactive clue types → the keywords that identify them in a query. The
-# tool can't solve these, so it returns the matching guide link from visual_clues.json.
-# Order matters: specific named types are checked before the generic "puzzle" catch-all
-# so e.g. "lockbox" wins over "puzzle box" for a query mentioning both.
+# Visual/interactive clue types → query keywords that identify them (tool returns the
+# matching guide link from visual_clues.json). Order matters: specific types are checked
+# before the generic "puzzle" catch-all, so "lockbox" wins over "puzzle box".
 _VISUAL_KEYWORDS = {
     "light box": ("light box", "lightbox"),
     "celtic knot": ("celtic", "knot"),

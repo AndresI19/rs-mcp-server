@@ -12,11 +12,10 @@ from ._constants import TTL_10MIN
 from ._http import http_get
 from ._registry import ToolSpec, game_param, normalize_game, object_schema, register
 
-# Endpoints resolved from the environment (see config.py) — the name is kept, the values are not
-# baked in any more.
+# Endpoints resolved from the environment (see config.py).
 _HISCORES_JSON_APIS = HISCORES_URLS
 
-# RuneScape display names are 1–12 chars: letters, digits, spaces, hyphens, underscores.
+# RuneScape display names are 1–12 chars (letters, digits, spaces, hyphens, underscores).
 # Validating up front gives a clear message and avoids a 403 from the hiscores API on
 # obviously-invalid input (e.g. punctuation).
 _VALID_RSN = re.compile(r"[A-Za-z0-9 _-]{1,12}")

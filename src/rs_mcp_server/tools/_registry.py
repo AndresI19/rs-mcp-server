@@ -1,13 +1,12 @@
 """The tool registry — one place a tool declares BOTH its MCP schema and how to invoke it.
 
-Before this, `server.py` carried a ~360-line hand-written `list_tools()` schema block and a ~55-line
-`call_tool()` `if/elif` dispatcher, so every tool's contract lived in two files far from the tool
-itself. Now each tool module builds one `ToolSpec` and `register()`s it; `server.py` renders the tool
-list and dispatches straight from `REGISTRY`. Adding or changing a tool is a single-module edit.
+Each tool module builds one `ToolSpec` and `register()`s it; `server.py` renders the tool list
+and dispatches straight from `REGISTRY`, so adding or changing a tool is a single-module edit
+(no central schema list or if/elif dispatcher).
 
-The `invoke` adapter is the deliberate join: it maps the MCP `arguments` dict to the handler's real
-signature (positional args, per-tool defaults like game='rs3' vs 'osrs'), keeping that mapping WITH
-the tool rather than in a central switch.
+The `invoke` adapter is the deliberate join: it maps the MCP `arguments` dict to the handler's
+real signature (positional args, per-tool defaults like game='rs3' vs 'osrs'), keeping that
+mapping with the tool rather than in a central switch.
 """
 
 from __future__ import annotations
@@ -47,8 +46,8 @@ def register(spec: ToolSpec) -> ToolSpec:
 
 
 # ── Schema helpers ─────────────────────────────────────────────────────────────────────────────
-# The `game` enum was written out ~15 times in the old list_tools(). Factor the STRUCTURE here; each
-# tool still passes its own wording, because the descriptions are part of the tool's contract.
+# Factor the shared schema STRUCTURE here; each tool still passes its own wording, because the
+# descriptions are part of the tool's contract.
 
 
 def object_schema(properties: dict[str, Any], required: list[str] | None = None) -> dict[str, Any]:

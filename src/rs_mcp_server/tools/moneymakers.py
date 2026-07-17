@@ -39,9 +39,7 @@ _METHOD_TEMPLATES = ("Mmgtable recurring", "Mmgtable")
 _LINK_HREF, _LINK_TEXT = 0, 1
 
 
-# ---------------------------------------------------------------------------
 # Tool 1: get_money_makers (master page ranking)
-# ---------------------------------------------------------------------------
 
 
 @instrument("get_money_makers")
@@ -93,13 +91,9 @@ async def _fetch_master_rows(game: str) -> list[dict] | None:
 class _MasterTableParser(HTMLParser):
     """Parse the first 'wikitable sortable' table on the MMG master page.
 
-    Replaces a stack of regexes — '<table…sortable…>(.*?)</table>' then '<tr>(.*?)</tr>',
-    '<td…>(.*?)</td>', plus per-cell <a>/<img>/data-sort-value scans — that were both
-    fragile (the '.*?'-stops-at-first-close class) and easy to mis-read. Tracks table
-    depth so it captures exactly the first sortable table's own rows (matching the old
-    re.search's single-table intent, but robust to nested tables in a cell); per cell
-    it records the text, the data-sort-value attr, the first link, and whether a
-    members <img> is present — the four things the ranking needs.
+    Tracks table depth so it captures exactly that table's own rows, robust to a table
+    nested in a cell. Per cell it records the four things the ranking needs: text, the
+    data-sort-value attr, the first link, and whether a members <img> is present.
     """
 
     def __init__(self) -> None:
@@ -194,8 +188,8 @@ def _parse_master_html(html_text: str, game: str) -> list[dict]:
     if not headers:
         return []
 
-    # Map normalised header → column index. Header text varies between games
-    # (e.g. "Skills" vs "Skills required"); match on prefix.
+    # Map normalised header → column index by prefix (text varies between games,
+    # e.g. "Skills" vs "Skills required").
     col_index: dict[str, int] = {}
     for i, h in enumerate(headers):
         for canonical in (
@@ -224,9 +218,8 @@ def _parse_master_html(html_text: str, game: str) -> list[dict]:
         method_cell = cells[method_idx]
         if method_cell["link"] is not None:
             name, href = method_cell["link"]
-            # removesuffix, not rstrip: rstrip takes a CHARACTER SET, so "/w/" strips any trailing
-            # run of '/' and 'w'. It yields the right origin here only because the wiki hostnames
-            # happen to end in 'i' — one ending in 'w' would be silently truncated.
+            # removesuffix, not rstrip: rstrip takes a CHARACTER SET, so "/w/" would strip any
+            # trailing run of '/' and 'w' — silently truncating a hostname ending in 'w'.
             origin = WIKI_BASE_URLS[game].removesuffix("/w/")
             url = origin + href if href.startswith("/") else href
         else:
@@ -334,9 +327,7 @@ def _render_master_table(
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
 # Tool 2: get_money_maker_method (subpage drill-down)
-# ---------------------------------------------------------------------------
 
 
 @instrument("get_money_maker_method")
@@ -493,9 +484,7 @@ def _find_method_template(wikitext: str) -> tuple[str | None, str]:
     return None, ""
 
 
-# ---------------------------------------------------------------------------
 # Shared helpers (parse, fetch, search, cache)
-# ---------------------------------------------------------------------------
 
 
 async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | None:

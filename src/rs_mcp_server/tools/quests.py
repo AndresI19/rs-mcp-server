@@ -54,10 +54,8 @@ async def get_quest_info(quest_name: str, game: str = "rs3") -> str:
 
     wiki_label = WIKI_LABELS[game]
 
-    # Resolve via the first strategy that lands — the same chain achievements.py, equipment.py and
-    # moneymakers.py already use. Previously this was the cascade written out inline, which meant
-    # the cache-and-return appeared at six separate exit points and the shape of the search was
-    # buried in the plumbing.
+    # Resolve via the first strategy that lands — the same chain achievements.py,
+    # equipment.py and moneymakers.py use.
     result = (
         await _from_direct(quest_name, game, wiki_label)
         or await _from_roman_variants(quest_name, game, wiki_label)
@@ -115,9 +113,7 @@ def _disambiguate(title: str, url: str, wiki_label: str) -> str:
     return disambiguate(title, url, wiki_label, "get_quest_info", "quest_name", "details")
 
 
-# ---------------------------------------------------------------------------
 # Wiki API helpers
-# ---------------------------------------------------------------------------
 
 
 async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | None:
@@ -127,11 +123,10 @@ async def _fetch_page(title: str, game: str, follow_redirects: bool) -> dict | N
 
 
 async def _search_quest(query: str, game: str) -> dict | None:
-    """Search restricted to quest pages via `incategory:Quests`. Falls back to plain search.
+    """Search restricted to quest pages via `incategory:Quests`, falling back to plain search.
 
-    Both tiers fetch top candidates with content and filter to pages whose wikitext
-    contains a quest template — generic-named search hits (music tracks, NPCs sharing
-    a quest's name) get skipped instead of confidently returned.
+    Both tiers filter candidates to pages whose wikitext contains a quest template, so
+    generic-named hits (music tracks, NPCs sharing a quest's name) get skipped, not returned.
     """
     for search_term in (f'{query} incategory:"Quests"', query):
         data = await http_get(WIKI_APIS[game], params=search_params(search_term))
@@ -141,9 +136,7 @@ async def _search_quest(query: str, game: str) -> dict | None:
     return None
 
 
-# ---------------------------------------------------------------------------
 # Wikitext parsing
-# ---------------------------------------------------------------------------
 
 
 async def _enumerate_roman_variants(quest_name: str, game: str) -> list[dict]:

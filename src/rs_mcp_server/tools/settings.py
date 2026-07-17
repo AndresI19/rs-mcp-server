@@ -71,9 +71,7 @@ async def get_game_setting(setting_name: str, game: str = "rs3") -> str:
     return f"No matching setting for '{setting_name}' on the {wiki_label} wiki. Browse the full list at {page_url}."
 
 
-# ---------------------------------------------------------------------------
 # Wiki fetch
-# ---------------------------------------------------------------------------
 
 
 async def _fetch_settings_index(game: str) -> list[dict] | None:
@@ -90,18 +88,14 @@ async def _fetch_settings_index(game: str) -> list[dict] | None:
     return _parse_settings_html(text)
 
 
-# ---------------------------------------------------------------------------
 # HTML parser
-# ---------------------------------------------------------------------------
 
 
 class _SettingsParser(HTMLParser):
     """Walk <h2>/<h3> headings and <table class="wikitable"> rows in document order.
 
-    Replaces a regex that matched <h2|h3|table> blocks then re-split <tr>/<td> with
-    '.*?' — fragile on any nested table, and unreadable. html.parser tracks
-    section/subsection state and emits one row per 2-column data row; capturing cell
-    text via handle_data also drops inner tags without a separate tag-stripping pass.
+    Tracks section/subsection state and emits one row per 2-column data row; capturing
+    cell text via handle_data also drops inner tags without a separate stripping pass.
     """
 
     def __init__(self) -> None:
@@ -189,9 +183,7 @@ def _parse_settings_html(html_text: str) -> list[dict]:
     return parser.rows
 
 
-# ---------------------------------------------------------------------------
 # Matching
-# ---------------------------------------------------------------------------
 
 
 def _match_setting(query: str, rows: list[dict]) -> tuple[str, object]:
@@ -217,9 +209,7 @@ def _match_setting(query: str, rows: list[dict]) -> tuple[str, object]:
     return ("none", None)
 
 
-# ---------------------------------------------------------------------------
 # Rendering
-# ---------------------------------------------------------------------------
 
 
 def _section_path(row: dict) -> str:
@@ -251,9 +241,7 @@ def _render_did_you_mean(candidates: list[dict], wiki_label: str, header: str) -
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
 # Wiki-search fallback (issue #74) — invoked when the local index has no hits
-# ---------------------------------------------------------------------------
 
 
 async def _wiki_search_fallback(query: str, game: str) -> list[dict]:

@@ -127,9 +127,12 @@ repo root:
 
 ```bash
 .venv/bin/ruff check .
+.venv/bin/ruff format --check .
 make unit
 ```
 
+CI enforces both `ruff check` (lint) and `ruff format --check` (formatting) in its `lint-and-import`
+job, so a green PR needs both — running only the linter locally lets a formatting-only failure through.
 Pre-PR checks are unit-only on purpose — fast, no container, no live calls. `make fvt` is the slower
 function-verification suite (below).
 
@@ -226,7 +229,8 @@ python3 -m venv /tmp/lock-verify
   code change.
 - **The container runs `--read-only`** with a 16 MB `/tmp` tmpfs, `--cap-drop=ALL`, `--memory 512m`. Anything
   writing outside `/tmp` or `/logs` passes under `make dev` and fails in the container.
-- **No typechecker, no formatter.** `ruff check` is the only static gate.
+- **No typechecker.** `ruff check` (lint) and `ruff format --check` (formatting) are the static gates — CI
+  runs both; there is no type checker.
 
 ## Security
 

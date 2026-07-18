@@ -418,10 +418,7 @@ def _parse_rs3_table(html_text: str) -> list[dict] | None:
 async def _get_best_alchables_rs3(mode: str) -> str:
     rows = await _fetch_rs3_alchemiser_rows()
     if rows is None:
-        return (
-            "Could not load the Alchemiser mk. II Money Making Guide page. "
-            + _RS3_PAGE_URL
-        )
+        return "Could not load the Alchemiser mk. II Money Making Guide page. " + _RS3_PAGE_URL
 
     easy, slow = _split_pools(rows)
     if not easy and not slow:
@@ -502,8 +499,7 @@ def _render_passive_two_tables(easy: list[dict], slow: list[dict], page_url: str
 
     lines.append("")
     lines.append(
-        f"{_criteria_sentence()} (slow buys with higher ROI are excluded "
-        "as likely mispricings)."
+        f"{_criteria_sentence()} (slow buys with higher ROI are excluded as likely mispricings)."
     )
     return "\n".join(lines)
 

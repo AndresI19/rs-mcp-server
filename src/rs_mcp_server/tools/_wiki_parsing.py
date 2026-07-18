@@ -218,9 +218,7 @@ def search_params(search_term: str) -> dict:
     }
 
 
-def _iter_matching_pages(
-    data: dict, game: str, matches: Callable[[str], bool]
-) -> Iterator[dict]:
+def _iter_matching_pages(data: dict, game: str, matches: Callable[[str], bool]) -> Iterator[dict]:
     """Yield ``{title, url, content}`` for each present, revision-bearing page whose wikitext
     satisfies ``matches`` — the shared type-filter walk behind ``first_matching_page`` (which
     stops at the first yield) and ``matching_pages`` (which drains it)."""

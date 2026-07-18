@@ -85,7 +85,7 @@ def _find_solutions(rings: list[list], intersections: list[list]) -> list[tuple[
 
 
 def _validate(rings: list[list], intersections: list[list]) -> str | None:
-    if not rings or any(len(r) == 0 for r in rings):
+    if not rings or any(not r for r in rings):
         return "Provide each ring as a non-empty array of rune tokens (use null for hidden runes)."
     if not intersections:
         return "Provide the intersections as [ring_a, slot_a, ring_b, slot_b] equality pairs."

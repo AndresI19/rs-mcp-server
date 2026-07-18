@@ -61,10 +61,3 @@ async def http_get(url: str, params: dict | None = None, timeout: float = HTTP_T
     """GET JSON via the shared retrying client."""
     resp = await _CLIENT.request(url, params, timeout)
     return resp.json()
-
-
-async def http_get_text(url: str, params: dict | None = None, timeout: float = HTTP_TIMEOUT) -> str:
-    """GET text via the shared retrying client. Honours HTTP_TIMEOUT like http_get (must stay
-    config-driven; a hardcoded default silently ignores a tightened config timeout)."""
-    resp = await _CLIENT.request(url, params, timeout)
-    return resp.text

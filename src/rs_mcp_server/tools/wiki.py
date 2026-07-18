@@ -75,8 +75,7 @@ async def _find_title(query: str, game: str) -> str | None:
     pages = data.get("query", {}).get("pages", [])
     if not pages:
         return None
-    title = pages[0].get("title") or None
-    return title
+    return pages[0].get("title") or None
 
 
 async def _fetch_rendered_body(title: str, game: str) -> str:

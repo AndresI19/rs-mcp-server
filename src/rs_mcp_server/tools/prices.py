@@ -85,16 +85,23 @@ async def _get_osrs_price(item_name: str) -> str:
 
     five_min = await _osrs_5m_for(item_id)
     if five_min is not None:
-        avg_high = five_min.get("avgHighPrice")
-        avg_low = five_min.get("avgLowPrice")
-        vol_high = five_min.get("highPriceVolume")
-        vol_low = five_min.get("lowPriceVolume")
-        if avg_high:
-            lines.append(f"5-min avg buy:  {avg_high:,} gp  (volume: {vol_high or 0})")
-        if avg_low:
-            lines.append(f"5-min avg sell: {avg_low:,} gp  (volume: {vol_low or 0})")
+        lines += _osrs_5m_lines(five_min)
 
     return "\n".join(lines)
+
+
+def _osrs_5m_lines(five_min: dict) -> list[str]:
+    """Render the optional 5-minute average buy/sell lines from a /5m aggregate entry."""
+    lines: list[str] = []
+    avg_high = five_min.get("avgHighPrice")
+    avg_low = five_min.get("avgLowPrice")
+    vol_high = five_min.get("highPriceVolume")
+    vol_low = five_min.get("lowPriceVolume")
+    if avg_high:
+        lines.append(f"5-min avg buy:  {avg_high:,} gp  (volume: {vol_high or 0})")
+    if avg_low:
+        lines.append(f"5-min avg sell: {avg_low:,} gp  (volume: {vol_low or 0})")
+    return lines
 
 
 # RS3 — wiki Module:Exchange for item ID, then GE detail API for price
@@ -235,10 +242,7 @@ async def _geprice_lookup(name: str) -> dict | None:
     if not catalog:
         return None
     target = name.strip().casefold()
-    for entry in catalog:
-        if entry.get("name", "").casefold() == target:
-            return entry
-    return None
+    return next((e for e in catalog if e.get("name", "").casefold() == target), None)
 
 
 TOOL = register(

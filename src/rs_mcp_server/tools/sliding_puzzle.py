@@ -46,7 +46,7 @@ def _parse(grid: list) -> tuple[int, tuple[int, ...], int]:
     blank_value is that home (the index missing from the non-null entries). Raises ValueError
     with a user-facing message on bad input."""
     size = len(grid)
-    n = int(round(math.isqrt(size)))
+    n = math.isqrt(size)  # exact integer floor sqrt; the n*n check below rejects non-squares
     if n * n != size or n not in (3, 4, 5):
         raise ValueError(f"Grid length {size} is not a square board (expected 9, 16 or 25).")
     nulls = [i for i, v in enumerate(grid) if v is None]
